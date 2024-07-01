@@ -9,14 +9,14 @@ import crossplane
 from ops import CharmBase
 from ops.pebble import Layer
 
-from tempo_cluster import TempoClusterProvider
+from tempo import Tempo
+from tempo_cluster import TempoClusterProvider, TempoRole
 
 logger = logging.getLogger(__name__)
 
 
 NGINX_DIR = "/etc/nginx"
 NGINX_CONFIG = f"{NGINX_DIR}/nginx.conf"
-NGINX_PORT = "8080"
 KEY_PATH = f"{NGINX_DIR}/certs/server.key"
 CERT_PATH = f"{NGINX_DIR}/certs/server.cert"
 CA_CERT_PATH = f"{NGINX_DIR}/certs/ca.cert"
@@ -32,101 +32,41 @@ LOCATIONS_DISTRIBUTOR: List[Dict[str, Any]] = [
             },
         ],
     },
+    # OTLP/HTTP ingestion
     {
         "directive": "location",
-        "args": ["/api/v1/push"],
+        "args": ["/v1/traces"],
         "block": [
             {
                 "directive": "proxy_pass",
-                "args": ["http://distributor"],
+                "args": ["http://otlp-http"],
             },
         ],
     },
+    # Zipkin ingestion
     {
         "directive": "location",
-        "args": ["/otlp/v1/metrics"],
+        "args": ["/api/v2/spans"],
         "block": [
             {
                 "directive": "proxy_pass",
-                "args": ["http://distributor"],
+                "args": ["http://zipkin"],
             },
         ],
     },
+    # # Jaeger thrift HTTP ingestion
+    # {
+    #     "directive": "location",
+    #     "args": ["/api/traces"],
+    #     "block": [
+    #         {
+    #             "directive": "proxy_pass",
+    #             "args": ["http://jaeger-thrift-http"],
+    #         },
+    #     ],
+    # },
 ]
-LOCATIONS_ALERTMANAGER: List[Dict] = [
-    {
-        "directive": "location",
-        "args": ["/alertmanager"],
-        "block": [
-            {
-                "directive": "proxy_pass",
-                "args": ["http://alertmanager"],
-            },
-        ],
-    },
-    {
-        "directive": "location",
-        "args": ["/multitenant_alertmanager/status"],
-        "block": [
-            {
-                "directive": "proxy_pass",
-                "args": ["http://alertmanager"],
-            },
-        ],
-    },
-    {
-        "directive": "location",
-        "args": ["/api/v1/alerts"],
-        "block": [
-            {
-                "directive": "proxy_pass",
-                "args": ["http://alertmanager"],
-            },
-        ],
-    },
-]
-LOCATIONS_RULER: List[Dict] = [
-    {
-        "directive": "location",
-        "args": ["/prometheus/config/v1/rules"],
-        "block": [
-            {
-                "directive": "proxy_pass",
-                "args": ["http://ruler"],
-            },
-        ],
-    },
-    {
-        "directive": "location",
-        "args": ["/prometheus/api/v1/rules"],
-        "block": [
-            {
-                "directive": "proxy_pass",
-                "args": ["http://ruler"],
-            },
-        ],
-    },
-    {
-        "directive": "location",
-        "args": ["/prometheus/api/v1/alerts"],
-        "block": [
-            {
-                "directive": "proxy_pass",
-                "args": ["http://ruler"],
-            },
-        ],
-    },
-    {
-        "directive": "location",
-        "args": ["=", "/ruler/ring"],
-        "block": [
-            {
-                "directive": "proxy_pass",
-                "args": ["http://ruler"],
-            },
-        ],
-    },
-]
+# TODO add GRPC locations - perhaps as a separate server section?
 LOCATIONS_QUERY_FRONTEND: List[Dict] = [
     {
         "directive": "location",
@@ -138,10 +78,9 @@ LOCATIONS_QUERY_FRONTEND: List[Dict] = [
             },
         ],
     },
-    # Buildinfo endpoint can go to any component
     {
         "directive": "location",
-        "args": ["=", "/api/v1/status/buildinfo"],
+        "args": ["/api/echo"],
         "block": [
             {
                 "directive": "proxy_pass",
@@ -149,16 +88,54 @@ LOCATIONS_QUERY_FRONTEND: List[Dict] = [
             },
         ],
     },
-]
-LOCATIONS_COMPACTOR: List[Dict] = [
-    # Compactor endpoint for uploading blocks
     {
         "directive": "location",
-        "args": ["=", "/api/v1/upload/block/"],
+        "args": ["/api/traces"],
         "block": [
             {
                 "directive": "proxy_pass",
-                "args": ["http://compactor"],
+                "args": ["http://query-frontend"],
+            },
+        ],
+    },
+    {
+        "directive": "location",
+        "args": ["/api/search"],
+        "block": [
+            {
+                "directive": "proxy_pass",
+                "args": ["http://query-frontend"],
+            },
+        ],
+    },
+    {
+        "directive": "location",
+        "args": ["/api/v2/search"],
+        "block": [
+            {
+                "directive": "proxy_pass",
+                "args": ["http://query-frontend"],
+            },
+        ],
+    },
+    {
+        "directive": "location",
+        "args": ["/api/overrides"],
+        "block": [
+            {
+                "directive": "proxy_pass",
+                "args": ["http://query-frontend"],
+            },
+        ],
+    },
+    # Buildinfo endpoint can go to any component
+    {
+        "directive": "location",
+        "args": ["=", "/api/status/buildinfo"],
+        "block": [
+            {
+                "directive": "proxy_pass",
+                "args": ["http://query-frontend"],
             },
         ],
     },
@@ -205,9 +182,13 @@ class Nginx:
 
     def config(self, tls: bool = False) -> str:
         """Build and return the Nginx configuration."""
-        log_level = "error"
-        addresses_by_role = self.cluster_provider.gather_addresses_by_role()
+        full_config = self._prepare_config(tls)
+        return crossplane.build(full_config)
 
+    def _prepare_config(self, tls: bool = False) -> List[dict]:
+        # TODO remember to put it back to error
+        log_level = "debug"
+        addresses_by_role = self.cluster_provider.gather_addresses_by_role()
         # build the complete configuration
         full_config = [
             {"directive": "worker_processes", "args": ["5"]},
@@ -260,8 +241,7 @@ class Nginx:
                 ],
             },
         ]
-
-        return crossplane.build(full_config)
+        return full_config
 
     @property
     def layer(self) -> Layer:
@@ -274,7 +254,7 @@ class Nginx:
                     "nginx": {
                         "override": "replace",
                         "summary": "nginx",
-                        "command": "nginx",
+                        "command": "nginx -g 'daemon off;'",
                         "startup": "enabled",
                     }
                 },
@@ -297,35 +277,58 @@ class Nginx:
         ]
 
     def _upstreams(self, addresses_by_role: Dict[str, Set[str]]) -> List[Dict[str, Any]]:
+        addresses_mapped_to_upstreams = {}
         nginx_upstreams = []
-        for role, address_set in addresses_by_role.items():
-            nginx_upstreams.append(
-                {
-                    "directive": "upstream",
-                    "args": [role],
-                    "block": [
-                        {"directive": "server", "args": [f"{addr}:{NGINX_PORT}"]}
-                        for addr in address_set
-                    ],
-                }
-            )
+        if TempoRole.distributor in addresses_by_role.keys():
+            addresses_mapped_to_upstreams["distributor"] = addresses_by_role[TempoRole.distributor]
+        if TempoRole.query_frontend in addresses_by_role.keys():
+            addresses_mapped_to_upstreams["query_frontend"] = addresses_by_role[TempoRole.query_frontend]
+        if TempoRole.all in addresses_by_role.keys():
+            # for all, we add addresses to existing upstreams for distributor / query_frontend or create the set
+            if "distributor" in addresses_mapped_to_upstreams:
+                addresses_mapped_to_upstreams["distributor"] = addresses_mapped_to_upstreams["distributor"].union(addresses_by_role[TempoRole.all])
+            else:
+                addresses_mapped_to_upstreams["distributor"] = addresses_by_role[TempoRole.all]
+            if "query_frontend" in addresses_mapped_to_upstreams:
+                addresses_mapped_to_upstreams["query_frontend"] = addresses_mapped_to_upstreams["query_frontend"].union(addresses_by_role[TempoRole.all])
+            else:
+                addresses_mapped_to_upstreams["query_frontend"] = addresses_by_role[TempoRole.all]
+        if "distributor" in addresses_mapped_to_upstreams.keys():
+            nginx_upstreams.extend(self._distributor_upstreams(addresses_mapped_to_upstreams["distributor"]))
+        if "query_frontend" in addresses_mapped_to_upstreams.keys():
+            nginx_upstreams.extend(self._query_frontend_upstreams(addresses_mapped_to_upstreams["query_frontend"]))
 
         return nginx_upstreams
+
+    def _distributor_upstreams(self, address_set):
+        return [
+            self._upstream("distributor", address_set, Tempo.server_ports["tempo_http"]),
+            self._upstream("otlp-http", address_set, Tempo.receiver_ports["otlp_http"]),
+            self._upstream("zipkin", address_set, Tempo.receiver_ports["zipkin"]),
+            self._upstream("jaeger-thrift-http", address_set, Tempo.receiver_ports["jaeger_thrift_http"]),
+        ]
+
+    def _query_frontend_upstreams(self, address_set):
+        return [
+            self._upstream("query-frontend", address_set, Tempo.server_ports["tempo_http"])
+        ]
+
+    def _upstream(self, role, address_set, port):
+        return {
+            "directive": "upstream",
+            "args": [role],
+            "block": [{"directive": "server", "args": [f"{addr}:{port}"]} for addr in address_set],
+        }
 
     def _locations(self, addresses_by_role: Dict[str, Set[str]]) -> List[Dict[str, Any]]:
         nginx_locations = LOCATIONS_BASIC.copy()
         roles = addresses_by_role.keys()
 
-        if "distributor" in roles:
+        if "distributor" in roles or "all" in roles:
+            # TODO split locations for every port
             nginx_locations.extend(LOCATIONS_DISTRIBUTOR)
-        if "alertmanager" in roles:
-            nginx_locations.extend(LOCATIONS_ALERTMANAGER)
-        if "ruler" in roles:
-            nginx_locations.extend(LOCATIONS_RULER)
-        if "query-frontend" in roles:
+        if "query-frontend" in roles or "all" in roles:
             nginx_locations.extend(LOCATIONS_QUERY_FRONTEND)
-        if "compactor" in roles:
-            nginx_locations.extend(LOCATIONS_COMPACTOR)
         return nginx_locations
 
     def _resolver(self, custom_resolver: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
@@ -344,6 +347,14 @@ class Nginx:
             ]
         return []
 
+    def _listen(self, ssl):
+        directives = []
+        for port in Tempo.all_ports.values():
+            directives.append({"directive": "listen", "args": [f"{port}", "ssl"] if ssl else [f"{port}"]})
+            directives.append({"directive": "listen", "args": [f"[::]:{port}", "ssl"] if ssl else [f"[::]:{port}"]})
+            return directives
+        return directives
+
     def _server(self, addresses_by_role: Dict[str, Set[str]], tls: bool = False) -> Dict[str, Any]:
         auth_enabled = False
 
@@ -352,8 +363,7 @@ class Nginx:
                 "directive": "server",
                 "args": [],
                 "block": [
-                    {"directive": "listen", "args": ["443", "ssl"]},
-                    {"directive": "listen", "args": ["[::]:443", "ssl"]},
+                    *self._listen(ssl=True),
                     *self._basic_auth(auth_enabled),
                     {
                         "directive": "proxy_set_header",
@@ -373,13 +383,17 @@ class Nginx:
             "directive": "server",
             "args": [],
             "block": [
-                {"directive": "listen", "args": [NGINX_PORT]},
-                {"directive": "listen", "args": [f"[::]:{NGINX_PORT}"]},
+                *self._listen(ssl=False),
                 *self._basic_auth(auth_enabled),
                 {
                     "directive": "proxy_set_header",
                     "args": ["X-Scope-OrgID", "$ensured_x_scope_orgid"],
                 },
+                # {
+                #     "directive": "proxy_set_header",
+                #     "args": ["Host", "$host:$server_port"]
+                # },
+                {"directive": "server_name", "args": [self.server_name]},
                 *self._locations(addresses_by_role),
             ],
         }
