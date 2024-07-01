@@ -118,10 +118,6 @@ RELATION_INTERFACE_NAME = "tracing"
 
 ReceiverProtocol = Literal[
     "zipkin",
-    "kafka",
-    "opencensus",
-    "tempo_http",
-    "tempo_grpc",
     "otlp_grpc",
     "otlp_http",
 ]
