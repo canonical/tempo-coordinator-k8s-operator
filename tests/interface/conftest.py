@@ -19,34 +19,21 @@ from charm import TempoCoordinatorCharm
 # to include the new identifier/location.
 @pytest.fixture
 def interface_tester(interface_tester: InterfaceTester):
-    with patch("charm.KubernetesServicePatch"):
-        with charm_tracing_disabled():
-            interface_tester.configure(
-                charm_type=TempoCoordinatorCharm,
-                state_template=State(
-                    leader=True,
-                    containers=[
-                        Container(
-                            name="tempo",
-                            can_connect=True,
-                            layers={
-                                "foo": Layer(
-                                    {
-                                        "summary": "foo",
-                                        "description": "bar",
-                                        "services": {
-                                            "tempo": {
-                                                "startup": "enabled",
-                                                "current": "active",
-                                                "name": "tempo",
-                                            }
-                                        },
-                                        "checks": {},
-                                    }
-                                )
-                            },
-                        )
-                    ],
-                ),
-            )
-            yield interface_tester
+    with charm_tracing_disabled():
+        interface_tester.configure(
+            charm_type=TempoCoordinatorCharm,
+            state_template=State(
+                leader=True,
+                containers=[
+                    Container(
+                        name="nginx",
+                        can_connect=True,
+                    ),
+                    Container(
+                        name="nginx-prometheus-exporter",
+                        can_connect=True,
+                    )
+                ],
+            ),
+        )
+        yield interface_tester
