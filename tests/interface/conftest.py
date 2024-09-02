@@ -63,35 +63,30 @@ peers = PeerRelation("peers", peers_data={1: {}})
 # https://github.com/canonical/charm-relation-interfaces and change tempo's test configuration
 # to include the new identifier/location.
 @pytest.fixture
-def interface_tester(interface_tester: InterfaceTester):
+def cluster_tester(interface_tester: InterfaceTester):
     with charm_tracing_disabled():
         # FIXME: expose publicly
-        interface_name = interface_tester._interface_name  # noqa
 
-        # if we're testing the tracing interface:
-        if interface_name == "tracing":
-            interface_tester.configure(
-                charm_type=TempoCoordinatorCharm,
-                state_template=State(leader=True, containers=[tempo_container],
-                                     relations=[peers, s3_relation, cluster_relation]),
-            )
-            yield interface_tester
-
-        # if we're testing the s3 interface:
-        elif interface_name == "s3":
-            interface_tester.configure(
-                charm_type=TempoCoordinatorCharm,
-                state_template=State(leader=True, containers=[tempo_container], relations=[peers, cluster_relation]),
-            )
-            yield interface_tester
+        # # if we're testing the tracing interface:
+        # if interface_name == "tracing":
+        #     interface_tester.configure(
+        #         charm_type=TempoCoordinatorCharm,
+        #         state_template=State(leader=True, containers=[tempo_container],
+        #                              relations=[peers, s3_relation, cluster_relation]),
+        #     )
+        #     yield interface_tester
+        #
+        # # if we're testing the s3 interface:
+        # elif interface_name == "s3":
+        #     interface_tester.configure(
+        #         charm_type=TempoCoordinatorCharm,
+        #         state_template=State(leader=True, containers=[tempo_container], relations=[peers, cluster_relation]),
+        #     )
+        #     yield interface_tester
 
         # if we're testing the cluster interface:
-        elif interface_name == "cluster":
-            interface_tester.configure(
-                charm_type=TempoCoordinatorCharm,
-                state_template=State(leader=True, containers=[tempo_container], relations=[peers, s3_relation]),
-            )
-            yield interface_tester
-
-        else:
-            raise ValueError(f"testing {interface_name} not supported")
+        interface_tester.configure(
+            charm_type=TempoCoordinatorCharm,
+            state_template=State(leader=True, containers=[tempo_container], relations=[peers, s3_relation]),
+        )
+        yield interface_tester
