@@ -11,8 +11,8 @@ from scenario.state import Container, State, PeerRelation
 from charm import TempoCoordinatorCharm
 from charms.tempo_k8s.v1.charm_tracing import charm_tracing_disabled
 
-tempo_container = Container(
-    name="tempo",
+nginx_container = Container(
+    name="nginx",
     can_connect=True,
     layers={
         "foo": Layer(
@@ -20,16 +20,21 @@ tempo_container = Container(
                 "summary": "foo",
                 "description": "bar",
                 "services": {
-                    "tempo": {
+                    "nginx": {
                         "startup": "enabled",
                         "current": "active",
-                        "name": "tempo",
+                        "name": "nginx",
                     }
                 },
                 "checks": {},
             }
         )
     },
+)
+
+nginx_prometheus_exporter_container = Container(
+    name="nginx-prometheus-exporter",
+    can_connect=True,
 )
 
 s3_relation = Relation("s3", remote_app_data={
@@ -87,6 +92,10 @@ def cluster_tester(interface_tester: InterfaceTester):
         # if we're testing the cluster interface:
         interface_tester.configure(
             charm_type=TempoCoordinatorCharm,
-            state_template=State(leader=True, containers=[tempo_container], relations=[peers, s3_relation]),
+            state_template=State(
+                leader=True,
+                containers=[nginx_container, nginx_prometheus_exporter_container],
+                relations=[peers, s3_relation]
+            ),
         )
         yield interface_tester
