@@ -10,6 +10,12 @@ from scenario.state import Container, State
 
 from charm import TempoCoordinatorCharm
 
+s3_connection = MagicMock(return_value={
+    "bucket": "tempo",
+    "endpoint": "http://mock.s3.com",
+    "access-key": "accesskey",
+    "secret-key": "secretkey",
+})
 
 # Interface tests are centrally hosted at https://github.com/canonical/charm-relation-interfaces.
 # this fixture is used by the test runner of charm-relation-interfaces to test tempo's compliance
@@ -19,21 +25,22 @@ from charm import TempoCoordinatorCharm
 # to include the new identifier/location.
 @pytest.fixture
 def interface_tester(interface_tester: InterfaceTester):
-    with charm_tracing_disabled():
-        interface_tester.configure(
-            charm_type=TempoCoordinatorCharm,
-            state_template=State(
-                leader=True,
-                containers=[
-                    Container(
-                        name="nginx",
-                        can_connect=True,
-                    ),
-                    Container(
-                        name="nginx-prometheus-exporter",
-                        can_connect=True,
-                    )
-                ],
-            ),
-        )
-        yield interface_tester
+    with patch('lib.charms.data_platform_libs.v0.s3.S3Requirer.get_s3_connection_info', new=s3_connection):
+        with charm_tracing_disabled():
+            interface_tester.configure(
+                charm_type=TempoCoordinatorCharm,
+                state_template=State(
+                    leader=True,
+                    containers=[
+                        Container(
+                            name="nginx",
+                            can_connect=True,
+                        ),
+                        Container(
+                            name="nginx-prometheus-exporter",
+                            can_connect=True,
+                        )
+                    ],
+                ),
+            )
+            yield interface_tester
