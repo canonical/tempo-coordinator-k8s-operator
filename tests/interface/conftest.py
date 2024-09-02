@@ -7,6 +7,7 @@ from charms.tempo_k8s.v1.charm_tracing import charm_tracing_disabled
 from interface_tester import InterfaceTester
 from ops.pebble import Layer
 from scenario.state import Container, State
+from unittest.mock import MagicMock
 
 from charm import TempoCoordinatorCharm
 
