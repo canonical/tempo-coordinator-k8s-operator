@@ -70,26 +70,6 @@ peers = PeerRelation("peers", peers_data={1: {}})
 @pytest.fixture
 def cluster_tester(interface_tester: InterfaceTester):
     with charm_tracing_disabled():
-        # FIXME: expose publicly
-
-        # # if we're testing the tracing interface:
-        # if interface_name == "tracing":
-        #     interface_tester.configure(
-        #         charm_type=TempoCoordinatorCharm,
-        #         state_template=State(leader=True, containers=[tempo_container],
-        #                              relations=[peers, s3_relation, cluster_relation]),
-        #     )
-        #     yield interface_tester
-        #
-        # # if we're testing the s3 interface:
-        # elif interface_name == "s3":
-        #     interface_tester.configure(
-        #         charm_type=TempoCoordinatorCharm,
-        #         state_template=State(leader=True, containers=[tempo_container], relations=[peers, cluster_relation]),
-        #     )
-        #     yield interface_tester
-
-        # if we're testing the cluster interface:
         interface_tester.configure(
             charm_type=TempoCoordinatorCharm,
             state_template=State(
@@ -97,5 +77,26 @@ def cluster_tester(interface_tester: InterfaceTester):
                 containers=[nginx_container, nginx_prometheus_exporter_container],
                 relations=[peers, s3_relation]
             ),
+        )
+        yield interface_tester
+
+
+@pytest.fixture
+def tracing_tester(interface_tester: InterfaceTester):
+    with charm_tracing_disabled():
+        interface_tester.configure(
+            charm_type=TempoCoordinatorCharm,
+            state_template=State(leader=True, containers=[nginx_container, nginx_prometheus_exporter_container],
+                                 relations=[peers, s3_relation, cluster_relation]),
+        )
+        yield interface_tester
+
+
+@pytest.fixture
+def s3_tester(interface_tester: InterfaceTester):
+    with charm_tracing_disabled():
+        interface_tester.configure(
+            charm_type=TempoCoordinatorCharm,
+            state_template=State(leader=True, containers=[nginx_container, nginx_prometheus_exporter_container], relations=[peers, cluster_relation]),
         )
         yield interface_tester
