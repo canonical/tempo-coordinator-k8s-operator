@@ -86,8 +86,11 @@ def tracing_tester(interface_tester: InterfaceTester):
     with charm_tracing_disabled():
         interface_tester.configure(
             charm_type=TempoCoordinatorCharm,
-            state_template=State(leader=True, containers=[nginx_container, nginx_prometheus_exporter_container],
-                                 relations=[peers, s3_relation, cluster_relation]),
+            state_template=State(
+                leader=True,
+                containers=[nginx_container, nginx_prometheus_exporter_container],
+                relations=[peers, s3_relation, cluster_relation]
+            ),
         )
         yield interface_tester
 
@@ -97,6 +100,10 @@ def s3_tester(interface_tester: InterfaceTester):
     with charm_tracing_disabled():
         interface_tester.configure(
             charm_type=TempoCoordinatorCharm,
-            state_template=State(leader=True, containers=[nginx_container, nginx_prometheus_exporter_container], relations=[peers, cluster_relation]),
+            state_template=State(
+                leader=True,
+                containers=[nginx_container, nginx_prometheus_exporter_container],
+                relations=[peers, cluster_relation]
+            ),
         )
         yield interface_tester
