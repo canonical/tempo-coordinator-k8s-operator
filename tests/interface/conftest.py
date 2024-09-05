@@ -44,7 +44,7 @@ s3_relation = Relation("s3", remote_app_data={
     "secret-key": "soverysecret",
 })
 cluster_relation = Relation(
-    "cluster",
+    "tempo_cluster",
     remote_app_data=ClusterRequirerAppData(role="all").dump(),
     remote_units_data={
         0: ClusterRequirerUnitData(
