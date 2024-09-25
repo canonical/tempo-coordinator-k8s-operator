@@ -203,6 +203,23 @@ class TempoCoordinatorCharm(CharmBase):
                     "metrics-generator disabled. Add a relation over send-remote-write"
                 )
             )
+        if (
+            # we have tls
+            self.coordinator.tls_available
+            # we have tls
+            and self.ingress.is_ready()
+            and self.ingress.scheme == "http"
+        ):
+            # we have tls, but our ingress url is http
+            logger.error(
+                "this app is related to a certificate provider, but traefik is exposing it over an http endpoint. "
+                "This likely means traefik is missing an integration with the certificates provider."
+            )
+            e.add_status(
+                ops.BlockedStatus(
+                    "[tls] cannot talk https with traefik. TLS incorrectly configured"
+                )
+            )
 
     ###################
     # UTILITY METHODS #
