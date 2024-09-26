@@ -39,5 +39,5 @@ TODO: Update Tempo HA Terraform module link
 
 Users should ensure that Terraform is aware of the `juju_model` dependency of the charm module.
 
-To deploy this module with its needed dependency, you can run `terraform apply -var="model_name=<MODEL_NAME>"`
+To deploy this module with its needed dependency, you can run `terraform apply -var="model_name=<MODEL_NAME>" -auto-approve`
 
