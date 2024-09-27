@@ -257,6 +257,11 @@ class S3(BaseModel):
     endpoint: str
     secret_access_key: str = Field(alias="secret_key")
     insecure: bool = False
+    # cfr: https://grafana.com/docs/tempo/latest/configuration/#storage
+    tls_cert_path: Optional[str] = None
+    tls_ca_path: Optional[str] = None
+    tls_key_path: Optional[str] = None
+    tls_server_name: Optional[str] = None
 
     @model_validator(mode="before")  # pyright: ignore
     @classmethod
