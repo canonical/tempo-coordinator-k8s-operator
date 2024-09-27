@@ -100,14 +100,14 @@ from ops.model import ModelError, Relation
 from pydantic import BaseModel, Field
 
 # The unique Charmhub library identifier, never change it
-LIBID = "12977e9aa0b34367903d8afeb8c3d85d"
+LIBID = "d2f02b1f8d1244b5989fd55bc3a28943"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 2
+LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 10
+LIBPATCH = 1
 
 PYDEPS = ["pydantic"]
 
