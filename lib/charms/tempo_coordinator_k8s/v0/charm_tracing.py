@@ -12,15 +12,15 @@ in real time from the Grafana dashboard the execution flow of your charm.
 # Quickstart
 Fetch the following charm libs (and ensure the minimum version/revision numbers are satisfied):
 
-    charmcraft fetch-lib charms.tempo_k8s.v2.tracing  # >= 1.10
-    charmcraft fetch-lib charms.tempo_k8s.v1.charm_tracing  # >= 2.7
+    charmcraft fetch-lib charms.tempo_coordinator_k8s.v0.tracing  # >= 1.10
+    charmcraft fetch-lib charms.tempo_coordinator_k8s.v0.charm_tracing  # >= 2.7
 
 Then edit your charm code to include:
 
 ```python
 # import the necessary charm libs
-from charms.tempo_k8s.v2.tracing import TracingEndpointRequirer, charm_tracing_config
-from charms.tempo_k8s.v1.charm_tracing import charm_tracing
+from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer, charm_tracing_config
+from charms.tempo_coordinator_k8s.v0.charm_tracing import charm_tracing
 
 # decorate your charm class with charm_tracing:
 @charm_tracing(
@@ -51,7 +51,7 @@ To use this library, you need to do two things:
 
 2) add to your charm a "my_tracing_endpoint" (you can name this attribute whatever you like)
 **property**, **method** or **instance attribute** that returns an otlp http/https endpoint url.
-If you are using the ``charms.tempo_k8s.v2.tracing.TracingEndpointRequirer`` as
+If you are using the ``charms.tempo_coordinator_k8s.v0.tracing.TracingEndpointRequirer`` as
 ``self.tracing = TracingEndpointRequirer(self)``, the implementation could be:
 
 ```
@@ -80,7 +80,7 @@ CA that Tempo is using.
 
 For example:
 ```
-from charms.tempo_k8s.v1.charm_tracing import trace_charm
+from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
 @trace_charm(
     tracing_endpoint="my_tracing_endpoint",
     server_cert="_server_cert"
@@ -129,7 +129,7 @@ to return from ``TracingEndpointRequirer.get_endpoint("otlp_http")`` instead of 
 For example:
 
 ```
-    from charms.tempo_k8s.v0.charm_tracing import trace_charm
+    from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
 
     @trace_charm(
         tracing_endpoint="my_tracing_endpoint",
@@ -150,7 +150,7 @@ For example:
 needs to be replaced with:
 
 ```
-    from charms.tempo_k8s.v1.charm_tracing import trace_charm
+    from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
 
     @trace_charm(
         tracing_endpoint="my_tracing_endpoint",
@@ -331,7 +331,7 @@ def _get_tracer() -> Optional[Tracer]:
         return tracer.get()
     except LookupError:
         # fallback: this course-corrects for a user error where charm_tracing symbols are imported
-        # from different paths (typically charms.tempo_k8s... and lib.charms.tempo_k8s...)
+        # from different paths (typically charms.tempo_coordinator_k8s... and lib.charms.tempo_coordinator_k8s...)
         try:
             ctx: Context = copy_context()
             if context_tracer := _get_tracer_from_context(ctx):
@@ -561,8 +561,8 @@ def trace_charm(
     method calls on instances of this class.
 
     Usage:
-    >>> from charms.tempo_k8s.v1.charm_tracing import trace_charm
-    >>> from charms.tempo_k8s.v1.tracing import TracingEndpointRequirer
+    >>> from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
+    >>> from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer
     >>> from ops import CharmBase
     >>>
     >>> @trace_charm(
@@ -625,7 +625,7 @@ def _autoinstrument(
 
     Usage:
 
-    >>> from charms.tempo_k8s.v1.charm_tracing import _autoinstrument
+    >>> from charms.tempo_coordinator_k8s.v0.charm_tracing import _autoinstrument
     >>> from ops.main import main
     >>> _autoinstrument(
     >>>         MyCharm,
