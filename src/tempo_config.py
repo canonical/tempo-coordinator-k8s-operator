@@ -256,6 +256,7 @@ class S3(BaseModel):
     region: Optional[str] = None
     secret_access_key: str = Field(alias="secret_key")
     insecure: bool = False
+    tls_ca_path: Optional[str] = None
 
 
 class Block(BaseModel):
