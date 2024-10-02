@@ -4,10 +4,11 @@ variable "app_name" {
   default     = "tempo"
 }
 
+#Defaulting to latest/edge instead of stable as its not yet released
 variable "channel" {
   description = "Charm channel"
   type        = string
-  default     = "latest/stable"
+  default     = "latest/edge"
 }
 
 
