@@ -5,18 +5,26 @@ from pathlib import Path
 from typing import Any, Literal, get_args
 
 import requests
-from opentelemetry import trace
-from opentelemetry.exporter.jaeger.proto.grpc import JaegerExporter as JaegerGRPCExporter
-from opentelemetry.exporter.jaeger.thrift import JaegerExporter as JaegerThriftHttpExporter
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCExporter
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPExporter
-from opentelemetry.exporter.zipkin.json import ZipkinExporter
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import (
-    BatchSpanProcessor,
-    ConsoleSpanExporter,
-)
+
+try:
+    from opentelemetry import trace
+    from opentelemetry.exporter.jaeger.proto.grpc import JaegerExporter as JaegerGRPCExporter
+    from opentelemetry.exporter.jaeger.thrift import JaegerExporter as JaegerThriftHttpExporter
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GRPCExporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HTTPExporter
+    from opentelemetry.exporter.zipkin.json import ZipkinExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import (
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+    )
+except (ImportError, ModuleNotFoundError):
+    exit(
+        "could not import some otlp modules. please run:\n"
+        "pip install opentelemetry-exporter-otlp-proto-http opentelemetry-exporter-otlp-proto-grpc "
+        "opentelemetry-exporter-zipkin opentelemetry-exporter-jaeger opentelemetry-sdk"
+    )
 
 ReceiverProtocol = Literal[
     "zipkin",
@@ -79,21 +87,31 @@ def emit_trace(
         cert: Path = None,
         protocol: ReceiverProtocol = "otlp_http",
         nonce: Any = None,
-    service_name:str = None
+        service_name: str = None
 ):
+    successes = []
     if protocol == "ALL":
         for proto in get_args(protocol):
-            emit_trace(endpoint, log_trace_to_console, cert, proto, nonce=nonce,service_name=service_name)
+            span_exporter = initialize_exporter(proto, endpoint, cert)
+            successes.append(
+                _export_trace(span_exporter, log_trace_to_console=log_trace_to_console, nonce=nonce, protocol=proto,
+                              service_name=service_name)
+            )
     else:
         set_envvars(cert)
         span_exporter = initialize_exporter(protocol, endpoint, cert)
-        return _export_trace(span_exporter, log_trace_to_console=log_trace_to_console, nonce=nonce, protocol=protocol,
-                             service_name=service_name)
+        successes.append(_export_trace(span_exporter, log_trace_to_console=log_trace_to_console, nonce=nonce, protocol=protocol,
+                             service_name=service_name))
+
+    if all(successes):
+        print("PASSED")
+    else:
+        exit("FAILED")
 
 
 def _export_trace(span_exporter, log_trace_to_console: bool = False, nonce: Any = None,
                   protocol: ReceiverProtocol = "otlp_http",
-                  service_name:str = None):
+                  service_name: str = None):
     resource = Resource.create(attributes={
         "service.name": service_name or f"tracegen-{protocol}",
         "nonce": str(nonce)
