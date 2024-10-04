@@ -4,7 +4,10 @@ from unittest.mock import patch
 
 import pytest
 from charms.tempo_coordinator_k8s.v0.charm_tracing import charm_tracing_disabled
-from charms.tempo_coordinator_k8s.v0.tracing import TracingProviderAppData, TracingRequirerAppData
+from charms.tempo_coordinator_k8s.v0.tracing import (
+    TracingProviderAppData,
+    TracingRequirerAppData,
+)
 from scenario import Relation, Secret, State
 
 from charm import TempoCoordinatorCharm
