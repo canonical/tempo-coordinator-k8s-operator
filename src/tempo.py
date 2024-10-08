@@ -4,7 +4,8 @@
 
 """Tempo workload configuration and client."""
 import logging
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
+import re
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import yaml
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol
@@ -82,7 +83,7 @@ class Tempo:
             ingester=self._build_ingester_config(),
             memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
             compactor=self._build_compactor_config(),
-            querier=self._build_querier_config(coordinator.cluster.gather_addresses_by_role()),
+            querier=self._build_querier_config(coordinator._external_url),
             storage=self._build_storage_config(coordinator._s3_config),
             metrics_generator=self._build_metrics_generator_config(
                 coordinator.remote_write_endpoints_getter(), coordinator.tls_available  # type: ignore
@@ -192,20 +193,17 @@ class Tempo:
         )
         return tempo_config.Storage(trace=storage_config)
 
-    def _build_querier_config(self, roles_addresses: Dict[str, Set[str]]):
-        """Build querier config"""
-        # if distributor and query-frontend have the same address, then the mode of operation is 'all'.
-        query_frontend_addresses = roles_addresses.get(tempo_config.TempoRole.query_frontend)
-        distributor_addresses = roles_addresses.get(tempo_config.TempoRole.distributor)
+    def _build_querier_config(self, external_url: str):
+        """Build querier config.
 
-        if not query_frontend_addresses or query_frontend_addresses == distributor_addresses:
-            addr = "localhost"
-        else:
-            addr = query_frontend_addresses.pop()
+        Use coordinator's external_url to loadbalance across query-frontend worker instances if any.
+        """
+
+        grpc_url = re.sub(r"^https?:\/\/", "", external_url)
 
         return tempo_config.Querier(
             frontend_worker=tempo_config.FrontendWorker(
-                frontend_address=f"{addr}:{self.tempo_grpc_server_port}"
+                frontend_address=f"{grpc_url}:{self.tempo_grpc_server_port}"
             ),
         )
 
@@ -242,6 +240,11 @@ class Tempo:
             trace_idle_period="10s",
             max_block_bytes=100,
             max_block_duration="30m",
+            # replication_factor=3 to ensure that the Tempo cluster can still be
+            # functional if one of the ingesters is down.
+            lifecycler=tempo_config.Lifecycler(
+                ring=tempo_config.Ring(replication_factor=3),
+            ),
         )
 
     def _build_distributor_config(

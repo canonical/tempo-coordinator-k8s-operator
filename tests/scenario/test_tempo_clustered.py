@@ -1,5 +1,6 @@
 import datetime
 import json
+import socket
 from dataclasses import replace
 from unittest.mock import MagicMock, patch
 
@@ -32,6 +33,7 @@ def coordinator_with_initial_config():
         "query-frontend": {"localhost"},
         "distributor": {"localhost"},
     }
+    new_coordinator_mock.return_value._external_url = socket.getfqdn()
 
     return new_coordinator_mock
 
