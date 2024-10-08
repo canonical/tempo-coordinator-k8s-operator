@@ -75,7 +75,7 @@ def copy_charm_libs_into_tester_charm(ops_test):
 def copy_charm_libs_into_tester_grpc_charm(ops_test):
     """Ensure the tester GRPC charm has the libraries it uses."""
     libraries = [
-        "tempo_k8s/v2/tracing.py",
+        "tempo_coordinator_k8s/v2/tracing.py",
     ]
 
     copies = []

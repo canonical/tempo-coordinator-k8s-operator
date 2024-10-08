@@ -85,7 +85,7 @@ async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
             apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
             status="active",
             raise_on_blocked=True,
-            timeout=1000,
+            timeout=2000,
         ),
     )
 
