@@ -246,7 +246,7 @@ class Tempo:
             lifecycler=tempo_config.Lifecycler(
                 ring=tempo_config.Ring(
                     replication_factor=(
-                        3 if ingester_addresses and len(ingester_addresses) > 1 else 1
+                        3 if ingester_addresses and len(ingester_addresses) >= 3 else 1
                     )
                 ),
             ),

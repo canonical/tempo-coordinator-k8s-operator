@@ -114,7 +114,7 @@ def test_tempo_memberlist_config(peers, expected_config):
     "addresses, expected_replication",
     (
         (
-            {"querier": {"addr1"}, "ingester": {"addr1", "addr2"}},
+            {"querier": {"addr1"}, "ingester": {"addr1", "addr2", "addr3"}},
             3,
         ),
         (
