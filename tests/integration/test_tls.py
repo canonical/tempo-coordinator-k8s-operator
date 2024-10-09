@@ -73,7 +73,6 @@ async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
         ),
     )
 
-    await ops_test.model.integrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
     await ops_test.model.integrate(
         SSC_APP_NAME + ":certificates", TRAEFIK_APP_NAME + ":certificates"
     )
@@ -86,6 +85,19 @@ async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
             status="active",
             raise_on_blocked=True,
             timeout=2000,
+        ),
+    )
+
+
+@pytest.mark.abort_on_fail
+async def test_relate_ssc(ops_test: OpsTest):
+    await ops_test.model.integrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(
+            apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
+            status="active",
+            raise_on_blocked=True,
+            timeout=1000,
         ),
     )
 
