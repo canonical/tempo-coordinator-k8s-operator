@@ -31,8 +31,6 @@ from ops.charm import CharmBase, CharmEvents
 from scenario import Context, Relation, State
 from scenario.runtime import UncaughtCharmError
 
-os.environ[CHARM_TRACING_ENABLED] = "1"
-
 logger = logging.getLogger(__name__)
 
 

@@ -173,7 +173,9 @@ provide an *absolute* path to the certificate file instead.
 """
 import typing
 
-from opentelemetry.exporter.otlp.proto.common._internal.trace_encoder import encode_spans
+from opentelemetry.exporter.otlp.proto.common._internal.trace_encoder import (
+    encode_spans,
+)
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 
@@ -239,18 +241,20 @@ from typing import (
     Any,
     Callable,
     Generator,
+    List,
     Optional,
     Sequence,
     Type,
     TypeVar,
     Union,
-    cast, List, )
+    cast,
+)
 
 import opentelemetry
 import ops
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import Span, TracerProvider, ReadableSpan
+from opentelemetry.sdk.trace import ReadableSpan, Span, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExportResult
 from opentelemetry.trace import INVALID_SPAN, Tracer
 from opentelemetry.trace import get_current_span as otlp_get_current_span
@@ -294,7 +298,7 @@ BUFFER_DEFAULT_CACHE_FILE_NAME = ".charm_tracing_buffer.json"
 BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB = 100
 _BUFFER_CACHE_FILE_SIZE_LIMIT_MB_MIN = 10
 BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH = 100
-_MB_TO_B = 10 ** 6  # megabyte to byte conversion rate
+_MB_TO_B = 10**6  # megabyte to byte conversion rate
 
 
 class _Buffer:
@@ -307,13 +311,10 @@ class _Buffer:
     We cannot store them as json because that is not well-supported by the sdk
     (see https://github.com/open-telemetry/opentelemetry-python/issues/3364).
     """
+
     _SPANSEP = b"__CHARM_TRACING_BUFFER_SPAN_SEP__"
 
-    def __init__(self,
-                 db_file: Path,
-                 max_event_history_length: int,
-                 max_buffer_size_mb: int
-                 ):
+    def __init__(self, db_file: Path, max_event_history_length: int, max_buffer_size_mb: int):
 
         self._db_file = db_file
         self._max_event_history_length = max_event_history_length
@@ -346,8 +347,7 @@ class _Buffer:
         try:
             # if the buffer exceeds the size limit, we start dropping old spans until it does
 
-            while (len((new + self._SPANSEP.join(old))) >
-                   (self._max_buffer_size_mb * _MB_TO_B)):
+            while len((new + self._SPANSEP.join(old))) > (self._max_buffer_size_mb * _MB_TO_B):
                 if not old:
                     # if we've already dropped all spans and still we can't get under the
                     # size limit, we can't save this span
@@ -365,7 +365,7 @@ class _Buffer:
 
             self._db_file.write_bytes(new + self._SPANSEP.join(old))
         except Exception:
-            logger.exception(f"error buffering spans")
+            logger.exception("error buffering spans")
 
     def load(self) -> List[bytes]:
         """Load currently buffered spans from the cache file.
@@ -389,7 +389,7 @@ class _Buffer:
             logger.debug(f"dropping {n_spans} spans from buffer")
             new = current[n_spans:]
         else:
-            logger.debug(f"emptying buffer")
+            logger.debug("emptying buffer")
             new = []
 
         self._save(new, replace=True)
@@ -511,9 +511,9 @@ class UntraceableObjectError(TracingError):
 
 
 def _get_tracing_endpoint(
-        tracing_endpoint_attr: str,
-        charm_instance: object,
-        charm_type: type,
+    tracing_endpoint_attr: str,
+    charm_instance: object,
+    charm_type: type,
 ):
     _tracing_endpoint = getattr(charm_instance, tracing_endpoint_attr)
     if callable(_tracing_endpoint):
@@ -535,9 +535,9 @@ def _get_tracing_endpoint(
 
 
 def _get_server_cert(
-        server_cert_attr: str,
-        charm_instance: ops.CharmBase,
-        charm_type: Type[ops.CharmBase],
+    server_cert_attr: str,
+    charm_instance: ops.CharmBase,
+    charm_type: Type[ops.CharmBase],
 ):
     _server_cert = getattr(charm_instance, server_cert_attr)
     if callable(_server_cert):
@@ -559,13 +559,13 @@ def _get_server_cert(
 
 
 def _setup_root_span_initializer(
-        charm_type: _CharmType,
-        tracing_endpoint_attr: str,
-        server_cert_attr: Optional[str],
-        service_name: Optional[str],
-        buffer_path: Optional[Path],
-        buffer_max_events: int,
-        buffer_max_size_mb: int,
+    charm_type: _CharmType,
+    tracing_endpoint_attr: str,
+    server_cert_attr: Optional[str],
+    service_name: Optional[str],
+    buffer_path: Optional[Path],
+    buffer_max_events: int,
+    buffer_max_size_mb: int,
 ):
     """Patch the charm's initializer."""
     original_init = charm_type.__init__
@@ -634,9 +634,11 @@ def _setup_root_span_initializer(
             )
             buffering = True
 
-        buffer = _Buffer(db_file=buffer_path or Path() / BUFFER_DEFAULT_CACHE_FILE_NAME,
-                         max_event_history_length=buffer_max_events,
-                         max_buffer_size_mb=buffer_max_size_mb)
+        buffer = _Buffer(
+            db_file=buffer_path or Path() / BUFFER_DEFAULT_CACHE_FILE_NAME,
+            max_event_history_length=buffer_max_events,
+            max_buffer_size_mb=buffer_max_size_mb,
+        )
 
         if buffering:
             logger.debug("buffering ON")
@@ -705,14 +707,13 @@ def _setup_root_span_initializer(
 
 
 def trace_charm(
-        tracing_endpoint: str,
-        server_cert: Optional[str] = None,
-        service_name: Optional[str] = None,
-        extra_types: Sequence[type] = (),
-        buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
-        buffer_max_size_mb: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB,
-        buffer_path: Optional[Path] = None,
-
+    tracing_endpoint: str,
+    server_cert: Optional[str] = None,
+    service_name: Optional[str] = None,
+    extra_types: Sequence[type] = (),
+    buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
+    buffer_max_size_mb: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB,
+    buffer_path: Optional[Path] = None,
 ) -> Callable[[_T], _T]:
     """Autoinstrument the decorated charm with tracing telemetry.
 
@@ -777,14 +778,14 @@ def trace_charm(
 
 
 def _autoinstrument(
-        charm_type: _T,
-        tracing_endpoint_attr: str,
-        server_cert_attr: Optional[str] = None,
-        service_name: Optional[str] = None,
-        extra_types: Sequence[type] = (),
-        buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
-        buffer_max_size_mb: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB,
-        buffer_path: Optional[Path] = None,
+    charm_type: _T,
+    tracing_endpoint_attr: str,
+    server_cert_attr: Optional[str] = None,
+    service_name: Optional[str] = None,
+    extra_types: Sequence[type] = (),
+    buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
+    buffer_max_size_mb: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB,
+    buffer_path: Optional[Path] = None,
 ) -> _T:
     """Set up tracing on this charm class.
 
@@ -829,7 +830,7 @@ def _autoinstrument(
         service_name=service_name,
         buffer_path=buffer_path,
         buffer_max_events=buffer_max_events,
-        buffer_max_size_mb=buffer_max_size_mb
+        buffer_max_size_mb=buffer_max_size_mb,
     )
     trace_type(charm_type)
     for type_ in extra_types:
