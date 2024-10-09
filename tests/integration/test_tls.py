@@ -150,20 +150,17 @@ async def test_force_enable_protocols(ops_test: OpsTest):
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_verify_traces_force_enabled_protocols_tls(ops_test: OpsTest, nonce):
-
+@pytest.mark.parametrize("protocol", protocols_endpoints.keys())
+async def test_verify_traces_force_enabled_protocols_tls(ops_test: OpsTest, nonce, protocol):
     tempo_host = await get_ingress_proxied_hostname(ops_test)
-
-    for protocol in list(protocols_endpoints.keys()):
-        logger.info(f"emitting & verifying trace using {protocol} protocol.")
-        tempo_endpoint = await get_tempo_ingressed_endpoint(tempo_host, protocol=protocol)
-        # emit a trace secured with TLS
-        await emit_trace(
-            tempo_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol, use_cert=True
-        )
-        # verify it's been ingested
-        await get_traces_patiently(tempo_host, service_name=f"tracegen-{protocol}")
+    logger.info(f"emitting & verifying trace using {protocol} protocol.")
+    tempo_endpoint = await get_tempo_ingressed_endpoint(tempo_host, protocol=protocol)
+    # emit a trace secured with TLS
+    await emit_trace(
+        tempo_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol, use_cert=True
+    )
+    # verify it's been ingested
+    await get_traces_patiently(tempo_host, service_name=f"tracegen-{protocol}")
 
 
 @pytest.mark.teardown
