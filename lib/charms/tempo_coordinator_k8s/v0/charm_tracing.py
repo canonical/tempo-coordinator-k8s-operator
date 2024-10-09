@@ -171,7 +171,6 @@ needs to be replaced with:
 3) If you were passing a certificate (str) using `server_cert`, you need to change it to
 provide an *absolute* path to the certificate file instead.
 """
-import json
 import typing
 
 from opentelemetry.exporter.otlp.proto.common._internal.trace_encoder import encode_spans
@@ -263,7 +262,6 @@ from opentelemetry.trace import (
 )
 from ops.charm import CharmBase
 from ops.framework import Framework
-from pickle import dumps as pickle_dumps, loads as pickle_loads
 
 # The unique Charmhub library identifier, never change it
 LIBID = "01780f1e588c42c3976d26780fdf9b89"
@@ -274,7 +272,7 @@ LIBAPI = 0
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
 
-LIBPATCH = 2
+LIBPATCH = 3
 
 PYDEPS = ["opentelemetry-exporter-otlp-proto-http==1.21.0"]
 
@@ -336,11 +334,11 @@ class _Buffer:
             self.drop(diff)
         self._save(spans)
 
-    def _serialize(self, spans:Sequence[ReadableSpan]) -> bytes:
+    def _serialize(self, spans: Sequence[ReadableSpan]) -> bytes:
         # encode because otherwise we can't json-dump them
         return encode_spans(spans).SerializeToString()
 
-    def _save(self, spans: Sequence[ReadableSpan], replace:bool=False):
+    def _save(self, spans: Sequence[ReadableSpan], replace: bool = False):
         logger.debug(f"saving {len(spans)} new spans to buffer")
         old = [] if replace else self.load()
         new = self._serialize(spans)
@@ -348,7 +346,7 @@ class _Buffer:
         try:
             # if the buffer exceeds the size limit, we start dropping old spans until it does
 
-            while (len((new+ self._SPANSEP.join(old))) >
+            while (len((new + self._SPANSEP.join(old))) >
                    (self._max_buffer_size_mb * _MB_TO_B)):
                 if not old:
                     # if we've already dropped all spans and still we can't get under the
@@ -365,7 +363,7 @@ class _Buffer:
                     f"Please increase the buffer size, disable buffering, or ensure the spans can be flushed."
                 )
 
-            self._db_file.write_bytes(new+ self._SPANSEP.join(old))
+            self._db_file.write_bytes(new + self._SPANSEP.join(old))
         except Exception:
             logger.exception(f"error buffering spans")
 
@@ -405,7 +403,7 @@ class _Buffer:
 
         errors = False
         for span in buffered_spans:
-            out = exporter._export(span) # noqa
+            out = exporter._export(span)  # noqa
             if out.status_code not in (200, 202):
                 errors = True
 
@@ -567,7 +565,7 @@ def _setup_root_span_initializer(
         service_name: Optional[str],
         buffer_path: Optional[Path],
         buffer_max_events: int,
-    buffer_max_size_mb:int,
+        buffer_max_size_mb: int,
 ):
     """Patch the charm's initializer."""
     original_init = charm_type.__init__
@@ -831,7 +829,7 @@ def _autoinstrument(
         service_name=service_name,
         buffer_path=buffer_path,
         buffer_max_events=buffer_max_events,
-    buffer_max_size_mb=buffer_max_size_mb
+        buffer_max_size_mb=buffer_max_size_mb
     )
     trace_type(charm_type)
     for type_ in extra_types:
