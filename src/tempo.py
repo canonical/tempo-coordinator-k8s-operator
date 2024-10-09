@@ -111,7 +111,7 @@ class Tempo:
             config.metrics_generator_client = tempo_config.Client(
                 grpc_client_config=tempo_config.ClientTLS(**tls_config)
             )
-            # use ingress hostname here, as the frontend worker would be pointning at the ingress url 
+            # use ingress hostname here, as the frontend worker would be pointning at the ingress url
             config.querier.frontend_worker.grpc_client_config = tempo_config.ClientTLS(
                 **{**tls_config, "tls_server_name": external_hostname},
             )
