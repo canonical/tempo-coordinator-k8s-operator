@@ -108,3 +108,27 @@ def test_tempo_distributor_config(protocols, use_tls, expected_config):
 )
 def test_tempo_memberlist_config(peers, expected_config):
     assert Tempo(None, 720)._build_memberlist_config(peers) == expected_config
+
+
+@pytest.mark.parametrize(
+    "addresses, expected_replication",
+    (
+        (
+            {"querier": {"addr1"}, "ingester": {"addr1", "addr2"}},
+            3,
+        ),
+        (
+            {"querier": {"addr1"}},
+            1,
+        ),
+        (
+            {"ingester": {"addr2"}, "querier": {"addr1"}},
+            1,
+        ),
+    ),
+)
+def test_tempo_ingester_config(addresses, expected_replication):
+    assert (
+        Tempo(None, 720)._build_ingester_config(addresses).lifecycler.ring.replication_factor
+        == expected_replication
+    )

@@ -5,7 +5,7 @@
 """Tempo workload configuration and client."""
 import logging
 import re
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 import yaml
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol
@@ -80,7 +80,7 @@ class Tempo:
             distributor=self._build_distributor_config(
                 self._receivers_getter(), coordinator.tls_available
             ),
-            ingester=self._build_ingester_config(),
+            ingester=self._build_ingester_config(coordinator.cluster.gather_addresses_by_role()),
             memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
             compactor=self._build_compactor_config(),
             querier=self._build_querier_config(coordinator._external_url),
@@ -231,8 +231,9 @@ class Tempo:
             join_members=([f"{peer}:{self.memberlist_port}" for peer in peers] if peers else []),
         )
 
-    def _build_ingester_config(self):
+    def _build_ingester_config(self, roles_addresses: Dict[str, Set[str]]):
         """Build ingester config"""
+        ingester_addresses = roles_addresses.get(tempo_config.TempoRole.ingester)
         # the length of time after a trace has not received spans to consider it complete and flush it
         # cut the head block when it hits this number of traces or ...
         #   this much time passes
@@ -243,7 +244,11 @@ class Tempo:
             # replication_factor=3 to ensure that the Tempo cluster can still be
             # functional if one of the ingesters is down.
             lifecycler=tempo_config.Lifecycler(
-                ring=tempo_config.Ring(replication_factor=3),
+                ring=tempo_config.Ring(
+                    replication_factor=(
+                        3 if ingester_addresses and len(ingester_addresses) > 1 else 1
+                    )
+                ),
             ),
         )
 
