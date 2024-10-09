@@ -307,7 +307,7 @@ class _Buffer:
     Use the max_event_history_length_buffering param of @trace_charm to tune
     the amount of memory that this will hog on your units.
 
-    The buffer is formatted as a json-encoded list of pickled ReadableSpan instances.
+    The buffer is formatted as a bespoke byte dump (protobuf limitation).
     We cannot store them as json because that is not well-supported by the sdk
     (see https://github.com/open-telemetry/opentelemetry-python/issues/3364).
     """
