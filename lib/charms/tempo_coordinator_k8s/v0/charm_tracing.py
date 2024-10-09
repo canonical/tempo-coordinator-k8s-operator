@@ -382,7 +382,7 @@ class _Buffer:
             return []
         return spans
 
-    def drop(self, n_spans: int = None):
+    def drop(self, n_spans: Optional[int] = None):
         """Drop some currently buffered spans from the cache file."""
         current = self.load()
         if n_spans:
@@ -392,7 +392,7 @@ class _Buffer:
             logger.debug("emptying buffer")
             new = []
 
-        self._save(new, replace=True)
+        self._db_file.write_bytes(self._SPANSEP.join(new))
 
     def flush(self, exporter: OTLPSpanExporter):
         """Export all buffered spans to the given exporter, then clear the buffer."""
@@ -403,7 +403,7 @@ class _Buffer:
 
         errors = False
         for span in buffered_spans:
-            out = exporter._export(span)  # noqa
+            out = exporter._export(span)  # type: ignore
             if out.status_code not in (200, 202):
                 errors = True
 
