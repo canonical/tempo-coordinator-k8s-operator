@@ -74,6 +74,7 @@ class Tempo:
         Only activate the provided receivers.
         """
 
+        external_hostname = re.sub(r"^https?:\/\/", "", coordinator._external_url)
         config = tempo_config.TempoConfig(
             auth_enabled=False,
             server=self._build_server_config(coordinator.tls_available),
@@ -83,7 +84,7 @@ class Tempo:
             ingester=self._build_ingester_config(coordinator.cluster.gather_addresses_by_role()),
             memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
             compactor=self._build_compactor_config(),
-            querier=self._build_querier_config(coordinator._external_url),
+            querier=self._build_querier_config(external_hostname),
             storage=self._build_storage_config(coordinator._s3_config),
             metrics_generator=self._build_metrics_generator_config(
                 coordinator.remote_write_endpoints_getter(), coordinator.tls_available  # type: ignore
@@ -110,8 +111,9 @@ class Tempo:
             config.metrics_generator_client = tempo_config.Client(
                 grpc_client_config=tempo_config.ClientTLS(**tls_config)
             )
+            # use ingress hostname here, as the frontend worker would be pointning at the ingress url 
             config.querier.frontend_worker.grpc_client_config = tempo_config.ClientTLS(
-                **tls_config
+                **{**tls_config, "tls_server_name": external_hostname},
             )
             config.memberlist = config.memberlist.model_copy(update=tls_config)
 
@@ -193,17 +195,15 @@ class Tempo:
         )
         return tempo_config.Storage(trace=storage_config)
 
-    def _build_querier_config(self, external_url: str):
+    def _build_querier_config(self, external_hostname: str):
         """Build querier config.
 
-        Use coordinator's external_url to loadbalance across query-frontend worker instances if any.
+        Use coordinator's external_hostname to loadbalance across query-frontend worker instances if any.
         """
-
-        grpc_url = re.sub(r"^https?:\/\/", "", external_url)
 
         return tempo_config.Querier(
             frontend_worker=tempo_config.FrontendWorker(
-                frontend_address=f"{grpc_url}:{self.tempo_grpc_server_port}"
+                frontend_address=f"{external_hostname}:{self.tempo_grpc_server_port}"
             ),
         )
 
