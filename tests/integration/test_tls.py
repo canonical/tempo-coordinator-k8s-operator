@@ -103,19 +103,6 @@ async def test_relate_ssc(ops_test: OpsTest):
 
 
 @pytest.mark.abort_on_fail
-async def test_relate_ssc(ops_test: OpsTest):
-    await ops_test.model.integrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(
-            apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
-            status="active",
-            raise_on_blocked=True,
-            timeout=1000,
-        ),
-    )
-
-
-@pytest.mark.abort_on_fail
 async def test_push_tracegen_script_and_deps(ops_test: OpsTest):
     await ops_test.juju("scp", TRACEGEN_SCRIPT_PATH, f"{APP_NAME}/0:tracegen.py")
     await ops_test.juju(
