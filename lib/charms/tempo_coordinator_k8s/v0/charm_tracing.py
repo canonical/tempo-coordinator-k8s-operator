@@ -255,7 +255,11 @@ import ops
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan, Span, TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, SpanExportResult
+from opentelemetry.sdk.trace.export import (
+    BatchSpanProcessor,
+    SpanExporter,
+    SpanExportResult,
+)
 from opentelemetry.trace import INVALID_SPAN, Tracer
 from opentelemetry.trace import get_current_span as otlp_get_current_span
 from opentelemetry.trace import (
@@ -315,10 +319,12 @@ class _Buffer:
     _SPANSEP = b"__CHARM_TRACING_BUFFER_SPAN_SEP__"
 
     def __init__(self, db_file: Path, max_event_history_length: int, max_buffer_size_mb: int):
-
         self._db_file = db_file
         self._max_event_history_length = max_event_history_length
         self._max_buffer_size_mb = max(max_buffer_size_mb, 10)
+
+        # set by caller
+        self.exporter: Optional[OTLPSpanExporter] = None
 
     def save(self, spans: typing.Sequence[ReadableSpan]):
         """Save the spans collected by this exporter to the cache file.
@@ -394,23 +400,48 @@ class _Buffer:
 
         self._db_file.write_bytes(self._SPANSEP.join(new))
 
-    def flush(self, exporter: OTLPSpanExporter):
-        """Export all buffered spans to the given exporter, then clear the buffer."""
+    def flush(self) -> Optional[bool]:
+        """Export all buffered spans to the given exporter, then clear the buffer.
+
+        Returns whether the flush was successful, and None if there was nothing to flush.
+        """
+        if not self.exporter:
+            logger.debug("no exporter set; skipping buffer flush")
+            return False
+
         buffered_spans = self.load()
         if not buffered_spans:
             logger.debug("nothing to flush; buffer empty")
-            return
+            return None
 
         errors = False
         for span in buffered_spans:
-            out = exporter._export(span)  # type: ignore
-            if out.status_code not in (200, 202):
+            try:
+                out = self.exporter._export(span)  # type: ignore
+                if out.status_code not in (200, 202):
+                    errors = True
+            except ConnectionError:
+                logger.debug(
+                    "failed exporting buffered span; backend might be down or still starting"
+                )
+                errors = True
+            except Exception:
+                logger.exception("unexpected error while flushing span batch from buffer")
                 errors = True
 
         if not errors:
             self.drop()
         else:
             logger.error("failed flushing spans; buffer preserved")
+        return not errors
+
+    @property
+    def is_empty(self):
+        """Utility to check whether the buffer has any stored spans.
+
+        This is more efficient than attempting a load() given how large the buffer might be.
+        """
+        return (not self._db_file.exists()) or (self._db_file.stat().st_size == 0)
 
 
 class _BufferedExporter(InMemorySpanExporter):
@@ -584,10 +615,6 @@ def _setup_root_span_initializer(
             logger.info("Tracing DISABLED: skipping root span initialization")
             return
 
-        # already init some attrs that will be reinited later by calling original_init:
-        # self.framework = framework
-        # self.handle = Handle(None, self.handle_kind, None)
-
         original_event_context = framework._event_context
         # default service name isn't just app name because it could conflict with the workload service name
         _service_name = service_name or f"{self.app.name}-charm"
@@ -612,12 +639,14 @@ def _setup_root_span_initializer(
 
         # if anything goes wrong with retrieving the endpoint, we let the exception bubble up.
         tracing_endpoint = _get_tracing_endpoint(tracing_endpoint_attr, self, charm_type)
-        buffering = False
+
+        buffer_only = False
+        # whether we're only exporting to buffer, or also to the otlp exporter.
 
         if not tracing_endpoint:
             # tracing is off if tracing_endpoint is None
             # however we can buffer things until tracing comes online
-            buffering = True
+            buffer_only = True
 
         server_cert: Optional[Union[str, Path]] = (
             _get_server_cert(server_cert_attr, self, charm_type) if server_cert_attr else None
@@ -630,30 +659,38 @@ def _setup_root_span_initializer(
                 "This might also mean that the tracing provider is related to a "
                 "certificates provider, but this application is not (yet). "
                 "In that case, you might just have to wait a bit for the certificates "
-                "integration to settle. "
+                "integration to settle. This span will be buffered."
             )
-            buffering = True
+            buffer_only = True
 
         buffer = _Buffer(
             db_file=buffer_path or Path() / BUFFER_DEFAULT_CACHE_FILE_NAME,
             max_event_history_length=buffer_max_events,
             max_buffer_size_mb=buffer_max_size_mb,
         )
+        previous_spans_buffered = not buffer.is_empty
 
-        if buffering:
+        exporters: List[SpanExporter] = []
+        if buffer_only:
+            # we have to buffer because we're missing necessary backend configuration
             logger.debug("buffering ON")
-            exporter = _BufferedExporter(buffer)
+            exporters.append(_BufferedExporter(buffer))
 
         else:
-            exporter = OTLPSpanExporter(
+            # in principle, we have the right configuration to be pushing traces
+            otlp_exporter = OTLPSpanExporter(
                 endpoint=tracing_endpoint,
                 certificate_file=str(Path(server_cert).absolute()) if server_cert else None,
                 timeout=2,
             )
-            buffer.flush(exporter)
+            exporters.append(otlp_exporter)
+            exporters.append(_BufferedExporter(buffer))
+            buffer.exporter = otlp_exporter
 
-        processor = BatchSpanProcessor(exporter)
-        provider.add_span_processor(processor)
+        for exporter in exporters:
+            processor = BatchSpanProcessor(exporter)
+            provider.add_span_processor(processor)
+
         set_tracer_provider(provider)
         _tracer = get_tracer(_service_name)  # type: ignore
         _tracer_token = tracer.set(_tracer)
@@ -696,7 +733,38 @@ def _setup_root_span_initializer(
             opentelemetry.context.detach(span_token)  # type: ignore
             tracer.reset(_tracer_token)
             tp = cast(TracerProvider, get_tracer_provider())
-            tp.force_flush(timeout_millis=1000)  # don't block for too long
+            flush_successful = tp.force_flush(timeout_millis=1000)  # don't block for too long
+
+            if not buffer_only:
+                # if we're in buffer_only mode, it means we couldn't even set up the exporter for
+                # tempo as we're missing some data.
+                # so attempting to flush the buffer doesn't make sense
+
+                # if we do have an exporter for tempo, and we could send traces to it,
+                # we can attempt to flush the buffer as well.
+                if flush_successful is False:
+                    logger.error("flushing FAILED: unable to push traces to backend.")
+                elif flush_successful is None:
+                    # TODO is this even possible?
+                    logger.debug("buffer empty: nothing to flush")
+                else:
+                    # the backend has accepted the spans generated during this event,
+                    if not previous_spans_buffered:
+                        # if the buffer was empty to begin with, any spans we collected now can be discarded
+                        buffer.drop()
+                        logger.debug("buffer dropped: this trace has been sent already")
+                    else:
+                        # if the buffer was nonempty, we can attempt to flush it
+                        buffer_flush_successful = buffer.flush()
+                        if buffer_flush_successful:
+                            logger.debug("buffer flush OK")
+                        else:
+                            # this situation is pretty weird, I'm not even sure it can happen,
+                            # because it would mean that we did manage
+                            # to push traces directly to the tempo exporter (flush_successful),
+                            # but the buffer flush failed to push to the same exporter!
+                            logger.error("buffer flush FAILED")
+
             tp.shutdown()
             original_close()
 

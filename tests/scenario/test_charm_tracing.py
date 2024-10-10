@@ -166,7 +166,6 @@ def test_base_tracer_endpoint_disabled(caplog):
         ctx = Context(MyCharmSimpleDisabled, meta=MyCharmSimpleDisabled.META)
         ctx.run(ctx.on.start(), State())
 
-        # assert "quietly disabling charm_tracing for the run." in caplog.text
         assert not f.called
 
 
