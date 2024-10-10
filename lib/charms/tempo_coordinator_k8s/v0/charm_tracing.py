@@ -742,11 +742,8 @@ def _setup_root_span_initializer(
 
                 # if we do have an exporter for tempo, and we could send traces to it,
                 # we can attempt to flush the buffer as well.
-                if flush_successful is False:
+                if not flush_successful:
                     logger.error("flushing FAILED: unable to push traces to backend.")
-                elif flush_successful is None:
-                    # TODO is this even possible?
-                    logger.debug("buffer empty: nothing to flush")
                 else:
                     # the backend has accepted the spans generated during this event,
                     if not previous_spans_buffered:
@@ -758,6 +755,9 @@ def _setup_root_span_initializer(
                         buffer_flush_successful = buffer.flush()
                         if buffer_flush_successful:
                             logger.debug("buffer flush OK")
+                        elif buffer_flush_successful is None:
+                            # TODO is this even possible?
+                            logger.debug("buffer flush OK; empty: nothing to flush")
                         else:
                             # this situation is pretty weird, I'm not even sure it can happen,
                             # because it would mean that we did manage
