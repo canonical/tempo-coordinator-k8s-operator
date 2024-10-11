@@ -228,6 +228,9 @@ def _remove_stale_otel_sdk_packages():
     otel_logger.debug("Successfully applied _remove_stale_otel_sdk_packages patch. ")
 
 
+# apply hacky patch to remove stale opentelemetry sdk packages on upgrade-charm.
+# it could be trouble if someone ever decides to implement their own tracer parallel to
+# ours and before the charm has inited. We assume they won't.
 _remove_stale_otel_sdk_packages()
 
 import functools
@@ -620,9 +623,6 @@ def _setup_root_span_initializer(
         _service_name = service_name or f"{self.app.name}-charm"
 
         unit_name = self.unit.name
-        # apply hacky patch to remove stale opentelemetry sdk packages on upgrade-charm.
-        # it could be trouble if someone ever decides to implement their own tracer parallel to
-        # ours and before the charm has inited. We assume they won't.
         resource = Resource.create(
             attributes={
                 "service.name": _service_name,

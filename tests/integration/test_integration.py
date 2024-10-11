@@ -113,6 +113,39 @@ async def test_verify_traces_http(ops_test: OpsTest):
     ), f"There's no trace of charm exec traces in tempo. {json.dumps(traces, indent=2)}"
 
 
+async def test_verify_buffered_charm_traces_http(ops_test: OpsTest):
+    # given a relation between charms
+    # when traces endpoint is queried
+    # then it should contain all traces from the tester charm since the setup phase, thanks to the buffer
+    status = await ops_test.model.get_status()
+    app = status["applications"][APP_NAME]
+    svc_name = "TempoTesterCharm"
+    endpoint = app.public_address + f":3200/api/search?tags=service.name%3D{svc_name}"
+    cmd = [
+        "curl",
+        endpoint,
+    ]
+    rc, stdout, stderr = await ops_test.run(*cmd)
+    logger.info("%s: %s", endpoint, (rc, stdout, stderr))
+    assert rc == 0, (
+        f"curl exited with rc={rc} for {endpoint}; "
+        f"non-zero return code means curl encountered a >= 400 HTTP code; "
+        f"cmd={cmd}"
+    )
+    traces = json.loads(stdout).get("traces", [])
+    # charm tracing trace names are in the format:
+    # "mycharm/0: <event-name> event"
+    captured_events = {trace["rootTraceName"].split(" ")[1] for trace in traces}
+    expected_setup_events = {
+        "start",
+        "install",
+        "leader-elected",
+        "tracing-relation-created",
+        "replicas-relation-created",
+    }
+    assert expected_setup_events.issubset(captured_events)
+
+
 async def test_verify_traces_grpc(ops_test: OpsTest):
     # the tester-grpc charm emits a single grpc trace in its common exit hook
     # we verify it's there
