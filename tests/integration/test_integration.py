@@ -91,10 +91,11 @@ async def test_relate(ops_test: OpsTest):
 async def test_verify_traces_http(ops_test: OpsTest):
     # given a relation between charms
     # when traces endpoint is queried
-    # then it should contain traces from tester charm
+    # then it should contain traces from the tester charm
     status = await ops_test.model.get_status()
     app = status["applications"][APP_NAME]
-    endpoint = app.public_address + ":3200/api/search"
+    svc_name = "TempoTesterCharm"
+    endpoint = app.public_address + f":3200/api/search?tags=service.name%3D{svc_name}"
     cmd = [
         "curl",
         endpoint,
@@ -106,14 +107,10 @@ async def test_verify_traces_http(ops_test: OpsTest):
         f"non-zero return code means curl encountered a >= 400 HTTP code; "
         f"cmd={cmd}"
     )
-    traces = json.loads(stdout)["traces"]
-
-    found = False
-    for trace in traces:
-        if trace["rootServiceName"] == "TempoTesterCharm":
-            found = True
-
-    assert found, f"There's no trace of charm exec traces in tempo. {json.dumps(traces, indent=2)}"
+    traces = json.loads(stdout).get("traces", [])
+    assert (
+        traces
+    ), f"There's no trace of charm exec traces in tempo. {json.dumps(traces, indent=2)}"
 
 
 async def test_verify_traces_grpc(ops_test: OpsTest):
@@ -122,7 +119,8 @@ async def test_verify_traces_grpc(ops_test: OpsTest):
     status = await ops_test.model.get_status()
     app = status["applications"][APP_NAME]
     logger.info(app.public_address)
-    endpoint = app.public_address + ":3200/api/search"
+    svc_name = "TempoTesterGrpcCharm"
+    endpoint = app.public_address + f":3200/api/search?tags=service.name%3D{svc_name}"
     cmd = [
         "curl",
         endpoint,
@@ -134,15 +132,9 @@ async def test_verify_traces_grpc(ops_test: OpsTest):
         f"non-zero return code means curl encountered a >= 400 HTTP code; "
         f"cmd={cmd}"
     )
-    traces = json.loads(stdout)["traces"]
-
-    found = False
-    for trace in traces:
-        if trace["rootServiceName"] == "TempoTesterGrpcCharm":
-            found = True
-
+    traces = json.loads(stdout).get("traces", [])
     assert (
-        found
+        traces
     ), f"There's no trace of generated grpc traces in tempo. {json.dumps(traces, indent=2)}"
 
 
