@@ -355,13 +355,13 @@ class TempoCoordinatorCharm(CharmBase):
                 # see https://doc.traefik.io/traefik/v2.0/user-guides/grpc/#with-http-h2c
                 http_services[
                     f"juju-{self.model.name}-{self.model.app.name}-service-{sanitized_protocol}"
-                ] = {"loadBalancer": {"servers": self.build_lb_server_config("h2c", port)}}
+                ] = {"loadBalancer": {"servers": self._build_lb_server_config("h2c", port)}}
             else:
                 # anything else, including secured GRPC, can use _internal_url
                 # ref https://doc.traefik.io/traefik/v2.0/user-guides/grpc/#with-https
                 http_services[
                     f"juju-{self.model.name}-{self.model.app.name}-service-{sanitized_protocol}"
-                ] = {"loadBalancer": {"servers": self.build_lb_server_config(self._scheme, port)}}
+                ] = {"loadBalancer": {"servers": self._build_lb_server_config(self._scheme, port)}}
         return {
             "http": {
                 "routers": http_routers,
@@ -369,7 +369,7 @@ class TempoCoordinatorCharm(CharmBase):
             },
         }
 
-    def build_lb_server_config(self, scheme: str, port: int) -> List[Dict[str, str]]:
+    def _build_lb_server_config(self, scheme: str, port: int) -> List[Dict[str, str]]:
         """build the server portion of the loadbalancer config of Traefik ingress."""
 
         def to_url(hostname: str):
