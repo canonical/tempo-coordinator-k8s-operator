@@ -22,4 +22,4 @@ pydantic>=2
 
 #cosl>=0.0.41
 # uncomment if you want to temporarily pin cosl to a branch
-cosl @ http://github.com/canonical/cos-lib.git@tls-certs-v4
+cosl @ git+http://github.com/canonical/cos-lib.git@tls-certs-v4
