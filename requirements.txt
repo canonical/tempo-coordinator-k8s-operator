@@ -6,7 +6,7 @@ jsonschema==4.17.0
 lightkube>=0.15.4
 lightkube-models>=1.24.1.4
 tenacity==8.2.3
-# crossplane is a package from nginxinc to interact with the Nginx config
+# crossplane is a package from nginx to interact with the Nginx config
 crossplane
 
 # PYDEPS
@@ -19,4 +19,7 @@ cryptography
 # lib/charms/tempo_coordinator_k8s/v1/tracing.py
 pydantic>=2
 # lib/charms/prometheus_k8s/v0/prometheus_scrape.py
-cosl>=0.0.41
+
+#cosl>=0.0.41
+# uncomment if you want to temporarily pin cosl to a branch
+cosl @ http://github.com/canonical/cos-lib.git@tls-certs-v4
