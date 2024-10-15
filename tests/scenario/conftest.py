@@ -5,7 +5,7 @@ import pytest
 from ops import ActiveStatus
 from scenario import Container, Context, PeerRelation, Relation
 
-from charm import PEER, TempoCoordinatorCharm
+from charm import PEERS_RELATION_ENDPOINT_NAME, TempoCoordinatorCharm
 
 
 @pytest.fixture()
@@ -79,7 +79,9 @@ def remote_write():
 
 @pytest.fixture(scope="function")
 def peer():
-    return PeerRelation(endpoint=PEER, peers_data={1: {"hostname": json.dumps("1.2.3.4")}})
+    return PeerRelation(
+        endpoint=PEERS_RELATION_ENDPOINT_NAME, peers_data={1: {"hostname": json.dumps("1.2.3.4")}}
+    )
 
 
 @pytest.fixture(scope="function")
