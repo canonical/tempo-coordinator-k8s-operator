@@ -38,10 +38,10 @@ PEERS_RELATION_ENDPOINT_NAME = "peers"
 
 
 class PeerData(DatabagModel):
-    """Peer data between the coordinator units."""
+    """Databag model for the "peers" relation between coordinator units."""
 
-    hostname: str
-    """FQDN hostname of a coordinator unit."""
+    fqdn: str
+    """FQDN hostname of this coordinator unit."""
 
 
 @trace_charm(
@@ -241,7 +241,7 @@ class TempoCoordinatorCharm(CharmBase):
     def update_peer_data(self) -> None:
         """Update peer unit data bucket with this unit's hostname."""
         if self.peers and self.peers.data:
-            PeerData(hostname=self.hostname).dump(self.peers.data[self.unit])
+            PeerData(fqdn=self.hostname).dump(self.peers.data[self.unit])
 
     def get_peer_data(self, unit: ops.Unit) -> Optional[PeerData]:
         """Get peer data from a given unit data bucket."""
@@ -372,15 +372,15 @@ class TempoCoordinatorCharm(CharmBase):
     def _build_lb_server_config(self, scheme: str, port: int) -> List[Dict[str, str]]:
         """build the server portion of the loadbalancer config of Traefik ingress."""
 
-        def to_url(hostname: str):
-            return {"url": f"{scheme}://{hostname}:{port}"}
+        def to_url(fqdn: str):
+            return {"url": f"{scheme}://{fqdn}:{port}"}
 
         urls = [to_url(self.hostname)]
         if self.peers:
             for peer in self.peers.units:
                 peer_data = self.get_peer_data(peer)
                 if peer_data:
-                    urls.append(to_url(peer_data.hostname))
+                    urls.append(to_url(peer_data.fqdn))
 
         return urls
 
