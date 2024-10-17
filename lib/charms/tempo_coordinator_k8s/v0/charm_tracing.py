@@ -294,7 +294,7 @@ logger = logging.getLogger("tracing")
 dev_logger = logging.getLogger("tracing-dev")
 
 # set this to 0 if you are debugging/developing this library source
-dev_logger.setLevel(logging.CRITICAL)
+dev_logger.setLevel(logging.ERROR)
 
 _CharmType = Type[CharmBase]  # the type CharmBase and any subclass thereof
 _C = TypeVar("_C", bound=_CharmType)
@@ -304,7 +304,11 @@ tracer: ContextVar[Tracer] = ContextVar("tracer")
 _GetterType = Union[Callable[[_CharmType], Optional[str]], property]
 
 CHARM_TRACING_ENABLED = "CHARM_TRACING_ENABLED"
-BUFFER_DEFAULT_CACHE_FILE_NAME = ".charm_tracing_buffer.json"
+BUFFER_DEFAULT_CACHE_FILE_NAME = ".charm_tracing_buffer.raw"
+# we store the buffer as raw otlp-native protobuf (bytes) since it's hard to serialize/deserialize it in
+# any portable format. Json dumping is supported, but loading isn't.
+# cfr: https://github.com/open-telemetry/opentelemetry-python/issues/1003
+
 BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB = 100
 _BUFFER_CACHE_FILE_SIZE_LIMIT_MB_MIN = 10
 BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH = 100
@@ -580,7 +584,7 @@ def _get_tracing_endpoint(
             f"got {tracing_endpoint} instead."
         )
 
-    dev_logger.debug(f"Setting up span exporter to endpoint: {tracing_endpoint}/v1/traces")
+    dev_logger.info(f"Setting up span exporter to endpoint: {tracing_endpoint}/v1/traces")
     return f"{tracing_endpoint}/v1/traces"
 
 
@@ -689,11 +693,14 @@ def _setup_root_span_initializer(
         exporters: List[SpanExporter] = []
         if buffer_only:
             # we have to buffer because we're missing necessary backend configuration
-            logger.debug("buffering ON")
+            logger.debug("buffering mode: ON")
             exporters.append(_BufferedExporter(buffer))
 
         else:
-            # in principle, we have the right configuration to be pushing traces
+            logger.debug("buffering mode: FALLBACK")
+            # in principle, we have the right configuration to be pushing traces,
+            # but if we fail for whatever reason, we will put everything in the buffer
+            # and retry the next time
             otlp_exporter = _OTLPSpanExporter(
                 endpoint=tracing_endpoint,
                 certificate_file=str(Path(server_cert).absolute()) if server_cert else None,
@@ -744,36 +751,43 @@ def _setup_root_span_initializer(
 
         @functools.wraps(original_close)
         def wrap_close():
-            dev_logger.info("tearing down tracer and flushing traces")
+            logger.info("tearing down tracer and flushing traces")
             span.end()
             opentelemetry.context.detach(span_token)  # type: ignore
             tracer.reset(_tracer_token)
             tp = cast(TracerProvider, get_tracer_provider())
             flush_successful = tp.force_flush(timeout_millis=1000)  # don't block for too long
 
-            if not buffer_only:
+            if  buffer_only:
                 # if we're in buffer_only mode, it means we couldn't even set up the exporter for
                 # tempo as we're missing some data.
                 # so attempting to flush the buffer doesn't make sense
+                dev_logger.info("tracing backend unavailable: all spans pushed to buffer")
+
+            else:
+                dev_logger.info("tracing backend found: attempting to flush buffer...")
 
                 # if we do have an exporter for tempo, and we could send traces to it,
                 # we can attempt to flush the buffer as well.
                 if not flush_successful:
                     logger.error("flushing FAILED: unable to push traces to backend.")
                 else:
+                    dev_logger.info("flush succeeded.")
+
                     # the backend has accepted the spans generated during this event,
                     if not previous_spans_buffered:
                         # if the buffer was empty to begin with, any spans we collected now can be discarded
                         buffer.drop()
-                        logger.debug("buffer dropped: this trace has been sent already")
+                        dev_logger.info("buffer dropped: this trace has been sent already")
                     else:
                         # if the buffer was nonempty, we can attempt to flush it
+                        dev_logger.info("attempting buffer flush...")
                         buffer_flush_successful = buffer.flush()
                         if buffer_flush_successful:
-                            logger.debug("buffer flush OK")
+                            dev_logger.info("buffer flush OK")
                         elif buffer_flush_successful is None:
                             # TODO is this even possible?
-                            logger.debug("buffer flush OK; empty: nothing to flush")
+                            dev_logger.info("buffer flush OK; empty: nothing to flush")
                         else:
                             # this situation is pretty weird, I'm not even sure it can happen,
                             # because it would mean that we did manage
@@ -797,7 +811,7 @@ def trace_charm(
     extra_types: Sequence[type] = (),
     buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
     buffer_max_size_mb: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB,
-    buffer_path: Optional[Path] = None,
+    buffer_path: Optional[Union[str, Path]] = None,
 ) -> Callable[[_T], _T]:
     """Autoinstrument the decorated charm with tracing telemetry.
 
@@ -852,7 +866,7 @@ def trace_charm(
             server_cert_attr=server_cert,
             service_name=service_name,
             extra_types=extra_types,
-            buffer_path=buffer_path,
+            buffer_path=Path(buffer_path),
             buffer_max_size_mb=buffer_max_size_mb,
             buffer_max_events=buffer_max_events,
         )
