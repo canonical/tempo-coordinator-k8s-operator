@@ -105,7 +105,7 @@ async def test_verify_traces_http(ops_test: OpsTest):
     ), f"There's no trace of charm exec traces in tempo. {json.dumps(traces, indent=2)}"
 
 
-@retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=10))
+@retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=1000))
 async def test_verify_buffered_charm_traces_http(ops_test: OpsTest):
     # given a relation between charms
     # when traces endpoint is queried
