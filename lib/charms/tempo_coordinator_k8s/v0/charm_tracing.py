@@ -395,7 +395,7 @@ class _Buffer:
         This method should be as fail-safe as possible.
         """
         if self._max_event_history_length < 1:
-            logger.debug("buffer disabled: max history length < 1")
+            dev_logger.debug("buffer disabled: max history length < 1")
             return
 
         current_history_length = len(self.load())
@@ -409,7 +409,7 @@ class _Buffer:
         return encode_spans(spans).SerializeToString()
 
     def _save(self, spans: Sequence[ReadableSpan], replace: bool = False):
-        logger.debug(f"saving {len(spans)} new spans to buffer")
+        dev_logger.debug(f"saving {len(spans)} new spans to buffer")
         old = [] if replace else self.load()
         new = self._serialize(spans)
 
@@ -442,7 +442,7 @@ class _Buffer:
         This method should be as fail-safe as possible.
         """
         if not self._db_file.exists():
-            logger.debug("buffer file not found. buffer empty.")
+            dev_logger.debug("buffer file not found. buffer empty.")
             return []
         try:
             spans = self._db_file.read_bytes().split(self._SPANSEP)
@@ -455,10 +455,10 @@ class _Buffer:
         """Drop some currently buffered spans from the cache file."""
         current = self.load()
         if n_spans:
-            logger.debug(f"dropping {n_spans} spans from buffer")
+            dev_logger.debug(f"dropping {n_spans} spans from buffer")
             new = current[n_spans:]
         else:
-            logger.debug("emptying buffer")
+            dev_logger.debug("emptying buffer")
             new = []
 
         self._db_file.write_bytes(self._SPANSEP.join(new))
@@ -469,12 +469,12 @@ class _Buffer:
         Returns whether the flush was successful, and None if there was nothing to flush.
         """
         if not self.exporter:
-            logger.debug("no exporter set; skipping buffer flush")
+            dev_logger.debug("no exporter set; skipping buffer flush")
             return False
 
         buffered_spans = self.load()
         if not buffered_spans:
-            logger.debug("nothing to flush; buffer empty")
+            dev_logger.debug("nothing to flush; buffer empty")
             return None
 
         errors = False
@@ -485,7 +485,7 @@ class _Buffer:
                     # take any 2xx status code as a success
                     errors = True
             except ConnectionError:
-                logger.debug(
+                dev_logger.debug(
                     "failed exporting buffered span; backend might be down or still starting"
                 )
                 errors = True
@@ -639,7 +639,7 @@ def _get_tracing_endpoint(
             f"got {tracing_endpoint} instead."
         )
 
-    dev_logger.info(f"Setting up span exporter to endpoint: {tracing_endpoint}/v1/traces")
+    dev_logger.debug(f"Setting up span exporter to endpoint: {tracing_endpoint}/v1/traces")
     return f"{tracing_endpoint}/v1/traces"
 
 
@@ -748,11 +748,11 @@ def _setup_root_span_initializer(
         exporters: List[SpanExporter] = []
         if buffer_only:
             # we have to buffer because we're missing necessary backend configuration
-            logger.debug("buffering mode: ON")
+            dev_logger.debug("buffering mode: ON")
             exporters.append(_BufferedExporter(buffer))
 
         else:
-            logger.debug("buffering mode: FALLBACK")
+            dev_logger.debug("buffering mode: FALLBACK")
             # in principle, we have the right configuration to be pushing traces,
             # but if we fail for whatever reason, we will put everything in the buffer
             # and retry the next time
@@ -792,7 +792,7 @@ def _setup_root_span_initializer(
 
         @contextmanager
         def wrap_event_context(event_name: str):
-            dev_logger.info(f"entering event context: {event_name}")
+            dev_logger.debug(f"entering event context: {event_name}")
             # when the framework enters an event context, we create a span.
             with _span("event: " + event_name) as event_context_span:
                 if event_context_span:
@@ -806,7 +806,7 @@ def _setup_root_span_initializer(
 
         @functools.wraps(original_close)
         def wrap_close():
-            logger.info("tearing down tracer and flushing traces")
+            dev_logger.debug("tearing down tracer and flushing traces")
             span.end()
             opentelemetry.context.detach(span_token)  # type: ignore
             tracer.reset(_tracer_token)
@@ -817,32 +817,32 @@ def _setup_root_span_initializer(
                 # if we're in buffer_only mode, it means we couldn't even set up the exporter for
                 # tempo as we're missing some data.
                 # so attempting to flush the buffer doesn't make sense
-                dev_logger.info("tracing backend unavailable: all spans pushed to buffer")
+                dev_logger.debug("tracing backend unavailable: all spans pushed to buffer")
 
             else:
-                dev_logger.info("tracing backend found: attempting to flush buffer...")
+                dev_logger.debug("tracing backend found: attempting to flush buffer...")
 
                 # if we do have an exporter for tempo, and we could send traces to it,
                 # we can attempt to flush the buffer as well.
                 if not flush_successful:
                     logger.error("flushing FAILED: unable to push traces to backend.")
                 else:
-                    dev_logger.info("flush succeeded.")
+                    dev_logger.debug("flush succeeded.")
 
                     # the backend has accepted the spans generated during this event,
                     if not previous_spans_buffered:
                         # if the buffer was empty to begin with, any spans we collected now can be discarded
                         buffer.drop()
-                        dev_logger.info("buffer dropped: this trace has been sent already")
+                        dev_logger.debug("buffer dropped: this trace has been sent already")
                     else:
                         # if the buffer was nonempty, we can attempt to flush it
-                        dev_logger.info("attempting buffer flush...")
+                        dev_logger.debug("attempting buffer flush...")
                         buffer_flush_successful = buffer.flush()
                         if buffer_flush_successful:
-                            dev_logger.info("buffer flush OK")
+                            dev_logger.debug("buffer flush OK")
                         elif buffer_flush_successful is None:
                             # TODO is this even possible?
-                            dev_logger.info("buffer flush OK; empty: nothing to flush")
+                            dev_logger.debug("buffer flush OK; empty: nothing to flush")
                         else:
                             # this situation is pretty weird, I'm not even sure it can happen,
                             # because it would mean that we did manage
@@ -977,7 +977,7 @@ def _autoinstrument(
         Minimum 10MiB.
     :param buffer_path: path to buffer file to use for saving buffered spans.
     """
-    dev_logger.info(f"instrumenting {charm_type}")
+    dev_logger.debug(f"instrumenting {charm_type}")
     _setup_root_span_initializer(
         charm_type,
         tracing_endpoint_attr,
@@ -1001,12 +1001,12 @@ def trace_type(cls: _T) -> _T:
     It assumes that this class is only instantiated after a charm type decorated with `@trace_charm`
     has been instantiated.
     """
-    dev_logger.info(f"instrumenting {cls}")
+    dev_logger.debug(f"instrumenting {cls}")
     for name, method in inspect.getmembers(cls, predicate=inspect.isfunction):
-        dev_logger.info(f"discovered {method}")
+        dev_logger.debug(f"discovered {method}")
 
         if method.__name__.startswith("__"):
-            dev_logger.info(f"skipping {method} (dunder)")
+            dev_logger.debug(f"skipping {method} (dunder)")
             continue
 
         # the span title in the general case should be:
@@ -1052,7 +1052,7 @@ def trace_function(function: _F, name: Optional[str] = None) -> _F:
 
 
 def _trace_callable(callable: _F, qualifier: str, name: Optional[str] = None) -> _F:
-    dev_logger.info(f"instrumenting {callable}")
+    dev_logger.debug(f"instrumenting {callable}")
 
     # sig = inspect.signature(callable)
     @functools.wraps(callable)
