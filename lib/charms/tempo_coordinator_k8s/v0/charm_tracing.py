@@ -143,6 +143,8 @@ class MyCharm(CharmBase):
     ...
 ```
 
+Note that setting `buffer_max_events` to 0 will effectively disable the buffer.
+
 The path of the buffer file is by default in the charm's execution root, which for k8s charms means
 that in case of pod churn, the cache will be lost. The recommended solution is to use an existing storage
 (or add a new one) such as:
@@ -379,10 +381,10 @@ class _Buffer:
 
     _SPANSEP = b"__CHARM_TRACING_BUFFER_SPAN_SEP__"
 
-    def __init__(self, db_file: Path, max_event_history_length: int, max_buffer_size_mb: int):
+    def __init__(self, db_file: Path, max_event_history_length: int, max_buffer_size_mib: int):
         self._db_file = db_file
         self._max_event_history_length = max_event_history_length
-        self._max_buffer_size_mb = max(max_buffer_size_mb, 10)
+        self._max_buffer_size_mib = max(max_buffer_size_mib, _BUFFER_CACHE_FILE_SIZE_LIMIT_MiB_MIN)
 
         # set by caller
         self.exporter: Optional[OTLPSpanExporter] = None
@@ -414,19 +416,19 @@ class _Buffer:
         try:
             # if the buffer exceeds the size limit, we start dropping old spans until it does
 
-            while len((new + self._SPANSEP.join(old))) > (self._max_buffer_size_mb * _MiB_TO_B):
+            while len((new + self._SPANSEP.join(old))) > (self._max_buffer_size_mib * _MiB_TO_B):
                 if not old:
                     # if we've already dropped all spans and still we can't get under the
                     # size limit, we can't save this span
                     logger.error(
-                        f"span exceeds total buffer size limit ({self._max_buffer_size_mb}mb); "
+                        f"span exceeds total buffer size limit ({self._max_buffer_size_mib}MiB); "
                         f"buffering FAILED"
                     )
                     return
 
                 old = old[1:]
                 logger.warning(
-                    f"buffer size exceeds {self._max_buffer_size_mb}mb; dropping older spans... "
+                    f"buffer size exceeds {self._max_buffer_size_mib}MiB; dropping older spans... "
                     f"Please increase the buffer size, disable buffering, or ensure the spans can be flushed."
                 )
 
@@ -738,7 +740,7 @@ def _setup_root_span_initializer(
         buffer = _Buffer(
             db_file=buffer_path or Path() / BUFFER_DEFAULT_CACHE_FILE_NAME,
             max_event_history_length=buffer_max_events,
-            max_buffer_size_mb=buffer_max_size_mib,
+            max_buffer_size_mib=buffer_max_size_mib,
         )
         previous_spans_buffered = not buffer.is_empty
 

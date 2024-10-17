@@ -672,7 +672,7 @@ def make_buffering_charm(
         server_cert="server_cert",
         **({"buffer_path": buffer_path} if buffer_path else {}),
         buffer_max_events=buffer_max_events,
-        buffer_max_size_mb=buffer_max_size,
+        buffer_max_size_mib=buffer_max_size,
     )
     class MyBufferingCharm(CharmBase):
         META = {"name": "josianne", "requires": {"tracing": {"interface": "tracing", "limit": 1}}}
