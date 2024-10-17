@@ -125,7 +125,7 @@ flush them to the tracing receiver.
 
 By default, the buffer is configured to start dropping old traces if any of these conditions apply:
 
-- the storage size exceeds 100 MiB
+- the storage size exceeds 10 MiB
 - the number of buffered events exceeds 100
 
 You can configure this by, for example:
@@ -360,7 +360,7 @@ BUFFER_DEFAULT_CACHE_FILE_NAME = ".charm_tracing_buffer.raw"
 # any portable format. Json dumping is supported, but loading isn't.
 # cfr: https://github.com/open-telemetry/opentelemetry-python/issues/1003
 
-BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB = 100
+BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB = 10
 _BUFFER_CACHE_FILE_SIZE_LIMIT_MiB_MIN = 10
 BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH = 100
 _MiB_TO_B = 2**20  # megabyte to byte conversion rate
