@@ -286,7 +286,7 @@ LIBAPI = 0
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
 
-LIBPATCH = 3
+LIBPATCH = 4
 
 PYDEPS = ["opentelemetry-exporter-otlp-proto-http==1.21.0"]
 
@@ -312,7 +312,9 @@ BUFFER_DEFAULT_CACHE_FILE_NAME = ".charm_tracing_buffer.raw"
 BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB = 100
 _BUFFER_CACHE_FILE_SIZE_LIMIT_MB_MIN = 10
 BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH = 100
-_MB_TO_B = 10**6  # megabyte to byte conversion rate
+_MiB_TO_B = 2**20  # megabyte to byte conversion rate
+_OTLP_SPAN_EXPORTER_TIMEOUT = 1
+"""Timeout in seconds that the OTLP span exporter has to push traces to the backend."""
 
 
 class _Buffer:
@@ -363,7 +365,7 @@ class _Buffer:
         try:
             # if the buffer exceeds the size limit, we start dropping old spans until it does
 
-            while len((new + self._SPANSEP.join(old))) > (self._max_buffer_size_mb * _MB_TO_B):
+            while len((new + self._SPANSEP.join(old))) > (self._max_buffer_size_mb * _MiB_TO_B):
                 if not old:
                     # if we've already dropped all spans and still we can't get under the
                     # size limit, we can't save this span
@@ -476,7 +478,8 @@ class _BufferedExporter(InMemorySpanExporter):
         self._buffer.save(spans)
         return super().export(spans)
 
-    def force_flush(self, timeout_millis: int = 30000) -> bool:
+    def force_flush(self, timeout_millis: int = 0) -> bool:
+        # parent implementation is fake, so the timeout_millis arg is not doing anything.
         result = super().force_flush(timeout_millis)
         self._buffer.save(self.get_finished_spans())
         return result
@@ -704,7 +707,7 @@ def _setup_root_span_initializer(
             otlp_exporter = _OTLPSpanExporter(
                 endpoint=tracing_endpoint,
                 certificate_file=str(Path(server_cert).absolute()) if server_cert else None,
-                timeout=1,  # give individual requests 1 second to succeed
+                timeout=_OTLP_SPAN_EXPORTER_TIMEOUT,  # give individual requests 1 second to succeed
             )
             exporters.append(otlp_exporter)
             exporters.append(_BufferedExporter(buffer))
