@@ -452,6 +452,7 @@ class _Buffer:
 
 class _OTLPSpanExporter(OTLPSpanExporter):
     """Subclass of OTLPSpanExporter to configure the max retry timeout, so that it fails a bit faster."""
+
     # The issue we're trying to solve is that the model takes AGES to settle if e.g. tls is misconfigured,
     # as every hook of a charm_tracing-instrumented charm takes about a minute to exit, as the charm can't
     # flush the traces and keeps retrying for 'too long'
@@ -696,7 +697,7 @@ def _setup_root_span_initializer(
             otlp_exporter = _OTLPSpanExporter(
                 endpoint=tracing_endpoint,
                 certificate_file=str(Path(server_cert).absolute()) if server_cert else None,
-                timeout=1, # give individual requests 1 second to succeed
+                timeout=1,  # give individual requests 1 second to succeed
             )
             exporters.append(otlp_exporter)
             exporters.append(_BufferedExporter(buffer))
