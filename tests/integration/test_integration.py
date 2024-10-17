@@ -7,6 +7,9 @@ import pytest
 import yaml
 from helpers import WORKER_NAME, deploy_cluster
 from pytest_operator.plugin import OpsTest
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+from tests.integration.helpers import get_traces_patiently
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = "tempo"
@@ -94,46 +97,26 @@ async def test_verify_traces_http(ops_test: OpsTest):
     # then it should contain traces from the tester charm
     status = await ops_test.model.get_status()
     app = status["applications"][APP_NAME]
-    svc_name = "TempoTesterCharm"
-    endpoint = app.public_address + f":3200/api/search?tags=service.name%3D{svc_name}"
-    cmd = [
-        "curl",
-        endpoint,
-    ]
-    rc, stdout, stderr = await ops_test.run(*cmd)
-    logger.info("%s: %s", endpoint, (rc, stdout, stderr))
-    assert rc == 0, (
-        f"curl exited with rc={rc} for {endpoint}; "
-        f"non-zero return code means curl encountered a >= 400 HTTP code; "
-        f"cmd={cmd}"
+    traces = await get_traces_patiently(
+        tempo_host=app.public_address, service_name="TempoTesterCharm", tls=False
     )
-    traces = json.loads(stdout).get("traces", [])
     assert (
         traces
     ), f"There's no trace of charm exec traces in tempo. {json.dumps(traces, indent=2)}"
 
 
+@retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=10))
 async def test_verify_buffered_charm_traces_http(ops_test: OpsTest):
     # given a relation between charms
     # when traces endpoint is queried
     # then it should contain all traces from the tester charm since the setup phase, thanks to the buffer
     status = await ops_test.model.get_status()
     app = status["applications"][APP_NAME]
-    svc_name = "TempoTesterCharm"
-    endpoint = app.public_address + f":3200/api/search?tags=service.name%3D{svc_name}"
-    cmd = [
-        "curl",
-        endpoint,
-    ]
-    rc, stdout, stderr = await ops_test.run(*cmd)
-    logger.info("%s: %s", endpoint, (rc, stdout, stderr))
-    assert rc == 0, (
-        f"curl exited with rc={rc} for {endpoint}; "
-        f"non-zero return code means curl encountered a >= 400 HTTP code; "
-        f"cmd={cmd}"
+    traces = await get_traces_patiently(
+        tempo_host=app.public_address, service_name="TempoTesterCharm", tls=False
     )
-    traces = json.loads(stdout).get("traces", [])
-    # charm tracing trace names are in the format:
+
+    # charm-tracing trace names are in the format:
     # "mycharm/0: <event-name> event"
     captured_events = {trace["rootTraceName"].split(" ")[1] for trace in traces}
     expected_setup_events = {
@@ -152,20 +135,9 @@ async def test_verify_traces_grpc(ops_test: OpsTest):
     status = await ops_test.model.get_status()
     app = status["applications"][APP_NAME]
     logger.info(app.public_address)
-    svc_name = "TempoTesterGrpcCharm"
-    endpoint = app.public_address + f":3200/api/search?tags=service.name%3D{svc_name}"
-    cmd = [
-        "curl",
-        endpoint,
-    ]
-    rc, stdout, stderr = await ops_test.run(*cmd)
-    logger.info("%s: %s", endpoint, (rc, stdout, stderr))
-    assert rc == 0, (
-        f"curl exited with rc={rc} for {endpoint}; "
-        f"non-zero return code means curl encountered a >= 400 HTTP code; "
-        f"cmd={cmd}"
+    traces = await get_traces_patiently(
+        tempo_host=app.public_address, service_name="TempoTesterGrpcCharm", tls=False
     )
-    traces = json.loads(stdout).get("traces", [])
     assert (
         traces
     ), f"There's no trace of generated grpc traces in tempo. {json.dumps(traces, indent=2)}"
