@@ -481,7 +481,8 @@ class _Buffer:
         for span in buffered_spans:
             try:
                 out = self.exporter._export(span)  # type: ignore
-                if out.status_code not in (200, 202):
+                if not (200 <= out.status_code < 300):
+                    # take any 2xx status code as a success
                     errors = True
             except ConnectionError:
                 logger.debug(
