@@ -758,7 +758,7 @@ def _setup_root_span_initializer(
             tp = cast(TracerProvider, get_tracer_provider())
             flush_successful = tp.force_flush(timeout_millis=1000)  # don't block for too long
 
-            if  buffer_only:
+            if buffer_only:
                 # if we're in buffer_only mode, it means we couldn't even set up the exporter for
                 # tempo as we're missing some data.
                 # so attempting to flush the buffer doesn't make sense
@@ -866,7 +866,7 @@ def trace_charm(
             server_cert_attr=server_cert,
             service_name=service_name,
             extra_types=extra_types,
-            buffer_path=Path(buffer_path),
+            buffer_path=Path(buffer_path) if buffer_path else None,
             buffer_max_size_mb=buffer_max_size_mb,
             buffer_max_events=buffer_max_events,
         )

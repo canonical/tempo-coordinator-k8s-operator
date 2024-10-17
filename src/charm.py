@@ -49,7 +49,7 @@ class PeerData(DatabagModel):
     server_cert="server_ca_cert",
     extra_types=(Tempo, TracingEndpointProvider, Coordinator, ClusterRolesConfig),
     # use PVC path for buffer data, so we don't lose it on pod churn
-    buffer_path=Path("/tempo-data/.charm_tracing_buffer.raw")
+    buffer_path=Path("/tempo-data/.charm_tracing_buffer.raw"),
 )
 class TempoCoordinatorCharm(CharmBase):
     """Charmed Operator for Tempo; a distributed tracing backend."""
