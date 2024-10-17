@@ -117,6 +117,55 @@ a different ``service_name`` argument to ``trace_charm``.
 See the official opentelemetry Python SDK documentation for usage:
 https://opentelemetry-python.readthedocs.io/en/latest/
 
+
+## Caching traces
+The `trace_charm` machinery will buffer any traces collected during charm execution and store them
+to a file on the charm container until a tracing backend becomes available. At that point, it will
+flush them to the tracing receiver.
+
+By default, the buffer is configured to start dropping old traces if any of these conditions apply:
+
+- the storage size exceeds 100 MiB
+- the number of buffered events exceeds 100
+
+You can configure this by, for example:
+
+```python
+@trace_charm(
+    tracing_endpoint="my_tracing_endpoint",
+    server_cert="_server_cert",
+    # only cache up to 42 events
+    buffer_max_events=42,
+    # only cache up to 42 MiB
+    buffer_max_size_mib=42,  # minimum 10!
+)
+class MyCharm(CharmBase):
+    ...
+```
+
+The path of the buffer file is by default in the charm's execution root, which for k8s charms means
+that in case of pod churn, the cache will be lost. The recommended solution is to use an existing storage
+(or add a new one) such as:
+
+```yaml
+storage:
+  data:
+    type: filesystem
+    location: /charm-traces
+```
+
+and then configure the `@trace_charm` decorator to use it as path for storing the buffer:
+```python
+@trace_charm(
+    tracing_endpoint="my_tracing_endpoint",
+    server_cert="_server_cert",
+    # store traces to a PVC so they're not lost on pod restart.
+    buffer_path="/charm-traces/buffer.file",
+)
+class MyCharm(CharmBase):
+    ...
+```
+
 ## Upgrading from `v0`
 
 If you are upgrading from `charm_tracing` v0, you need to take the following steps (assuming you already
@@ -309,8 +358,8 @@ BUFFER_DEFAULT_CACHE_FILE_NAME = ".charm_tracing_buffer.raw"
 # any portable format. Json dumping is supported, but loading isn't.
 # cfr: https://github.com/open-telemetry/opentelemetry-python/issues/1003
 
-BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB = 100
-_BUFFER_CACHE_FILE_SIZE_LIMIT_MB_MIN = 10
+BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB = 100
+_BUFFER_CACHE_FILE_SIZE_LIMIT_MiB_MIN = 10
 BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH = 100
 _MiB_TO_B = 2**20  # megabyte to byte conversion rate
 _OTLP_SPAN_EXPORTER_TIMEOUT = 1
@@ -622,7 +671,7 @@ def _setup_root_span_initializer(
     service_name: Optional[str],
     buffer_path: Optional[Path],
     buffer_max_events: int,
-    buffer_max_size_mb: int,
+    buffer_max_size_mib: int,
 ):
     """Patch the charm's initializer."""
     original_init = charm_type.__init__
@@ -689,7 +738,7 @@ def _setup_root_span_initializer(
         buffer = _Buffer(
             db_file=buffer_path or Path() / BUFFER_DEFAULT_CACHE_FILE_NAME,
             max_event_history_length=buffer_max_events,
-            max_buffer_size_mb=buffer_max_size_mb,
+            max_buffer_size_mb=buffer_max_size_mib,
         )
         previous_spans_buffered = not buffer.is_empty
 
@@ -813,7 +862,7 @@ def trace_charm(
     service_name: Optional[str] = None,
     extra_types: Sequence[type] = (),
     buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
-    buffer_max_size_mb: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB,
+    buffer_max_size_mib: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB,
     buffer_path: Optional[Union[str, Path]] = None,
 ) -> Callable[[_T], _T]:
     """Autoinstrument the decorated charm with tracing telemetry.
@@ -857,7 +906,8 @@ def trace_charm(
     :param extra_types: pass any number of types that you also wish to autoinstrument.
         For example, charm libs, relation endpoint wrappers, workload abstractions, ...
     :param buffer_max_events: max number of events to save in the buffer. Set to 0 to disable buffering.
-    :param buffer_max_size_mb: max size of the buffer file. When exceeded, spans will be dropped. Minimum 10mb.
+    :param buffer_max_size_mib: max size of the buffer file. When exceeded, spans will be dropped.
+        Minimum 10MiB.
     :param buffer_path: path to buffer file to use for saving buffered spans.
     """
 
@@ -870,7 +920,7 @@ def trace_charm(
             service_name=service_name,
             extra_types=extra_types,
             buffer_path=Path(buffer_path) if buffer_path else None,
-            buffer_max_size_mb=buffer_max_size_mb,
+            buffer_max_size_mib=buffer_max_size_mib,
             buffer_max_events=buffer_max_events,
         )
         return charm_type
@@ -885,7 +935,7 @@ def _autoinstrument(
     service_name: Optional[str] = None,
     extra_types: Sequence[type] = (),
     buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
-    buffer_max_size_mb: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MB,
+    buffer_max_size_mib: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB,
     buffer_path: Optional[Path] = None,
 ) -> _T:
     """Set up tracing on this charm class.
@@ -920,7 +970,8 @@ def _autoinstrument(
     :param extra_types: pass any number of types that you also wish to autoinstrument.
         For example, charm libs, relation endpoint wrappers, workload abstractions, ...
     :param buffer_max_events: max number of events to save in the buffer. Set to 0 to disable buffering.
-    :param buffer_max_size_mb: max size of the buffer file. When exceeded, spans will be dropped. Minimum 10mb.
+    :param buffer_max_size_mib: max size of the buffer file. When exceeded, spans will be dropped.
+        Minimum 10MiB.
     :param buffer_path: path to buffer file to use for saving buffered spans.
     """
     dev_logger.info(f"instrumenting {charm_type}")
@@ -931,7 +982,7 @@ def _autoinstrument(
         service_name=service_name,
         buffer_path=buffer_path,
         buffer_max_events=buffer_max_events,
-        buffer_max_size_mb=buffer_max_size_mb,
+        buffer_max_size_mib=buffer_max_size_mib,
     )
     trace_type(charm_type)
     for type_ in extra_types:
