@@ -7,7 +7,6 @@ import pytest
 import yaml
 from helpers import WORKER_NAME, deploy_cluster
 from pytest_operator.plugin import OpsTest
-from tenacity import retry, stop_after_attempt, wait_exponential
 
 from tests.integration.helpers import get_traces_patiently
 
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.setup
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
+async def test_build_deploy_testers(ops_test: OpsTest, tempo_charm: Path):
     # Given a fresh build of the charm
     # When deploying it together with testers
     # Then applications should eventually be created
@@ -105,7 +104,8 @@ async def test_verify_traces_http(ops_test: OpsTest):
     ), f"There's no trace of charm exec traces in tempo. {json.dumps(traces, indent=2)}"
 
 
-@retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=100))
+@pytest.mark.xfail("fails because search query results are not stable")
+# keep an eye onhttps://github.com/grafana/tempo/issues/3777 and see if they fix it
 async def test_verify_buffered_charm_traces_http(ops_test: OpsTest):
     # given a relation between charms
     # when traces endpoint is queried
