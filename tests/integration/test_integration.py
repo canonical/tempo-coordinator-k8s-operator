@@ -104,7 +104,7 @@ async def test_verify_traces_http(ops_test: OpsTest):
     ), f"There's no trace of charm exec traces in tempo. {json.dumps(traces, indent=2)}"
 
 
-@pytest.mark.xfail("fails because search query results are not stable")
+@pytest.mark.skip(reason="fails because search query results are not stable")
 # keep an eye onhttps://github.com/grafana/tempo/issues/3777 and see if they fix it
 async def test_verify_buffered_charm_traces_http(ops_test: OpsTest):
     # given a relation between charms
