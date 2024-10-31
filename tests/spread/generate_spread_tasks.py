@@ -22,7 +22,7 @@ TESTS_ROOT = Path(__file__).parent.parent
 
 
 def _render_task(path: Path, summary: str = "some test", kill_timeout: int = 90):
-    spread_test_root = Path() / path.name.split(".")[0]
+    spread_test_root = Path(__file__) / path.name.split(".")[0]
     spread_test_root.mkdir()
     spread_test_path = spread_test_root / "task.yaml"
     test_raw = template.format(
