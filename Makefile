@@ -21,7 +21,7 @@ fmt:
 	uv tool run ruff check --fix $(ALL)
 	uv tool run ruff format $(ALL)
 
-utest:
+unit:
 	uv run --all-extras \
 		coverage run \
 		--source=$(SRC) \
@@ -33,7 +33,7 @@ utest:
 		$(ARGS)
 	uv run --all-extras coverage report
 
-itest:
+integration:
 	uv run --all-extras \
 		pytest \
 		-v \
