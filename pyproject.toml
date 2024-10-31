@@ -4,6 +4,38 @@
 name = "tempo-k8s"
 version = "0.1"  # this is in fact irrelevant
 
+dependencies = [
+    "importlib-metadata~=6.0.0",
+    "ops>=2.17",
+    "crossplane",
+    "jsonschema==4.17.0",
+    "lightkube>=0.15.4",
+    "lightkube-models>=1.24.1.4",
+    "tenacity==8.2.3",
+    "crossplane",
+    # PYDEPS
+    # lib/charms/tempo_coordinator_k8s/v1/charm_tracing.py
+    "opentelemetry-exporter-otlp-proto-http==1.21.0",
+    # lib/charms/tls_certificates_interface/v2/tls_certificates.py
+    "jsonschema",
+    "cryptography",
+    # lib/charms/tempo_coordinator_k8s/v1/tracing.py
+    "pydantic>=2",
+    # lib/charms/prometheus_k8s/v0/prometheus_scrape.py
+    "cosl>=0.0.42",
+]
+
+[project.optional-dependencies]
+dev = [
+    "coverage[toml]",
+    "pydantic",
+    "pytest",
+    "ruff",
+    "catan",
+    "ops[testing]>=2.17",
+]
+
+
 [tool.pyright]
 extraPaths = ["lib"]
 pythonVersion = "3.8"
@@ -56,7 +88,7 @@ ignore = ["E501", "D107"]
 extend-exclude = ["__pycache__", "*.egg_info", "*integration/tester*"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["D100","D101","D102","D103","D104"]
+"tests/*" = ["D100", "D101", "D102", "D103", "D104"]
 # Remove charm_tracing.py E402 when _remove_stale_otel_sdk_packages() is removed
 # from the library
 "lib/charms/tempo_coordinator_k8s/v0/charm_tracing.py" = ["E402"]

@@ -5,7 +5,6 @@ type: charm
 
 assumes:
   - k8s-api
-
   # Juju 3.4.0 needed for pebble notify
   - juju >= 3.4.0
 
@@ -120,6 +119,14 @@ bases:
         channel: "22.04"
 
 parts:
+  build-snaps:
+    - rustup
+    - astral-uv
+  override-build: |
+    rustup toolchain install stable
+    make generate-requirements
+    craftctl default
+
   charm:
 #    uncomment this if you add git+ dependencies in requirements.txt
 #    build-packages:
@@ -129,6 +136,21 @@ parts:
       - "cryptography"
       - "jsonschema"
       - "opentelemetry-exporter-otlp-proto-http==1.21.0"
+    prime:
+      - -*.charm
+      - -spread.yaml
+      - -rockcraft.yaml
+      - -.venv
+      - -CONTRIBUTING.md
+      - -Makefile
+      - -pyproject.toml
+      - -README.md
+      - -requirements-dev.txt
+      - -scripts/
+      - -tests/
+      - -uv.lock
+      - -*.egg-info
+
 
 config:
   options:

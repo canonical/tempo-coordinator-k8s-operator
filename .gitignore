@@ -12,3 +12,7 @@ cos-tool-*
 src/prometheus_alert_rules/consolidated_rules/**
 .terraform*
 *.tfstate*
+*.rock
+.vscode/*
+requirements*.txt
+.spread*

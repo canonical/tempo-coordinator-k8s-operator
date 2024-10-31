@@ -13,10 +13,11 @@ import yaml
 from juju.application import Application
 from juju.unit import Unit
 from minio import Minio
-from pytest_operator.plugin import OpsTest
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from tempo import Tempo
+from tests.integration.conftest import APP_NAME
+from tests.integration.juju import Juju
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
@@ -26,7 +27,6 @@ MINIO = "minio"
 BUCKET_NAME = "tempo"
 S3_INTEGRATOR = "s3-integrator"
 WORKER_NAME = "tempo-worker"
-APP_NAME = "tempo"
 protocols_endpoints = {
     "jaeger_thrift_http": "https://{}:14268/api/traces?format=jaeger.thrift",
     "zipkin": "https://{}:9411/v1/traces",
@@ -189,22 +189,19 @@ def get_relation_data(
     return RelationData(provider=provider_data, requirer=requirer_data)
 
 
-async def deploy_literal_bundle(ops_test: OpsTest, bundle: str):
+def deploy_literal_bundle(bundle: str):
     run_args = [
-        "juju",
         "deploy",
         "--trust",
-        "-m",
-        ops_test.model_name,
-        str(ops_test.render_bundle(bundle)),
+        bundle,
     ]
 
-    retcode, stdout, stderr = await ops_test.run(*run_args)
+    retcode, stdout, stderr = Juju.cli(*run_args)
     assert retcode == 0, f"Deploy failed: {(stderr or stdout).strip()}"
     logger.info(stdout)
 
 
-async def run_command(model_name: str, app_name: str, unit_num: int, command: list) -> bytes:
+def run_command(model_name: str, app_name: str, unit_num: int, command: list) -> bytes:
     cmd = ["juju", "ssh", "--model", model_name, f"{app_name}/{unit_num}", *command]
     try:
         res = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -241,8 +238,8 @@ def present_facade(
         subprocess.run(shlex.split(f"juju run {app}/0{_model} update --params {fpath.absolute()}"))
 
 
-async def get_unit_address(ops_test: OpsTest, app_name, unit_no):
-    status = await ops_test.model.get_status()
+def get_unit_address(app_name, unit_no):
+    status = Juju.status()
     app = status["applications"][app_name]
     if app is None:
         assert False, f"no app exists with name {app_name}"
@@ -252,14 +249,14 @@ async def get_unit_address(ops_test: OpsTest, app_name, unit_no):
     return unit["address"]
 
 
-async def deploy_and_configure_minio(ops_test: OpsTest):
+def deploy_and_configure_minio():
     config = {
         "access-key": ACCESS_KEY,
         "secret-key": SECRET_KEY,
     }
-    await ops_test.model.deploy(MINIO, channel="edge", trust=True, config=config)
-    await ops_test.model.wait_for_idle(apps=[MINIO], status="active", timeout=2000)
-    minio_addr = await get_unit_address(ops_test, MINIO, "0")
+    Juju.deploy(MINIO, channel="edge", trust=True, config=config)
+    Juju.wait_for_idle(applications=[MINIO], timeout=2000)
+    minio_addr = get_unit_address(MINIO, "0")
 
     mc_client = Minio(
         f"{minio_addr}:9000",
@@ -274,18 +271,13 @@ async def deploy_and_configure_minio(ops_test: OpsTest):
         mc_client.make_bucket(BUCKET_NAME)
 
     # configure s3-integrator
-    s3_integrator_app: Application = ops_test.model.applications[S3_INTEGRATOR]
-    s3_integrator_leader: Unit = s3_integrator_app.units[0]
-
-    await s3_integrator_app.set_config(
-        {
-            "endpoint": f"minio-0.minio-endpoints.{ops_test.model.name}.svc.cluster.local:9000",
-            "bucket": BUCKET_NAME,
-        }
+    Juju.config(S3_INTEGRATOR,
+                {"endpoint": f"minio-0.minio-endpoints.{Juju.model_name()}.svc.cluster.local:9000",
+    "bucket": BUCKET_NAME,}
     )
 
-    action = await s3_integrator_leader.run_action("sync-s3-credentials", **config)
-    action_result = await action.wait()
+    action = Juju.run(S3_INTEGRATOR, "sync-s3-credentials", params=config)
+    action_result = action.wait()
     assert action_result.status == "completed"
 
 
@@ -300,24 +292,21 @@ def tempo_worker_charm_and_channel():
     return "tempo-worker-k8s", "edge"
 
 
-async def deploy_cluster(ops_test: OpsTest, tempo_app=APP_NAME):
+def deploy_cluster(tempo_app=APP_NAME):
     tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
-    await ops_test.model.deploy(
-        tempo_worker_charm_url, application_name=WORKER_NAME, channel=channel, trust=True
+    Juju.deploy(
+        tempo_worker_charm_url, alias=WORKER_NAME, channel=channel, trust=True
     )
-    await ops_test.model.deploy(S3_INTEGRATOR, channel="edge")
+    Juju.deploy(S3_INTEGRATOR, channel="edge")
 
-    await ops_test.model.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
-    await ops_test.model.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")
+    Juju.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
+    Juju.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")
 
-    await deploy_and_configure_minio(ops_test)
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[tempo_app, WORKER_NAME, S3_INTEGRATOR],
-            status="active",
-            timeout=2000,
-            idle_period=30,
-        )
+    deploy_and_configure_minio()
+    Juju.wait_for_idle(
+        applications=[tempo_app, WORKER_NAME, S3_INTEGRATOR],
+        timeout=2000,
+    )
 
 
 def get_traces(tempo_host: str, service_name="tracegen-otlp_http", tls=True):
@@ -332,13 +321,13 @@ def get_traces(tempo_host: str, service_name="tracegen-otlp_http", tls=True):
 
 
 @retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=10))
-async def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tls=True):
+def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tls=True):
     traces = get_traces(tempo_host, service_name=service_name, tls=tls)
     assert len(traces) > 0
     return traces
 
 
-async def emit_trace(
+def emit_trace(
     endpoint, ops_test: OpsTest, nonce, proto: str = "otlp_http", verbose=0, use_cert=False
 ):
     """Use juju ssh to run tracegen from the tempo charm; to avoid any DNS issues."""
@@ -354,7 +343,7 @@ async def emit_trace(
     return subprocess.getoutput(cmd)
 
 
-async def get_application_ip(ops_test: OpsTest, app_name: str):
-    status = await ops_test.model.get_status()
+def get_application_ip(ops_test: OpsTest, app_name: str):
+    status = ops_test.model.get_status()
     app = status["applications"][app_name]
     return app.public_address
