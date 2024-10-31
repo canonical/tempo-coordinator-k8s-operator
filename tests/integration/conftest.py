@@ -28,6 +28,21 @@ SSC_APP_NAME = "ssc"
 logger = logging.getLogger(__name__)
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--charm-path",
+        help="Pre-built charm file to deploy, rather than building from source",
+    )
+    parser.addoption(
+        "--tester-charm-path",
+        help="Pre-built charm file to deploy, rather than building from source",
+    )
+    parser.addoption(
+        "--tester-grpc-charm-path",
+        help="Pre-built charm file to deploy, rather than building from source",
+    )
+
+
 @fixture(scope="session", autouse=True)
 def copy_charm_libs_into_tester_charm():
     """Ensure the tester charm has the libraries it uses."""
