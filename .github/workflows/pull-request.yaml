@@ -98,9 +98,10 @@ jobs:
       - name: Install charmcraft
         run: sudo snap install charmcraft --classic
 
-      - name: Generate matrix list
+      - name: Generate matrix list and tasks
         id: suites
         run: |
+          python3 ./tests/spread/generate_spread_tasks.py
           list="$(charmcraft test --list github-ci | sed "s|github-ci:ubuntu-24.04:tests/spread/||g" | jq -r -ncR '[inputs | select(length>0)]')"
           echo "suites=$list"
           echo "suites=$list" >> $GITHUB_OUTPUT

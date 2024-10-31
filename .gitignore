@@ -16,3 +16,4 @@ src/prometheus_alert_rules/consolidated_rules/**
 .vscode/*
 requirements*.txt
 .spread*
+tests/spread/**/
