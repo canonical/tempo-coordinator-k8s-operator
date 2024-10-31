@@ -20,7 +20,9 @@ def test_tracing_v2_endpoint_published(context, s3, all_worker, evt_name, base_s
     state = replace(base_state, relations=[tracing, s3, all_worker])
 
     with charm_tracing_disabled():
-        with context(getattr(context.on, f"relation_{evt_name}")(tracing), state) as mgr:
+        with context(
+            getattr(context.on, f"relation_{evt_name}")(tracing), state
+        ) as mgr:
             assert len(mgr.charm._requested_receivers()) == 1
             out = mgr.run()
 

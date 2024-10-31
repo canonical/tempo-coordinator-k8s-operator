@@ -28,7 +28,10 @@ class MyCharm(CharmBase):
 def context():
     return Context(
         charm_type=MyCharm,
-        meta={"name": "jolly", "requires": {"tracing": {"interface": "tracing", "limit": 1}}},
+        meta={
+            "name": "jolly",
+            "requires": {"tracing": {"interface": "tracing", "limit": 1}},
+        },
     )
 
 

@@ -10,8 +10,6 @@ from typing import Dict, Literal
 
 import requests
 import yaml
-from juju.application import Application
-from juju.unit import Unit
 from minio import Minio
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -98,8 +96,14 @@ def get_relation_by_endpoint(relations, local_endpoint, remote_endpoint, remote_
         r
         for r in relations
         if (
-            (r["endpoint"] == local_endpoint and r["related-endpoint"] == remote_endpoint)
-            or (r["endpoint"] == remote_endpoint and r["related-endpoint"] == local_endpoint)
+            (
+                r["endpoint"] == local_endpoint
+                and r["related-endpoint"] == remote_endpoint
+            )
+            or (
+                r["endpoint"] == remote_endpoint
+                and r["related-endpoint"] == local_endpoint
+            )
         )
         and remote_obj in r["related-units"]
     ]
@@ -157,7 +161,9 @@ def get_databags(local_unit, local_endpoint, remote_unit, remote_endpoint, model
     if not relation_info:
         raise RuntimeError(f"{remote_unit} has no relations")
 
-    raw_data = get_relation_by_endpoint(relation_info, local_endpoint, remote_endpoint, local_unit)
+    raw_data = get_relation_by_endpoint(
+        relation_info, local_endpoint, remote_endpoint, local_unit
+    )
     unit_data = raw_data["related-units"][local_unit]["data"]
     app_data = raw_data["application-data"]
     return unit_data, app_data, leader
@@ -204,7 +210,9 @@ def deploy_literal_bundle(bundle: str):
 def run_command(model_name: str, app_name: str, unit_num: int, command: list) -> bytes:
     cmd = ["juju", "ssh", "--model", model_name, f"{app_name}/{unit_num}", *command]
     try:
-        res = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        res = subprocess.run(
+            cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        )
         logger.info(res)
     except subprocess.CalledProcessError as e:
         logger.error(e.stdout.decode())
@@ -235,7 +243,9 @@ def present_facade(
 
         _model = f" --model {model}" if model else ""
 
-        subprocess.run(shlex.split(f"juju run {app}/0{_model} update --params {fpath.absolute()}"))
+        subprocess.run(
+            shlex.split(f"juju run {app}/0{_model} update --params {fpath.absolute()}")
+        )
 
 
 def get_unit_address(app_name, unit_no):
@@ -271,9 +281,12 @@ def deploy_and_configure_minio():
         mc_client.make_bucket(BUCKET_NAME)
 
     # configure s3-integrator
-    Juju.config(S3_INTEGRATOR,
-                {"endpoint": f"minio-0.minio-endpoints.{Juju.model_name()}.svc.cluster.local:9000",
-    "bucket": BUCKET_NAME,}
+    Juju.config(
+        S3_INTEGRATOR,
+        {
+            "endpoint": f"minio-0.minio-endpoints.{Juju.model_name()}.svc.cluster.local:9000",
+            "bucket": BUCKET_NAME,
+        },
     )
 
     action = Juju.run(S3_INTEGRATOR, "sync-s3-credentials", params=config)
@@ -294,9 +307,7 @@ def tempo_worker_charm_and_channel():
 
 def deploy_cluster(tempo_app=APP_NAME):
     tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
-    Juju.deploy(
-        tempo_worker_charm_url, alias=WORKER_NAME, channel=channel, trust=True
-    )
+    Juju.deploy(tempo_worker_charm_url, alias=WORKER_NAME, channel=channel, trust=True)
     Juju.deploy(S3_INTEGRATOR, channel="edge")
 
     Juju.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
@@ -327,12 +338,10 @@ def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tls=True
     return traces
 
 
-def emit_trace(
-    endpoint, ops_test: OpsTest, nonce, proto: str = "otlp_http", verbose=0, use_cert=False
-):
+def emit_trace(endpoint, nonce, proto: str = "otlp_http", verbose=0, use_cert=False):
     """Use juju ssh to run tracegen from the tempo charm; to avoid any DNS issues."""
     cmd = (
-        f"juju ssh -m {ops_test.model_name} {APP_NAME}/0 "
+        f"juju ssh -m {Juju.model_name()} {APP_NAME}/0 "
         f"TRACEGEN_ENDPOINT={endpoint} "
         f"TRACEGEN_VERBOSE={verbose} "
         f"TRACEGEN_PROTOCOL={proto} "
@@ -343,7 +352,7 @@ def emit_trace(
     return subprocess.getoutput(cmd)
 
 
-def get_application_ip(ops_test: OpsTest, app_name: str):
-    status = ops_test.model.get_status()
+def get_application_ip(app_name: str):
+    status = Juju.status()
     app = status["applications"][app_name]
     return app.public_address

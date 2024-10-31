@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 """Tempo workload configuration and client."""
+
 import logging
 import re
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
@@ -79,13 +80,20 @@ class Tempo:
             distributor=self._build_distributor_config(
                 self._receivers_getter(), coordinator.tls_available
             ),
-            ingester=self._build_ingester_config(coordinator.cluster.gather_addresses_by_role()),
-            memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
+            ingester=self._build_ingester_config(
+                coordinator.cluster.gather_addresses_by_role()
+            ),
+            memberlist=self._build_memberlist_config(
+                coordinator.cluster.gather_addresses()
+            ),
             compactor=self._build_compactor_config(),
-            querier=self._build_querier_config(coordinator.cluster.gather_addresses_by_role()),
+            querier=self._build_querier_config(
+                coordinator.cluster.gather_addresses_by_role()
+            ),
             storage=self._build_storage_config(coordinator._s3_config),
             metrics_generator=self._build_metrics_generator_config(
-                coordinator.remote_write_endpoints_getter(), coordinator.tls_available  # type: ignore
+                coordinator.remote_write_endpoints_getter(),
+                coordinator.tls_available,  # type: ignore
             ),
         )
 
@@ -93,7 +101,6 @@ class Tempo:
             config.overrides = self._build_overrides_config()
 
         if coordinator.tls_available:
-
             tls_config = self._build_tls_config(coordinator.cluster.gather_addresses())
 
             config.ingester_client = tempo_config.Client(
@@ -109,7 +116,9 @@ class Tempo:
 
             config.memberlist = config.memberlist.model_copy(update=tls_config)
 
-        return yaml.dump(config.model_dump(mode="json", by_alias=True, exclude_none=True))
+        return yaml.dump(
+            config.model_dump(mode="json", by_alias=True, exclude_none=True)
+        )
 
     def _build_tls_config(self, workers_addrs: Tuple[str, ...]):
         """Build TLS config to be used by Tempo's internal clients to communicate with each other."""
@@ -208,7 +217,9 @@ class Tempo:
 
         Use query-frontend workers' service fqdn to loadbalance across query-frontend worker instances if any.
         """
-        query_frontend_addresses = roles_addresses.get(tempo_config.TempoRole.query_frontend)
+        query_frontend_addresses = roles_addresses.get(
+            tempo_config.TempoRole.query_frontend
+        )
         if not query_frontend_addresses:
             svc_addr = "localhost"
         else:
@@ -244,7 +255,9 @@ class Tempo:
         return tempo_config.Memberlist(
             abort_if_cluster_join_fails=False,
             bind_port=self.memberlist_port,
-            join_members=([f"{peer}:{self.memberlist_port}" for peer in peers] if peers else []),
+            join_members=(
+                [f"{peer}:{self.memberlist_port}" for peer in peers] if peers else []
+            ),
         )
 
     def _build_ingester_config(self, roles_addresses: Dict[str, Set[str]]):

@@ -27,7 +27,9 @@ def coordinator_with_initial_config():
         "insecure": True,
         "secret_access_key": "soverysecret",
     }
-    new_coordinator_mock.return_value.cluster.gather_addresses.return_value = {"localhost"}
+    new_coordinator_mock.return_value.cluster.gather_addresses.return_value = {
+        "localhost"
+    }
     new_coordinator_mock.return_value.cluster.gather_addresses_by_role.return_value = {
         "query-frontend": {"localhost"},
         "distributor": {"localhost"},
@@ -37,8 +39,9 @@ def coordinator_with_initial_config():
 
 
 @pytest.fixture
-def all_worker_with_initial_config(all_worker: Relation, coordinator_with_initial_config):
-
+def all_worker_with_initial_config(
+    all_worker: Relation, coordinator_with_initial_config
+):
     initial_config = Tempo(lambda: ("otlp_http",), 720).config(
         coordinator_with_initial_config.return_value
     )
@@ -76,7 +79,8 @@ def patch_certs():
         expiry_time=datetime.datetime(2050, 4, 1),
     )
     with patch(
-        "charms.observability_libs.v1.cert_handler.CertHandler.get_cert", new=lambda _: cert
+        "charms.observability_libs.v1.cert_handler.CertHandler.get_cert",
+        new=lambda _: cert,
     ):
         yield
 
@@ -113,7 +117,9 @@ def test_cluster_relation(context, state_with_certs, all_worker):
 
     assert local_app_data.ca_cert == MOCK_CA_CERT
     assert local_app_data.server_cert == MOCK_SERVER_CERT
-    secret = [s for s in state_out.secrets if s.id == local_app_data.privkey_secret_id][0]
+    secret = [s for s in state_out.secrets if s.id == local_app_data.privkey_secret_id][
+        0
+    ]
 
     # certhandler's vault uses revision 0 to store an uninitialized-vault marker
     assert secret.latest_content["private-key"]

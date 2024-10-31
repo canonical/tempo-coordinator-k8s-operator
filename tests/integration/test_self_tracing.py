@@ -37,7 +37,10 @@ async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
             tempo_charm, resources=resources, application_name=APP_NAME, trust=True
         ),
         ops_test.model.deploy(
-            tempo_charm, resources=resources, application_name=APP_REMOTE_NAME, trust=True
+            tempo_charm,
+            resources=resources,
+            application_name=APP_REMOTE_NAME,
+            trust=True,
         ),
     )
 
@@ -46,9 +49,14 @@ async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
 
     await asyncio.gather(
         ops_test.model.wait_for_idle(
-            apps=[APP_NAME, WORKER_NAME], status="active", raise_on_blocked=True, timeout=1000
+            apps=[APP_NAME, WORKER_NAME],
+            status="active",
+            raise_on_blocked=True,
+            timeout=1000,
         ),
-        ops_test.model.wait_for_idle(apps=[APP_REMOTE_NAME], status="blocked", timeout=1000),
+        ops_test.model.wait_for_idle(
+            apps=[APP_REMOTE_NAME], status="blocked", timeout=1000
+        ),
     )
 
 
@@ -70,7 +78,9 @@ async def test_verify_trace_http_self(ops_test: OpsTest):
 
 @pytest.mark.abort_on_fail
 async def test_relate_remote_instance(ops_test: OpsTest):
-    await ops_test.model.integrate(APP_NAME + ":tracing", APP_REMOTE_NAME + ":self-tracing")
+    await ops_test.model.integrate(
+        APP_NAME + ":tracing", APP_REMOTE_NAME + ":self-tracing"
+    )
     await ops_test.model.wait_for_idle(
         apps=[APP_NAME, WORKER_NAME],
         status="active",

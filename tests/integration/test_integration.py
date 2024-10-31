@@ -14,24 +14,30 @@ logger = logging.getLogger(__name__)
 
 @pytest.mark.setup
 @pytest.mark.abort_on_fail
-def test_deploy_testers(tempo_charm: Path, tempo_resources, tester_charm,
-                        tester_resources, tester_grpc_charm, tester_grpc_resources):
+def test_deploy_testers(
+    tempo_charm: Path,
+    tempo_resources,
+    tester_charm,
+    tester_resources,
+    tester_grpc_charm,
+    tester_grpc_resources,
+):
     # Given a fresh build of the charm
     # When deploying it together with testers
     # Then applications should eventually be created
 
-    tester_charm = ("./tests/integration/tester/")
-    tester_grpc_charm = ("./tests/integration/tester-grpc/")
+    tester_charm = "./tests/integration/tester/"
+    tester_grpc_charm = "./tests/integration/tester-grpc/"
 
-    Juju.deploy(
-        tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True
-    ),
-    Juju.deploy(
-        tester_charm,
-        resources=tester_resources,
-        alias=TESTER_NAME,
-        scale=3,
-    ),
+    (Juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True),)
+    (
+        Juju.deploy(
+            tester_charm,
+            resources=tester_resources,
+            alias=TESTER_NAME,
+            scale=3,
+        ),
+    )
     Juju.deploy(
         tester_grpc_charm,
         resources=tester_grpc_resources,
@@ -110,9 +116,7 @@ def test_verify_traces_grpc():
     traces = get_traces_patiently(
         tempo_host=app.public_address, service_name="TempoTesterGrpcCharm", tls=False
     )
-    assert (
-        traces
-    ), f"There's no trace of generated grpc traces in tempo. {json.dumps(traces, indent=2)}"
+    assert traces, f"There's no trace of generated grpc traces in tempo. {json.dumps(traces, indent=2)}"
 
 
 @pytest.mark.teardown

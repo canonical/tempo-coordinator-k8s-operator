@@ -43,7 +43,7 @@ class Juju:
         config: None | Dict[str, str] = None,
         resources: None | Dict[str, str] = None,
         trust: bool = False,
-            scale:int=1
+        scale: int = 1,
     ):
         args = ["deploy", str(charm)]
 
@@ -80,12 +80,11 @@ class Juju:
         return cls.cli(*args)
 
     @classmethod
-    def run(cls, unit: str, action: str, params: Dict[str,str]):
+    def run(cls, unit: str, action: str, params: Dict[str, str]):
         args = ["run", "--format", "json", unit, action]
 
         for k, v in params:
             args.append(f"{k}={v}")
-
 
         act = cls.cli(*args)
         result = json.loads(act.stdout)

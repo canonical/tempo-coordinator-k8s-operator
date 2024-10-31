@@ -74,7 +74,10 @@ def test_tracing_endpoints_with_tls(
         relations.append(
             Relation(
                 "ingress",
-                remote_app_data={"scheme": remote_scheme, "external_host": "foo.com.org"},
+                remote_app_data={
+                    "scheme": remote_scheme,
+                    "external_host": "foo.com.org",
+                },
             )
         )
 
@@ -107,12 +110,22 @@ def test_tracing_endpoints_tls_added_then_removed(
         relations.append(
             Relation(
                 "ingress",
-                remote_app_data={"scheme": remote_scheme, "external_host": "foo.com.org"},
+                remote_app_data={
+                    "scheme": remote_scheme,
+                    "external_host": "foo.com.org",
+                },
             )
         )
 
     result_state = update_relations_tls_and_verify(
-        base_state, context, has_ingress, False, local_scheme, relations, remote_scheme, tracing
+        base_state,
+        context,
+        has_ingress,
+        False,
+        local_scheme,
+        relations,
+        remote_scheme,
+        tracing,
     )
 
     # then we check the scenario where TLS gets enabled
@@ -126,12 +139,22 @@ def test_tracing_endpoints_tls_added_then_removed(
         relations.append(
             Relation(
                 "ingress",
-                remote_app_data={"scheme": remote_scheme, "external_host": "foo.com.org"},
+                remote_app_data={
+                    "scheme": remote_scheme,
+                    "external_host": "foo.com.org",
+                },
             )
         )
 
     result_state = update_relations_tls_and_verify(
-        result_state, context, has_ingress, True, local_scheme, relations, remote_scheme, tracing
+        result_state,
+        context,
+        has_ingress,
+        True,
+        local_scheme,
+        relations,
+        remote_scheme,
+        tracing,
     )
 
     # then we again remove TLS and compare the same thing
@@ -145,10 +168,20 @@ def test_tracing_endpoints_tls_added_then_removed(
         relations.append(
             Relation(
                 "ingress",
-                remote_app_data={"scheme": remote_scheme, "external_host": "foo.com.org"},
+                remote_app_data={
+                    "scheme": remote_scheme,
+                    "external_host": "foo.com.org",
+                },
             )
         )
 
     update_relations_tls_and_verify(
-        result_state, context, has_ingress, False, local_scheme, relations, remote_scheme, tracing
+        result_state,
+        context,
+        has_ingress,
+        False,
+        local_scheme,
+        relations,
+        remote_scheme,
+        tracing,
     )

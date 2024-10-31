@@ -44,7 +44,9 @@ def cleanup():
 
         opentelemetry.trace._TRACER_PROVIDER = tracer_provider
 
-    with patch("opentelemetry.trace._set_tracer_provider", new=patched_set_tracer_provider):
+    with patch(
+        "opentelemetry.trace._set_tracer_provider", new=patched_set_tracer_provider
+    ):
         yield
 
 
@@ -355,11 +357,16 @@ def test_base_tracer_endpoint_custom_event(caplog):
         for span in spans[:-1]:
             assert span.parent
             assert span.parent.trace_id
-        assert len({(span.parent.trace_id if span.parent else 0) for span in spans}) == 2
+        assert (
+            len({(span.parent.trace_id if span.parent else 0) for span in spans}) == 2
+        )
 
 
 class MyRemoteCharm(CharmBase):
-    META = {"name": "charlie", "requires": {"tracing": {"interface": "tracing", "limit": 1}}}
+    META = {
+        "name": "charlie",
+        "requires": {"tracing": {"interface": "tracing", "limit": 1}},
+    }
     _request = True
 
     def __init__(self, framework: Framework):
@@ -391,7 +398,8 @@ def test_tracing_requirer_remote_charm_request_response(leader):
             host="foo.com",
             receivers=[
                 Receiver(
-                    url="http://foo.com:80", protocol=ProtocolType(name="otlp_http", type="http")
+                    url="http://foo.com:80",
+                    protocol=ProtocolType(name="otlp_http", type="http"),
                 )
             ],
         ).dump(),
@@ -414,7 +422,8 @@ def test_tracing_requirer_remote_charm_no_request_but_response(leader):
             # but the remote end has sent the data you need
             receivers=[
                 Receiver(
-                    url="http://foo.com:80", protocol=ProtocolType(name="otlp_http", type="http")
+                    url="http://foo.com:80",
+                    protocol=ProtocolType(name="otlp_http", type="http"),
                 )
             ],
         ).dump(),
@@ -451,7 +460,10 @@ def test_tracing_requirer_remote_charm_no_request_no_response(leader, relation):
 
 
 class MyRemoteBorkyCharm(CharmBase):
-    META = {"name": "charlie", "requires": {"tracing": {"interface": "tracing", "limit": 1}}}
+    META = {
+        "name": "charlie",
+        "requires": {"tracing": {"interface": "tracing", "limit": 1}},
+    }
     _borky_return_value = None
 
     def tempo(self):
@@ -526,7 +538,9 @@ class OtherObj:
         return 1 + 1
 
 
-autoinstrument(MyCharmStaticMethods, "tempo", extra_types=[OtherObj], buffer_max_events=0)
+autoinstrument(
+    MyCharmStaticMethods, "tempo", extra_types=[OtherObj], buffer_max_events=0
+)
 
 
 def test_trace_staticmethods(caplog):
@@ -675,12 +689,17 @@ def make_buffering_charm(
         buffer_max_size_mib=buffer_max_size,
     )
     class MyBufferingCharm(CharmBase):
-        META = {"name": "josianne", "requires": {"tracing": {"interface": "tracing", "limit": 1}}}
+        META = {
+            "name": "josianne",
+            "requires": {"tracing": {"interface": "tracing", "limit": 1}},
+        }
 
         def __init__(self, framework: Framework):
             super().__init__(framework)
             self.tracing = TracingEndpointRequirer(self, "tracing")
-            self.tracing_endpoint, self.server_cert = charm_tracing_config(self.tracing, crt_path)
+            self.tracing_endpoint, self.server_cert = charm_tracing_config(
+                self.tracing, crt_path
+            )
             framework.observe(self.on.start, self._on_start)
 
         def _on_start(self, _):

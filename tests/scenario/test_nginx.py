@@ -59,7 +59,9 @@ def test_nginx_config_is_parsed_by_crossplane(context, nginx_container, coordina
         },
     ),
 )
-def test_nginx_config_is_parsed_with_workers(context, nginx_container, coordinator, addresses):
+def test_nginx_config_is_parsed_with_workers(
+    context, nginx_container, coordinator, addresses
+):
     coordinator.cluster.gather_addresses_by_role.return_value = addresses
 
     nginx = NginxConfig("localhost")

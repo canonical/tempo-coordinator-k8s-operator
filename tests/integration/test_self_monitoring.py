@@ -59,7 +59,11 @@ async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
     )
 
     await ops_test.model.wait_for_idle(
-        apps=[TEMPO], status="blocked", raise_on_error=False, timeout=600, idle_period=30
+        apps=[TEMPO],
+        status="blocked",
+        raise_on_error=False,
+        timeout=600,
+        idle_period=30,
     )
 
 

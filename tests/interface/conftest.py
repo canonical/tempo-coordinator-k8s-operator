@@ -57,7 +57,11 @@ cluster_relation = Relation(
     remote_units_data={
         0: ClusterRequirerUnitData(
             address="http://example.com",
-            juju_topology={"application": "app", "unit": "unit", "charm_name": "charmname"},
+            juju_topology={
+                "application": "app",
+                "unit": "unit",
+                "charm_name": "charmname",
+            },
         ).dump()
     },
 )
@@ -94,7 +98,10 @@ def cluster_tester(interface_tester: InterfaceTester):
                         charm_type=TempoCoordinatorCharm,
                         state_template=State(
                             leader=True,
-                            containers=[nginx_container, nginx_prometheus_exporter_container],
+                            containers=[
+                                nginx_container,
+                                nginx_prometheus_exporter_container,
+                            ],
                             relations=[peers, s3_relation],
                         ),
                     )
@@ -122,7 +129,10 @@ def tracing_tester(interface_tester: InterfaceTester):
                         charm_type=TempoCoordinatorCharm,
                         state_template=State(
                             leader=True,
-                            containers=[nginx_container, nginx_prometheus_exporter_container],
+                            containers=[
+                                nginx_container,
+                                nginx_prometheus_exporter_container,
+                            ],
                             relations=[peers, s3_relation, cluster_relation],
                         ),
                     )
@@ -150,7 +160,10 @@ def s3_tester(interface_tester: InterfaceTester):
                         charm_type=TempoCoordinatorCharm,
                         state_template=State(
                             leader=True,
-                            containers=[nginx_container, nginx_prometheus_exporter_container],
+                            containers=[
+                                nginx_container,
+                                nginx_prometheus_exporter_container,
+                            ],
                             relations=[peers, cluster_relation],
                         ),
                     )

@@ -52,7 +52,10 @@ class NginxConfig:
                     # upstreams (load balancing)
                     *self._upstreams(addresses_by_role),
                     # temp paths
-                    {"directive": "client_body_temp_path", "args": ["/tmp/client_temp"]},
+                    {
+                        "directive": "client_body_temp_path",
+                        "args": ["/tmp/client_temp"],
+                    },
                     {"directive": "proxy_temp_path", "args": ["/tmp/proxy_temp_path"]},
                     {"directive": "fastcgi_temp_path", "args": ["/tmp/fastcgi_temp"]},
                     {"directive": "uwsgi_temp_path", "args": ["/tmp/uwsgi_temp"]},
@@ -105,13 +108,17 @@ class NginxConfig:
             {"directive": "access_log", "args": ["/dev/stderr"]},
         ]
 
-    def _upstreams(self, addresses_by_role: Dict[str, Set[str]]) -> List[Dict[str, Any]]:
+    def _upstreams(
+        self, addresses_by_role: Dict[str, Set[str]]
+    ) -> List[Dict[str, Any]]:
         addresses_mapped_to_upstreams = {}
         nginx_upstreams = []
         addresses_mapped_to_upstreams = addresses_by_role.copy()
         if TempoRole.distributor in addresses_mapped_to_upstreams.keys():
             nginx_upstreams.extend(
-                self._distributor_upstreams(addresses_mapped_to_upstreams[TempoRole.distributor])
+                self._distributor_upstreams(
+                    addresses_mapped_to_upstreams[TempoRole.distributor]
+                )
             )
         if TempoRole.query_frontend in addresses_mapped_to_upstreams.keys():
             nginx_upstreams.extend(
@@ -125,20 +132,27 @@ class NginxConfig:
     def _distributor_upstreams(self, address_set: Set[str]) -> List[Dict[str, Any]]:
         upstreams = []
         for protocol, port in Tempo.receiver_ports.items():
-            upstreams.append(self._upstream(protocol.replace("_", "-"), address_set, port))
+            upstreams.append(
+                self._upstream(protocol.replace("_", "-"), address_set, port)
+            )
         return upstreams
 
     def _query_frontend_upstreams(self, address_set: Set[str]) -> List[Dict[str, Any]]:
         upstreams = []
         for protocol, port in Tempo.server_ports.items():
-            upstreams.append(self._upstream(protocol.replace("_", "-"), address_set, port))
+            upstreams.append(
+                self._upstream(protocol.replace("_", "-"), address_set, port)
+            )
         return upstreams
 
     def _upstream(self, role: str, address_set: Set[str], port: int) -> Dict[str, Any]:
         return {
             "directive": "upstream",
             "args": [role],
-            "block": [{"directive": "server", "args": [f"{addr}:{port}"]} for addr in address_set],
+            "block": [
+                {"directive": "server", "args": [f"{addr}:{port}"]}
+                for addr in address_set
+            ],
         }
 
     def _locations(self, upstream: str, grpc: bool, tls: bool) -> List[Dict[str, Any]]:
@@ -163,10 +177,17 @@ class NginxConfig:
         ]
         return nginx_locations
 
-    def _resolver(self, custom_resolver: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
+    def _resolver(
+        self, custom_resolver: Optional[List[Any]] = None
+    ) -> List[Dict[str, Any]]:
         if custom_resolver:
             return [{"directive": "resolver", "args": [custom_resolver]}]
-        return [{"directive": "resolver", "args": ["kube-dns.kube-system.svc.cluster.local."]}]
+        return [
+            {
+                "directive": "resolver",
+                "args": ["kube-dns.kube-system.svc.cluster.local."],
+            }
+        ]
 
     def _basic_auth(self, enabled: bool) -> List[Optional[Dict[str, Any]]]:
         if enabled:
@@ -211,7 +232,10 @@ class NginxConfig:
             for protocol, port in Tempo.receiver_ports.items():
                 servers.append(
                     self._build_server_config(
-                        port, protocol.replace("_", "-"), self._is_protocol_grpc(protocol), tls
+                        port,
+                        protocol.replace("_", "-"),
+                        self._is_protocol_grpc(protocol),
+                        tls,
                     )
                 )
         # generate a server config for the Tempo server protocols (3200, 9096)
@@ -219,7 +243,10 @@ class NginxConfig:
             for protocol, port in Tempo.server_ports.items():
                 servers.append(
                     self._build_server_config(
-                        port, protocol.replace("_", "-"), self._is_protocol_grpc(protocol), tls
+                        port,
+                        protocol.replace("_", "-"),
+                        self._is_protocol_grpc(protocol),
+                        tls,
                     )
                 )
         return servers
@@ -244,8 +271,14 @@ class NginxConfig:
                     {"directive": "server_name", "args": [self.server_name]},
                     {"directive": "ssl_certificate", "args": [CERT_PATH]},
                     {"directive": "ssl_certificate_key", "args": [KEY_PATH]},
-                    {"directive": "ssl_protocols", "args": ["TLSv1", "TLSv1.1", "TLSv1.2"]},
-                    {"directive": "ssl_ciphers", "args": ["HIGH:!aNULL:!MD5"]},  # codespell:ignore
+                    {
+                        "directive": "ssl_protocols",
+                        "args": ["TLSv1", "TLSv1.1", "TLSv1.2"],
+                    },
+                    {
+                        "directive": "ssl_ciphers",
+                        "args": ["HIGH:!aNULL:!MD5"],
+                    },  # codespell:ignore
                     *self._locations(upstream, grpc, tls),
                 ],
             }
@@ -271,7 +304,9 @@ class NginxConfig:
         """
         if (
             protocol == "tempo_grpc"
-            or receiver_protocol_to_transport_protocol.get(cast(ReceiverProtocol, protocol))
+            or receiver_protocol_to_transport_protocol.get(
+                cast(ReceiverProtocol, protocol)
+            )
             == TransportProtocolType.grpc
         ):
             return True
