@@ -29,9 +29,7 @@ class TempoRole(str, Enum):
     """
 
     # scalable-single-binary is a bit too long to type
-    all = (
-        "all"
-    )  # default, meta-role. gets remapped to scalable-single-binary by the worker.
+    all = "all"  # default, meta-role. gets remapped to scalable-single-binary by the worker.
 
     querier = "querier"
     query_frontend = "query-frontend"
@@ -207,9 +205,9 @@ class TLS(BaseModel):
     cert_file: str
     key_file: str
     client_ca_file: str
-    client_auth_type: (
-        ClientAuthTypeEnum
-    ) = ClientAuthTypeEnum.VERIFY_CLIENT_CERT_IF_GIVEN
+    client_auth_type: ClientAuthTypeEnum = (
+        ClientAuthTypeEnum.VERIFY_CLIENT_CERT_IF_GIVEN
+    )
 
 
 class Server(BaseModel):

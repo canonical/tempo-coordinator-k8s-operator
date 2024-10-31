@@ -10,23 +10,12 @@ repos:
       - id: check-toml
       - id: debug-statements
       - id: trailing-whitespace
-  - repo: https://github.com/asottile/add-trailing-comma
-    rev: v3.1.0
+  - repo: local
     hooks:
-      - id: add-trailing-comma
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-  # Run the Ruff linter.
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    # Ruff version.
-    rev: v0.1.2
-    hooks:
-      # Run the Ruff linter.
       - id: ruff
-      # Run the Ruff formatter.
-      - id: ruff-format
+        name: ruff
+        entry: make fmt
+        language: system
   - repo: https://github.com/asottile/blacken-docs
     rev: 1.13.0
     hooks:
