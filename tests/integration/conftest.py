@@ -13,9 +13,9 @@ from subprocess import check_output
 
 import pytest
 import yaml
+from juju import Juju
 from pytest import fixture
 
-from juju import Juju
 from tests.integration.helpers import get_relation_data
 
 APP_NAME = "tempo"
@@ -91,14 +91,13 @@ def copy_charm_libs_into_tester_grpc_charm(ops_test):
 @fixture(scope="session")
 def tempo_charm(request):
     """Tempo charm used for integration testing."""
-    if charm_file:= request.config.getoption("--charm-path"):
+    if charm_file := request.config.getoption("--charm-path"):
         return charm_file
 
     subprocess.run(
         ["/snap/bin/charmcraft", "pack", "--verbose"],
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
     return next(Path.glob(Path("."), "*.charm")).absolute()
@@ -107,14 +106,13 @@ def tempo_charm(request):
 @fixture(scope="session")
 def tester_charm(request):
     """Tempo charm used for integration testing."""
-    if charm_file:= request.config.getoption("--tester-path"):
+    if charm_file := request.config.getoption("--tester-path"):
         return charm_file
     path = "./tests/integration/tester/"
     subprocess.run(
         ["/snap/bin/charmcraft", "pack", "--verbose", "-p", path],
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
     return next(Path.glob(Path(path), "*.charm")).absolute()
@@ -123,14 +121,13 @@ def tester_charm(request):
 @fixture(scope="session")
 def tester_grpc_charm(request):
     """Tempo charm used for integration testing."""
-    if charm_file:= request.config.getoption("--tester-grpc-path"):
+    if charm_file := request.config.getoption("--tester-grpc-path"):
         return charm_file
     path = "./tests/integration/tester-grpc/"
     subprocess.run(
         ["/snap/bin/charmcraft", "pack", "--verbose", "-p", path],
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
     return next(Path.glob(Path(path), "*.charm")).absolute()
@@ -156,7 +153,7 @@ def tester_resources():
 @pytest.fixture(scope="session")
 def tester_grpc_resources():
     meta = yaml.safe_load(
-        Path("./tests/integration/tester-grpc/metadata.yaml").read_text()
+        Path("./tests/integration/tester-grpc/metadata.yaml").read_text(),
     )
     return {"workload": meta["resources"]["workload"]["upstream-source"]}
 
@@ -181,8 +178,7 @@ def traefik_lb_ip():
             "-o=jsonpath='{.status.loadBalancer.ingress[0].ip}'",
         ],
         check=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         text=True,
     )
 
