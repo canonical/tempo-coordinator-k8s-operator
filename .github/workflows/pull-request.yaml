@@ -5,6 +5,9 @@ on:
     secrets:
       CHARMHUB_TOKEN:
         required: true
+  pull_request:
+    branches:
+      - main
 
 jobs:
   lint:
@@ -58,7 +61,6 @@ jobs:
 
       - name: Pack charm
         run: charmcraft pack -v
-
 
       - name: Upload charm artifact
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
