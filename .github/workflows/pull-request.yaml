@@ -47,7 +47,7 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
   pack-charm:
-    name: Build charm
+    name: Build charm and testers
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout

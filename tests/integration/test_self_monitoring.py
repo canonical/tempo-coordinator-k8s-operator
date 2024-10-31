@@ -7,10 +7,9 @@ import logging
 from pathlib import Path
 from textwrap import dedent
 
-import pytest
 import yaml
+
 from helpers import deploy_literal_bundle, run_command
-from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +19,7 @@ PROM = "prom"
 apps = [TEMPO, PROM]
 
 
-@pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
+def test_build_and_deploy(tempo_charm: Path, juju):
     """Build the charm-under-test and deploy it together with related charms."""
 
     test_bundle = dedent(
@@ -49,29 +47,18 @@ async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
     )
 
     # Deploy the charm and wait for active/idle status
-    await deploy_literal_bundle(ops_test, test_bundle)  # See appendix below
-    await ops_test.model.wait_for_idle(
-        apps=[PROM],
-        status="active",
-        raise_on_error=False,
+    deploy_literal_bundle(test_bundle)  # See appendix below
+    juju.wait(
+        stop=lambda status: status.all_active(PROM, TEMPO),
+        fail=lambda status: status.workload_status(f"{TEMPO}/0") == "error",
         timeout=600,
-        idle_period=30,
-    )
-
-    await ops_test.model.wait_for_idle(
-        apps=[TEMPO],
-        status="blocked",
-        raise_on_error=False,
-        timeout=600,
-        idle_period=30,
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_scrape_jobs(ops_test: OpsTest):
+def test_scrape_jobs(juju):
     # Check scrape jobs
     cmd = ["curl", "-sS", "http://localhost:9090/api/v1/targets"]
-    result = await run_command(ops_test.model_name, PROM, 0, command=cmd)
+    result = run_command(juju.model_name(), PROM, 0, command=cmd)
     logger.info(result)
     result_json = json.loads(result.decode("utf-8"))
 
@@ -81,11 +68,10 @@ async def test_scrape_jobs(ops_test: OpsTest):
         assert at["labels"]["juju_application"] in apps
 
 
-@pytest.mark.abort_on_fail
-async def test_rules(ops_test: OpsTest):
+def test_rules(juju):
     # Check Rules
     cmd = ["curl", "-sS", "http://localhost:9090/api/v1/rules"]
-    result = await run_command(ops_test.model_name, PROM, 0, command=cmd)
+    result = run_command(juju.model_name(), PROM, 0, command=cmd)
     logger.info(result)
     result_json = json.loads(result.decode("utf-8"))
     groups = result_json["data"]["groups"]

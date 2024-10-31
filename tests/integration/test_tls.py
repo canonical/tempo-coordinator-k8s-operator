@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from pathlib import Path
 
@@ -8,13 +7,11 @@ from helpers import (
     WORKER_NAME,
     deploy_cluster,
     emit_trace,
-    get_application_ip,
     get_traces,
     get_traces_patiently,
     protocols_endpoints,
 )
 from juju.application import Application
-from pytest_operator.plugin import OpsTest
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = "tempo"
@@ -28,8 +25,8 @@ TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
 logger = logging.getLogger(__name__)
 
 
-async def get_ingress_proxied_hostname(ops_test: OpsTest):
-    status = await ops_test.model.get_status()
+def get_ingress_proxied_hostname(juju):
+    status = juju.get_status()
     app = status["applications"][TRAEFIK_APP_NAME]
     status_msg = app["status"]["info"]
 
@@ -41,16 +38,16 @@ async def get_ingress_proxied_hostname(ops_test: OpsTest):
     return status_msg.replace("Serving at", "").strip()
 
 
-async def get_tempo_ingressed_endpoint(hostname, protocol):
+def get_tempo_ingressed_endpoint(hostname, protocol):
     protocol_endpoint = protocols_endpoints.get(protocol)
     if protocol_endpoint is None:
         assert False, f"Invalid {protocol}"
     return protocol_endpoint.format(hostname)
 
 
-async def get_tempo_traces_internal_endpoint(ops_test: OpsTest, protocol):
+def get_tempo_traces_internal_endpoint(protocol, juju):
     hostname = (
-        f"{APP_NAME}-0.{APP_NAME}-endpoints.{ops_test.model.name}.svc.cluster.local"
+        f"{APP_NAME}-0.{APP_NAME}-endpoints.{juju.model_name()}.svc.cluster.local"
     )
     protocol_endpoint = protocols_endpoints.get(protocol)
     if protocol_endpoint is None:
@@ -59,59 +56,38 @@ async def get_tempo_traces_internal_endpoint(ops_test: OpsTest, protocol):
 
 
 @pytest.mark.setup
-@pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
-    resources = {
-        "nginx-image": METADATA["resources"]["nginx-image"]["upstream-source"],
-        "nginx-prometheus-exporter-image": METADATA["resources"][
-            "nginx-prometheus-exporter-image"
-        ]["upstream-source"],
-    }
-    await asyncio.gather(
-        ops_test.model.deploy(
-            tempo_charm, resources=resources, application_name=APP_NAME, trust=True
-        ),
-        ops_test.model.deploy(SSC, application_name=SSC_APP_NAME),
-        ops_test.model.deploy(
-            TRAEFIK, application_name=TRAEFIK_APP_NAME, channel="edge", trust=True
-        ),
+def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
+    juju.deploy(
+        tempo_charm, resources=tempo_resources, application_name=APP_NAME, trust=True
     )
+    juju.deploy(SSC, application_name=SSC_APP_NAME)
+    juju.deploy(TRAEFIK, application_name=TRAEFIK_APP_NAME, channel="edge", trust=True)
 
-    await ops_test.model.integrate(
-        SSC_APP_NAME + ":certificates", TRAEFIK_APP_NAME + ":certificates"
-    )
+    juju.integrate(SSC_APP_NAME + ":certificates", TRAEFIK_APP_NAME + ":certificates")
     # deploy cluster
-    await deploy_cluster(ops_test)
+    deploy_cluster(juju)
 
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(
-            apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
-            status="active",
-            raise_on_blocked=True,
-            timeout=2000,
-        ),
+    juju.wait(
+        apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
+        status="active",
+        raise_on_blocked=True,
+        timeout=2000,
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_relate_ssc(ops_test: OpsTest):
-    await ops_test.model.integrate(
-        APP_NAME + ":certificates", SSC_APP_NAME + ":certificates"
-    )
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(
-            apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
-            status="active",
-            raise_on_blocked=True,
-            timeout=1000,
-        ),
+def test_relate_ssc(juju):
+    juju.integrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
+    juju.wait(
+        apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
+        status="active",
+        raise_on_blocked=True,
+        timeout=1000,
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_push_tracegen_script_and_deps(ops_test: OpsTest):
-    await ops_test.juju("scp", TRACEGEN_SCRIPT_PATH, f"{APP_NAME}/0:tracegen.py")
-    await ops_test.juju(
+def test_push_tracegen_script_and_deps(juju):
+    juju.cli("scp", TRACEGEN_SCRIPT_PATH, f"{APP_NAME}/0:tracegen.py")
+    juju.cli(
         "ssh",
         f"{APP_NAME}/0",
         "python3 -m pip install opentelemetry-exporter-otlp-proto-grpc opentelemetry-exporter-otlp-proto-http"
@@ -119,56 +95,47 @@ async def test_push_tracegen_script_and_deps(ops_test: OpsTest):
     )
 
 
-async def test_verify_trace_http_no_tls_fails(ops_test: OpsTest, server_cert, nonce):
+def test_verify_trace_http_no_tls_fails(server_cert, nonce, juju):
     # IF tempo is related to SSC
     # WHEN we emit an http trace, **unsecured**
-    tempo_endpoint = await get_tempo_traces_internal_endpoint(
-        ops_test, protocol="otlp_http"
-    )
-    await emit_trace(tempo_endpoint, ops_test, nonce=nonce)  # this should fail
+    tempo_endpoint = get_tempo_traces_internal_endpoint(juju=juju, protocol="otlp_http")
+    emit_trace(tempo_endpoint, juju, nonce=nonce)  # this should fail
     # THEN we can verify it's not been ingested
-    traces = get_traces(await get_application_ip(ops_test, APP_NAME))
+    traces = get_traces(juju.status().get_application_ip(APP_NAME))
     assert len(traces) == 0
 
 
-@pytest.mark.abort_on_fail
-async def test_verify_traces_otlp_http_tls(ops_test: OpsTest, nonce):
+def test_verify_traces_otlp_http_tls(nonce, juju):
     protocol = "otlp_http"
-    tempo_endpoint = await get_tempo_traces_internal_endpoint(
-        ops_test, protocol=protocol
-    )
+    tempo_endpoint = get_tempo_traces_internal_endpoint(juju=juju, protocol=protocol)
     # WHEN we emit a trace secured with TLS
-    await emit_trace(
-        tempo_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol, use_cert=True
+    emit_trace(
+        tempo_endpoint, juju, nonce=nonce, verbose=1, proto=protocol, use_cert=True
     )
     # THEN we can verify it's been ingested
-    await get_traces_patiently(
-        await get_application_ip(ops_test, APP_NAME),
+    get_traces_patiently(
+        juju.status().get_application_ip(APP_NAME),
         service_name=f"tracegen-{protocol}",
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_relate_ingress(ops_test: OpsTest):
-    await ops_test.model.integrate(
-        APP_NAME + ":ingress", TRAEFIK_APP_NAME + ":traefik-route"
-    )
-    await ops_test.model.wait_for_idle(
+def test_relate_ingress(juju):
+    juju.integrate(APP_NAME + ":ingress", TRAEFIK_APP_NAME + ":traefik-route")
+    juju.wait(
         apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
         status="active",
         timeout=1000,
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_force_enable_protocols(ops_test: OpsTest):
-    tempo_app: Application = ops_test.model.applications[APP_NAME]
+def test_force_enable_protocols(juju):
+    tempo_app: Application = juju.applications[APP_NAME]
     config = {}
     for protocol in list(protocols_endpoints.keys()):
         config[f"always_enable_{protocol}"] = "True"
 
-    await tempo_app.set_config(config)
-    await ops_test.model.wait_for_idle(
+    tempo_app.set_config(config)
+    juju.wait(
         apps=[APP_NAME, WORKER_NAME],
         status="active",
         timeout=1000,
@@ -176,28 +143,19 @@ async def test_force_enable_protocols(ops_test: OpsTest):
 
 
 @pytest.mark.parametrize("protocol", protocols_endpoints.keys())
-async def test_verify_traces_force_enabled_protocols_tls(
-    ops_test: OpsTest, nonce, protocol
-):
-    tempo_host = await get_ingress_proxied_hostname(ops_test)
+def test_verify_traces_force_enabled_protocols_tls(nonce, protocol, juju):
+    tempo_host = get_ingress_proxied_hostname(juju)
     logger.info(f"emitting & verifying trace using {protocol} protocol.")
-    tempo_endpoint = await get_tempo_ingressed_endpoint(tempo_host, protocol=protocol)
+    tempo_endpoint = get_tempo_ingressed_endpoint(tempo_host, protocol=protocol)
     # emit a trace secured with TLS
-    await emit_trace(
-        tempo_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol, use_cert=True
+    emit_trace(
+        tempo_endpoint, juju, nonce=nonce, verbose=1, proto=protocol, use_cert=True
     )
     # verify it's been ingested
-    await get_traces_patiently(tempo_host, service_name=f"tracegen-{protocol}")
+    get_traces_patiently(tempo_host, service_name=f"tracegen-{protocol}")
 
 
 @pytest.mark.teardown
-@pytest.mark.abort_on_fail
-async def test_remove_relation(ops_test: OpsTest):
-    await ops_test.juju(
-        "remove-relation", APP_NAME + ":certificates", SSC_APP_NAME + ":certificates"
-    )
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(
-            apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=1000
-        ),
-    )
+def test_remove_relation(juju):
+    juju.disintegrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
+    juju.wait(apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=1000)

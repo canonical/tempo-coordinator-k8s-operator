@@ -305,17 +305,17 @@ def tempo_worker_charm_and_channel():
     return "tempo-worker-k8s", "edge"
 
 
-def deploy_cluster(tempo_app=APP_NAME):
+def deploy_cluster(juju, tempo_app=APP_NAME):
     tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
-    Juju.deploy(tempo_worker_charm_url, alias=WORKER_NAME, channel=channel, trust=True)
-    Juju.deploy(S3_INTEGRATOR, channel="edge")
+    juju.deploy(tempo_worker_charm_url, alias=WORKER_NAME, channel=channel, trust=True)
+    juju.deploy(S3_INTEGRATOR, channel="edge")
 
-    Juju.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
-    Juju.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")
+    juju.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
+    juju.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")
 
     deploy_and_configure_minio()
-    Juju.wait_for_idle(
-        applications=[tempo_app, WORKER_NAME, S3_INTEGRATOR],
+    juju.wait(
+        stop=lambda status: status.all_active(tempo_app, WORKER_NAME, S3_INTEGRATOR),
         timeout=2000,
     )
 
@@ -338,10 +338,12 @@ def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tls=True
     return traces
 
 
-def emit_trace(endpoint, nonce, proto: str = "otlp_http", verbose=0, use_cert=False):
+def emit_trace(
+    endpoint, juju, nonce, proto: str = "otlp_http", verbose=0, use_cert=False
+):
     """Use juju ssh to run tracegen from the tempo charm; to avoid any DNS issues."""
     cmd = (
-        f"juju ssh -m {Juju.model_name()} {APP_NAME}/0 "
+        f"juju ssh -m {juju.model_name()} {APP_NAME}/0 "
         f"TRACEGEN_ENDPOINT={endpoint} "
         f"TRACEGEN_VERBOSE={verbose} "
         f"TRACEGEN_PROTOCOL={proto} "
@@ -350,9 +352,3 @@ def emit_trace(endpoint, nonce, proto: str = "otlp_http", verbose=0, use_cert=Fa
         "python3 tracegen.py"
     )
     return subprocess.getoutput(cmd)
-
-
-def get_application_ip(app_name: str):
-    status = Juju.status()
-    app = status["applications"][app_name]
-    return app.public_address

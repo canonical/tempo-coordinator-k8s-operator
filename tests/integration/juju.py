@@ -4,25 +4,102 @@
 
 
 import json
+import re
 import subprocess
 import time
+from contextlib import contextmanager
+from datetime import timedelta
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
+
+regex = re.compile(r"((?P<hours>\d+?)hr)?((?P<minutes>\d+?)m)?((?P<seconds>\d+?)s)?")
+
+
+def parse_time(delta: str) -> None | timedelta:
+    parts = regex.match(delta)
+    if not parts:
+        return
+    parts = parts.groupdict()
+    time_params = {}
+    for name, param in parts.items():
+        if param:
+            time_params[name] = int(param)
+    return timedelta(**time_params)
+
+
+class WaitFailed(Exception):
+    """Raised when the ``Juju.wait()`` fail condition triggers."""
+
+
+class Status(dict):
+    def juju_status(self, application: str):
+        """Mapping from unit name to active/idle, unknown/executing..."""
+        units = self["applications"][application]["units"]
+        return {u: units[u]["juju-status"]["current"] for u in units}
+
+    def workload_status(self, application: str):
+        """Mapping from unit name to active/idle, unknown/executing..."""
+        units = self["applications"][application]["units"]
+        return {u: units[u]["workload-status"]["current"] for u in units}
+
+    def all_active(self, *apps):
+        """Return True if all units of these apps (or all apps) are in active status."""
+        if not apps:
+            apps = self["applications"]
+
+        for app in apps:
+            wss = self.workload_status(app)
+            if not all(us == "active" for us in wss.values()):
+                return False
+
+    def all_blocked(self, *apps):
+        """Return True if all units of these apps (or all apps) are in blocked status."""
+        if not apps:
+            apps = self["applications"]
+
+        for app in apps:
+            wss = self.workload_status(app)
+            if not all(us == "blocked" for us in wss.values()):
+                return False
+
+    def any_error(self, *apps):
+        """Return True if any unit of these apps (or all apps) are in error status."""
+        if not apps:
+            apps = self["applications"]
+
+        for app in apps:
+            wss = self.workload_status(app)
+            if any(us == "error" for us in wss.values()):
+                return True
+
+    def any_blocked(self, *apps):
+        """Return True if any unit of these apps (or all apps) are in blocked status."""
+
+        if not apps:
+            apps = self["applications"]
+
+        for app in apps:
+            wss = self.workload_status(app)
+            if any(us == "blocked" for us in wss.values()):
+                return True
+
+    def get_application_ip(self, app_name: str):
+        return self["applications"][app_name]["public-address"]
 
 
 class Juju:
-    @classmethod
-    def model_name(cls):
-        return cls.status()["model"]["name"]
+    def __init__(self, model: str = None):
+        self.model = model
 
-    @classmethod
-    def status(cls):
+    def model_name(self):
+        return self.status()["model"]["name"]
+
+    def status(self):
         args = ["status", "--format", "json"]
-        result = cls.cli(*args)
-        return json.loads(result.stdout)
+        result = self.cli(*args)
+        return Status(json.loads(result.stdout))
 
-    @classmethod
-    def config(cls, app, config: Dict[str, bool | str]):
+    def config(self, app, config: Dict[str, bool | str]):
         args = ["config", app]
         for k, v in config:
             if isinstance(v, bool):
@@ -30,12 +107,35 @@ class Juju:
             else:
                 args.append(f"{k}={str(v)}")
 
-        result = cls.cli(*args)
+        result = self.cli(*args)
         return json.loads(result.stdout)
 
-    @classmethod
+    def model_config(self, config: Dict[str, bool | str] = None):
+        args = ["model-config"]
+        for k, v in config:
+            if isinstance(v, bool):
+                args.append(f"{k}={str(v).lower()}")
+            else:
+                args.append(f"{k}={str(v)}")
+
+        result = self.cli(*args)
+        if result.stdout:
+            return json.loads(result.stdout)
+
+    @contextmanager
+    def fast_forward(self, fast_interval: str = "5s", slow_interval: None | str = None):
+        update_interval_key = "update-status-hook-interval"
+        if slow_interval:
+            interval_after = slow_interval
+        else:
+            interval_after = (self.model_config())[update_interval_key]
+
+        self.model_config({update_interval_key: fast_interval})
+        yield
+        self.model_config({update_interval_key: interval_after})
+
     def deploy(
-        cls,
+        self,
         charm: str | Path,
         *,
         alias: str | None = None,
@@ -67,48 +167,57 @@ class Juju:
         if trust:
             args = [*args, "--trust"]
 
-        return cls.cli(*args)
+        return self.cli(*args)
 
-    @classmethod
-    def integrate(cls, requirer: str, provider: str):
+    def integrate(self, requirer: str, provider: str):
         args = ["integrate", requirer, provider]
-        return cls.cli(*args)
+        return self.cli(*args)
 
-    @classmethod
-    def disintegrate(cls, requirer: str, provider: str):
+    def disintegrate(self, requirer: str, provider: str):
         args = ["remove-relation", requirer, provider]
-        return cls.cli(*args)
+        return self.cli(*args)
 
-    @classmethod
-    def run(cls, unit: str, action: str, params: Dict[str, str]):
+    def run(self, unit: str, action: str, params: Dict[str, str]):
         args = ["run", "--format", "json", unit, action]
 
         for k, v in params:
             args.append(f"{k}={v}")
 
-        act = cls.cli(*args)
+        act = self.cli(*args)
         result = json.loads(act.stdout)
         return result[unit]["results"]
 
-    @classmethod
-    def wait_for_idle(
-        cls, applications: List[str], timeout: int, status: str = "active"
-    ):
+    def wait(self, timeout: int, soak: str = "10s", stop=None, fail=None):
         start = time.time()
+        soak_time = parse_time(soak)
+        pass_counter = 0
+
         while time.time() - start < timeout:
             try:
-                results = []
-                for a in applications:
-                    results.extend(cls._unit_statuses(a))
-                if set(results) != {f"{status}/idle"}:
-                    raise Exception
-                else:
-                    break
-            except Exception:
-                time.sleep(1)
+                status = self.status()
+                if stop:
+                    if stop(status):
+                        pass_counter += 1
+                        if pass_counter >= soak_time.total_seconds():
+                            return True
 
-    @classmethod
-    def cli(cls, *args):
+                    else:
+                        pass_counter = 0
+
+                if fail and fail(status):
+                    raise WaitFailed()
+
+            except WaitFailed:
+                raise
+
+            except Exception:
+                pass
+            time.sleep(1)
+
+    def cli(self, *args):
+        if "-m" not in args and self.model:
+            args = ["-m", self.model, *args]
+
         proc = subprocess.run(
             ["/snap/bin/juju", *args],
             check=True,
@@ -118,11 +227,3 @@ class Juju:
             env={"NO_COLOR": "true"},
         )
         return proc
-
-    @classmethod
-    def _unit_statuses(cls, application: str):
-        units = cls.status()["applications"][application]["units"]
-        return [
-            f"{units[u]['workload-status']['current']}/{units[u]['juju-status']['current']}"
-            for u in units
-        ]

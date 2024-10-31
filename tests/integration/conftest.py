@@ -6,6 +6,7 @@ import os
 import random
 import shlex
 import shutil
+import string
 import subprocess
 import tempfile
 from pathlib import Path
@@ -41,6 +42,22 @@ def pytest_addoption(parser):
         "--tester-grpc-charm-path",
         help="Pre-built charm file to deploy, rather than building from source",
     )
+
+
+def _generate_random_model_name():
+    name = "test-"
+    for _ in range(15):
+        name += random.choice(string.ascii_lowercase)
+    return name
+
+
+@fixture(scope="module", autouse=True)
+def juju():
+    model_name = _generate_random_model_name()
+    unbound_juju = Juju()
+    unbound_juju.cli("add-model", model_name, "--no-switch")
+    yield Juju(model_name)
+    unbound_juju.cli("destroy-model", model_name, "--destroy-storage", "true")
 
 
 @fixture(scope="session", autouse=True)
@@ -165,13 +182,12 @@ def tempo_oci_image():
 
 
 @fixture(scope="session")
-def traefik_lb_ip():
-    model_name = Juju.status()["model"]["name"]
+def traefik_lb_ip(juju):
     proc = subprocess.run(
         [
             "/snap/bin/kubectl",
             "-n",
-            model_name,
+            juju.model_name(),
             "get",
             "service",
             f"{TRAEFIK}-lb",
@@ -187,11 +203,11 @@ def traefik_lb_ip():
 
 
 @fixture(scope="function")
-def server_cert():
+def server_cert(juju):
     data = get_relation_data(
         requirer_endpoint=f"{APP_NAME}/0:certificates",
         provider_endpoint=f"{SSC_APP_NAME}/0:certificates",
-        model=Juju.model_name(),
+        model=juju.model_name(),
     )
     cert = json.loads(data.provider.application_data["certificates"])[0]["certificate"]
 

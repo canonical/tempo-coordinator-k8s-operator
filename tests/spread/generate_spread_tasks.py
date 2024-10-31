@@ -11,13 +11,7 @@ execute: |
   pushd "$SPREAD_PATH"
   make integration ARGS="{test_path}"
 """
-restore_step = """
-restore: |
-  if [[ -z "${CI:-}" ]]; then
-    juju destroy-model --no-prompt --destroy-storage testing
-    juju add-model testing
-  fi
-"""
+
 TESTS_ROOT = Path(__file__).parent.parent
 
 
@@ -29,7 +23,7 @@ def _render_task(path: Path, summary: str = "some test", kill_timeout: int = 90)
         summary=summary, test_path=path, kill_timeout=kill_timeout
     )
     print(f"dropping {spread_test_path}")
-    spread_test_path.write_text(test_raw + restore_step)
+    spread_test_path.write_text(test_raw)
 
 
 def _clean_existing_dirs():
