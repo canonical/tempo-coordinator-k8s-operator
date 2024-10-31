@@ -91,14 +91,16 @@ class Juju:
         return result[unit]["results"]
 
     @classmethod
-    def wait_for_idle(cls, applications: List[str], timeout: int):
+    def wait_for_idle(
+        cls, applications: List[str], timeout: int, status: str = "active"
+    ):
         start = time.time()
         while time.time() - start < timeout:
             try:
                 results = []
                 for a in applications:
                     results.extend(cls._unit_statuses(a))
-                if set(results) != {"active/idle"}:
+                if set(results) != {f"{status}/idle"}:
                     raise Exception
                 else:
                     break

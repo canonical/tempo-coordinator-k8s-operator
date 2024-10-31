@@ -60,12 +60,11 @@ provides:
     description: |
       Integration to offer other charms the possibility to send traces to Tempo.
 
-
 requires:
   self-tracing:
     interface: tracing
     description: |
-      Integration to enable Tempo to send its own traces to another Tempo instance. 
+      Integration to enable Tempo to send its own traces to another Tempo instance.
     limit: 1
   s3:
     interface: s3
@@ -86,7 +85,7 @@ requires:
     interface: tls-certificates
     limit: 1
     description: |
-      Certificate and key files for securing Tempo internal and external 
+      Certificate and key files for securing Tempo internal and external
       communications with TLS.
   send-remote-write:
     interface: prometheus_remote_write
@@ -109,7 +108,6 @@ peers:
     description: |
       peer relation for internal coordination
 
-
 bases:
   - build-on:
       - name: "ubuntu"
@@ -119,18 +117,17 @@ bases:
         channel: "22.04"
 
 parts:
-  build-snaps:
-    - rustup
-    - astral-uv
-  override-build: |
-    rustup toolchain install stable
-    make generate-requirements
-    craftctl default
-
   charm:
-#    uncomment this if you add git+ dependencies in requirements.txt
-#    build-packages:
-#      - "git"
+    build-snaps:
+      - rustup
+      - astral-uv
+    override-build: |
+      rustup toolchain install stable
+      make generate-requirements
+      craftctl default
+    #    uncomment this if you add git+ dependencies in requirements.txt
+    #    build-packages:
+    #      - "git"
     charm-binary-python-packages:
       - "pydantic>=2"
       - "cryptography"
@@ -151,33 +148,42 @@ parts:
       - -uv.lock
       - -*.egg-info
 
-
 config:
   options:
     retention-period:
       description: |
-        Maximum trace retention period, in hours. This will be used to configure the compactor to clean up trace data after this time. 
+        Maximum trace retention period, in hours. This will be used to configure the compactor to clean up trace data after this time.
         Defaults to 720 hours, which is equivalent to 30 days. Per-stream retention limits are currently not supported.
       type: int
       default: 720
     always_enable_zipkin:
-      description: Force-enable the receiver for the 'zipkin' protocol in Tempo, even if there is no integration currently requesting it.
+      description:
+        Force-enable the receiver for the 'zipkin' protocol in Tempo, even if there is no integration currently
+        requesting it.
       type: boolean
       default: false
     always_enable_otlp_grpc:
-      description: Force-enable the receiver for the 'otlp_grpc' protocol in Tempo, even if there is no integration currently requesting it.
+      description:
+        Force-enable the receiver for the 'otlp_grpc' protocol in Tempo, even if there is no integration currently
+        requesting it.
       type: boolean
       default: false
     always_enable_otlp_http:
-      description: Force-enable the receiver for the 'otlp_http' protocol in Tempo, even if there is no integration currently requesting it.
+      description:
+        Force-enable the receiver for the 'otlp_http' protocol in Tempo, even if there is no integration currently
+        requesting it.
       type: boolean
       default: false
     always_enable_jaeger_thrift_http:
-      description: Force-enable the receiver for the 'jaeger_thrift_http' protocol in Tempo, even if there is no integration currently requesting it.
+      description:
+        Force-enable the receiver for the 'jaeger_thrift_http' protocol in Tempo, even if there is no integration
+        currently requesting it.
       type: boolean
       default: false
     always_enable_jaeger_grpc:
-      description: Force-enable the receiver for the 'jaeger_grpc' protocol in Tempo, even if there is no integration currently requesting it.
+      description:
+        Force-enable the receiver for the 'jaeger_grpc' protocol in Tempo, even if there is no integration currently
+        requesting it.
       type: boolean
       default: false
     cpu_limit:
