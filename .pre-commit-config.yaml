@@ -9,7 +9,6 @@ repos:
       - id: check-yaml
       - id: check-toml
       - id: debug-statements
-      - id: end-of-file-fixer
       - id: trailing-whitespace
   - repo: https://github.com/asottile/add-trailing-comma
     rev: v3.1.0

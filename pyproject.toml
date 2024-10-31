@@ -33,6 +33,7 @@ dev = [
     "ruff",
     "catan",
     "ops[testing]>=2.17",
+    "pytest-interface-tester"
 ]
 
 
