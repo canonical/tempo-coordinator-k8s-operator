@@ -91,8 +91,7 @@ def copy_charm_libs_into_tester_grpc_charm(ops_test):
 @fixture(scope="session")
 def tempo_charm(request):
     """Tempo charm used for integration testing."""
-    charm_file = request.config.getoption("--charm-path")
-    if charm_file:
+    if charm_file:= request.config.getoption("--charm-path"):
         return charm_file
 
     subprocess.run(
@@ -108,8 +107,7 @@ def tempo_charm(request):
 @fixture(scope="session")
 def tester_charm(request):
     """Tempo charm used for integration testing."""
-    charm_file = request.config.getoption("--tester-path")
-    if charm_file:
+    if charm_file:= request.config.getoption("--tester-path"):
         return charm_file
     path = "./tests/integration/tester/"
     subprocess.run(
@@ -125,8 +123,7 @@ def tester_charm(request):
 @fixture(scope="session")
 def tester_grpc_charm(request):
     """Tempo charm used for integration testing."""
-    charm_file = request.config.getoption("--tester-grpc-path")
-    if charm_file:
+    if charm_file:= request.config.getoption("--tester-grpc-path"):
         return charm_file
     path = "./tests/integration/tester-grpc/"
     subprocess.run(

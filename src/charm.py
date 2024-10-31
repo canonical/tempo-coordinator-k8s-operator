@@ -59,7 +59,9 @@ class TempoCoordinatorCharm(CharmBase):
         super().__init__(*args)
 
         self.ingress = TraefikRouteRequirer(
-            self, self.model.get_relation("ingress"), "ingress"
+            self,
+            self.model.get_relation("ingress"),
+            "ingress",
         )  # type: ignore
         self.tempo = Tempo(
             requested_receivers=self._requested_receivers,
@@ -128,12 +130,14 @@ class TempoCoordinatorCharm(CharmBase):
 
         # actions
         self.framework.observe(
-            self.on.list_receivers_action, self._on_list_receivers_action
+            self.on.list_receivers_action,
+            self._on_list_receivers_action,
         )
 
         # tls
         self.framework.observe(
-            self.coordinator.cert_handler.on.cert_changed, self._on_cert_handler_changed
+            self.coordinator.cert_handler.on.cert_changed,
+            self._on_cert_handler_changed,
         )
 
     ######################
@@ -215,7 +219,7 @@ class TempoCoordinatorCharm(CharmBase):
                 receiver
                 for receiver in get_args(ReceiverProtocol)
                 if self.config.get(f"always_enable_{receiver}") is True
-            ]
+            ],
         )
         return enabled_receivers
 
@@ -244,8 +248,8 @@ class TempoCoordinatorCharm(CharmBase):
         ):
             e.add_status(
                 ops.ActiveStatus(
-                    "metrics-generator disabled. Add a relation over send-remote-write"
-                )
+                    "metrics-generator disabled. Add a relation over send-remote-write",
+                ),
             )
 
     ###################
@@ -271,7 +275,8 @@ class TempoCoordinatorCharm(CharmBase):
 
         if self.ingress.is_ready():
             self.ingress.submit_to_traefik(
-                self._ingress_config, static=self._static_ingress_config
+                self._ingress_config,
+                static=self._static_ingress_config,
             )
 
     def _update_tracing_relations(self) -> None:
@@ -286,7 +291,7 @@ class TempoCoordinatorCharm(CharmBase):
         # publish requested protocols to all relations
         if self.unit.is_leader():
             self.tracing.publish_receivers(
-                [(p, self.get_receiver_url(p)) for p in requested_receivers]
+                [(p, self.get_receiver_url(p)) for p in requested_receivers],
             )
 
     def _requested_receivers(self) -> Tuple[ReceiverProtocol, ...]:
@@ -298,7 +303,7 @@ class TempoCoordinatorCharm(CharmBase):
         requested_protocols.update(self.enabled_receivers)
         # and publish only those we support
         requested_receivers = requested_protocols.intersection(
-            set(self.tempo.receiver_ports)
+            set(self.tempo.receiver_ports),
         )
         return tuple(requested_receivers)
 
@@ -368,7 +373,7 @@ class TempoCoordinatorCharm(CharmBase):
             if (
                 protocol == "tempo_grpc"
                 or receiver_protocol_to_transport_protocol.get(
-                    cast(ReceiverProtocol, protocol)
+                    cast(ReceiverProtocol, protocol),
                 )
                 == TransportProtocolType.grpc
             ) and not self.coordinator.tls_available:
@@ -378,8 +383,8 @@ class TempoCoordinatorCharm(CharmBase):
                     f"juju-{self.model.name}-{self.model.app.name}-service-{sanitized_protocol}"
                 ] = {
                     "loadBalancer": {
-                        "servers": self._build_lb_server_config("h2c", port)
-                    }
+                        "servers": self._build_lb_server_config("h2c", port),
+                    },
                 }
             else:
                 # anything else, including secured GRPC, can use _internal_url
@@ -388,8 +393,8 @@ class TempoCoordinatorCharm(CharmBase):
                     f"juju-{self.model.name}-{self.model.app.name}-service-{sanitized_protocol}"
                 ] = {
                     "loadBalancer": {
-                        "servers": self._build_lb_server_config(self._scheme, port)
-                    }
+                        "servers": self._build_lb_server_config(self._scheme, port),
+                    },
                 }
         return {
             "http": {

@@ -86,7 +86,8 @@ class NginxConfig:
                     {"directive": "proxy_read_timeout", "args": ["300"]},
                     # server block
                     *self._build_servers_config(
-                        addresses_by_role, coordinator.nginx.are_certificates_on_disk
+                        addresses_by_role,
+                        coordinator.nginx.are_certificates_on_disk,
                     ),
                 ],
             },
@@ -109,7 +110,8 @@ class NginxConfig:
         ]
 
     def _upstreams(
-        self, addresses_by_role: Dict[str, Set[str]]
+        self,
+        addresses_by_role: Dict[str, Set[str]],
     ) -> List[Dict[str, Any]]:
         addresses_mapped_to_upstreams = {}
         nginx_upstreams = []
@@ -117,14 +119,14 @@ class NginxConfig:
         if TempoRole.distributor in addresses_mapped_to_upstreams.keys():
             nginx_upstreams.extend(
                 self._distributor_upstreams(
-                    addresses_mapped_to_upstreams[TempoRole.distributor]
-                )
+                    addresses_mapped_to_upstreams[TempoRole.distributor],
+                ),
             )
         if TempoRole.query_frontend in addresses_mapped_to_upstreams.keys():
             nginx_upstreams.extend(
                 self._query_frontend_upstreams(
-                    addresses_mapped_to_upstreams[TempoRole.query_frontend]
-                )
+                    addresses_mapped_to_upstreams[TempoRole.query_frontend],
+                ),
             )
 
         return nginx_upstreams
@@ -133,7 +135,7 @@ class NginxConfig:
         upstreams = []
         for protocol, port in Tempo.receiver_ports.items():
             upstreams.append(
-                self._upstream(protocol.replace("_", "-"), address_set, port)
+                self._upstream(protocol.replace("_", "-"), address_set, port),
             )
         return upstreams
 
@@ -141,7 +143,7 @@ class NginxConfig:
         upstreams = []
         for protocol, port in Tempo.server_ports.items():
             upstreams.append(
-                self._upstream(protocol.replace("_", "-"), address_set, port)
+                self._upstream(protocol.replace("_", "-"), address_set, port),
             )
         return upstreams
 
@@ -173,12 +175,13 @@ class NginxConfig:
                         "args": ["5s"],
                     },
                 ],
-            }
+            },
         ]
         return nginx_locations
 
     def _resolver(
-        self, custom_resolver: Optional[List[Any]] = None
+        self,
+        custom_resolver: Optional[List[Any]] = None,
     ) -> List[Dict[str, Any]]:
         if custom_resolver:
             return [{"directive": "resolver", "args": [custom_resolver]}]
@@ -186,7 +189,7 @@ class NginxConfig:
             {
                 "directive": "resolver",
                 "args": ["kube-dns.kube-system.svc.cluster.local."],
-            }
+            },
         ]
 
     def _basic_auth(self, enabled: bool) -> List[Optional[Dict[str, Any]]]:
@@ -203,10 +206,10 @@ class NginxConfig:
     def _listen(self, port: int, ssl: bool, http2: bool) -> List[Dict[str, Any]]:
         directives = []
         directives.append(
-            {"directive": "listen", "args": self._listen_args(port, False, ssl, http2)}
+            {"directive": "listen", "args": self._listen_args(port, False, ssl, http2)},
         )
         directives.append(
-            {"directive": "listen", "args": self._listen_args(port, True, ssl, http2)}
+            {"directive": "listen", "args": self._listen_args(port, True, ssl, http2)},
         )
         return directives
 
@@ -223,7 +226,9 @@ class NginxConfig:
         return args
 
     def _build_servers_config(
-        self, addresses_by_role: Dict[str, Set[str]], tls: bool = False
+        self,
+        addresses_by_role: Dict[str, Set[str]],
+        tls: bool = False,
     ) -> List[Dict[str, Any]]:
         servers = []
         roles = addresses_by_role.keys()
@@ -236,7 +241,7 @@ class NginxConfig:
                         protocol.replace("_", "-"),
                         self._is_protocol_grpc(protocol),
                         tls,
-                    )
+                    ),
                 )
         # generate a server config for the Tempo server protocols (3200, 9096)
         if TempoRole.query_frontend.value in roles:
@@ -247,12 +252,16 @@ class NginxConfig:
                         protocol.replace("_", "-"),
                         self._is_protocol_grpc(protocol),
                         tls,
-                    )
+                    ),
                 )
         return servers
 
     def _build_server_config(
-        self, port: int, upstream: str, grpc: bool = False, tls: bool = False
+        self,
+        port: int,
+        upstream: str,
+        grpc: bool = False,
+        tls: bool = False,
     ) -> Dict[str, Any]:
         auth_enabled = False
 
@@ -305,7 +314,7 @@ class NginxConfig:
         if (
             protocol == "tempo_grpc"
             or receiver_protocol_to_transport_protocol.get(
-                cast(ReceiverProtocol, protocol)
+                cast(ReceiverProtocol, protocol),
             )
             == TransportProtocolType.grpc
         ):

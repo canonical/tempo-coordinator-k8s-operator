@@ -29,7 +29,9 @@ class TempoRole(str, Enum):
     """
 
     # scalable-single-binary is a bit too long to type
-    all = "all"  # default, meta-role. gets remapped to scalable-single-binary by the worker.
+    all = (
+        "all"
+    )  # default, meta-role. gets remapped to scalable-single-binary by the worker.
 
     querier = "querier"
     query_frontend = "query-frontend"
@@ -53,7 +55,7 @@ class TempoRole(str, Enum):
 META_ROLES = {
     "all": set(TempoRole.all_nonmeta()),
 }
-"""Tempo component meta-role names."""
+# Tempo component meta-role names.
 
 MINIMAL_DEPLOYMENT = {
     TempoRole.querier: 1,
@@ -62,8 +64,8 @@ MINIMAL_DEPLOYMENT = {
     TempoRole.distributor: 1,
     TempoRole.compactor: 1,
 }
-"""The minimal set of roles that need to be allocated for the
-deployment to be considered consistent (otherwise we set blocked)."""
+# The minimal set of roles that need to be allocated for the
+# deployment to be considered consistent (otherwise we set blocked).
 
 RECOMMENDED_DEPLOYMENT = {
     TempoRole.querier.value: 1,
@@ -73,13 +75,11 @@ RECOMMENDED_DEPLOYMENT = {
     TempoRole.compactor.value: 1,
     TempoRole.metrics_generator.value: 1,
 }
+# The set of roles that need to be allocated for the
+# deployment to be considered robust according to Grafana Tempo's
+# Helm chart configurations.
+# https://github.com/grafana/helm-charts/blob/main/charts/tempo-distributed/
 
-"""
-The set of roles that need to be allocated for the
-deployment to be considered robust according to Grafana Tempo's
-Helm chart configurations.
-https://github.com/grafana/helm-charts/blob/main/charts/tempo-distributed/
-"""
 
 TEMPO_ROLES_CONFIG = ClusterRolesConfig(
     roles={role for role in TempoRole},
@@ -87,7 +87,7 @@ TEMPO_ROLES_CONFIG = ClusterRolesConfig(
     minimal_deployment=MINIMAL_DEPLOYMENT,
     recommended_deployment=RECOMMENDED_DEPLOYMENT,
 )
-"""Define the configuration for Tempo roles."""
+# Define the configuration for Tempo roles.
 
 
 class ClientAuthTypeEnum(str, enum.Enum):
@@ -200,16 +200,16 @@ class TLS(BaseModel):
 
     model_config = ConfigDict(
         # Allow serializing enum values.
-        use_enum_values=True
+        use_enum_values=True,
     )
     """Pydantic config."""
 
     cert_file: str
     key_file: str
     client_ca_file: str
-    client_auth_type: ClientAuthTypeEnum = (
-        ClientAuthTypeEnum.VERIFY_CLIENT_CERT_IF_GIVEN
-    )
+    client_auth_type: (
+        ClientAuthTypeEnum
+    ) = ClientAuthTypeEnum.VERIFY_CLIENT_CERT_IF_GIVEN
 
 
 class Server(BaseModel):
@@ -322,7 +322,7 @@ class MetricsGeneratorDefaults(BaseModel):
 
     model_config = ConfigDict(
         # Allow serializing enum values.
-        use_enum_values=True
+        use_enum_values=True,
     )
     """Pydantic config."""
     processors: List[MetricsGeneratorProcessor]

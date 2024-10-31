@@ -78,17 +78,18 @@ class Tempo:
             auth_enabled=False,
             server=self._build_server_config(coordinator.tls_available),
             distributor=self._build_distributor_config(
-                self._receivers_getter(), coordinator.tls_available
+                self._receivers_getter(),
+                coordinator.tls_available,
             ),
             ingester=self._build_ingester_config(
-                coordinator.cluster.gather_addresses_by_role()
+                coordinator.cluster.gather_addresses_by_role(),
             ),
             memberlist=self._build_memberlist_config(
-                coordinator.cluster.gather_addresses()
+                coordinator.cluster.gather_addresses(),
             ),
             compactor=self._build_compactor_config(),
             querier=self._build_querier_config(
-                coordinator.cluster.gather_addresses_by_role()
+                coordinator.cluster.gather_addresses_by_role(),
             ),
             storage=self._build_storage_config(coordinator._s3_config),
             metrics_generator=self._build_metrics_generator_config(
@@ -104,10 +105,10 @@ class Tempo:
             tls_config = self._build_tls_config(coordinator.cluster.gather_addresses())
 
             config.ingester_client = tempo_config.Client(
-                grpc_client_config=tempo_config.ClientTLS(**tls_config)
+                grpc_client_config=tempo_config.ClientTLS(**tls_config),
             )
             config.metrics_generator_client = tempo_config.Client(
-                grpc_client_config=tempo_config.ClientTLS(**tls_config)
+                grpc_client_config=tempo_config.ClientTLS(**tls_config),
             )
 
             config.querier.frontend_worker.grpc_client_config = tempo_config.ClientTLS(
@@ -117,7 +118,7 @@ class Tempo:
             config.memberlist = config.memberlist.model_copy(update=tls_config)
 
         return yaml.dump(
-            config.model_dump(mode="json", by_alias=True, exclude_none=True)
+            config.model_dump(mode="json", by_alias=True, exclude_none=True),
         )
 
     def _build_tls_config(self, workers_addrs: Tuple[str, ...]):
@@ -141,12 +142,14 @@ class Tempo:
             defaults=tempo_config.Defaults(
                 metrics_generator=tempo_config.MetricsGeneratorDefaults(
                     processors=[tempo_config.MetricsGeneratorProcessor.SPAN_METRICS],
-                )
-            )
+                ),
+            ),
         )
 
     def _build_metrics_generator_config(
-        self, remote_write_endpoints: List[Dict[str, Any]], use_tls=False
+        self,
+        remote_write_endpoints: List[Dict[str, Any]],
+        use_tls=False,
     ):
         if len(remote_write_endpoints) == 0:
             return None
@@ -169,7 +172,7 @@ class Tempo:
             storage=tempo_config.MetricsGeneratorStorage(
                 path=self.metrics_generator_wal_path,
                 remote_write=remote_write_instances,
-            )
+            ),
             # Adding juju topology will be done on the worker's side
             # to populate the correct unit label.
         )
@@ -218,7 +221,7 @@ class Tempo:
         Use query-frontend workers' service fqdn to loadbalance across query-frontend worker instances if any.
         """
         query_frontend_addresses = roles_addresses.get(
-            tempo_config.TempoRole.query_frontend
+            tempo_config.TempoRole.query_frontend,
         )
         if not query_frontend_addresses:
             svc_addr = "localhost"
@@ -230,7 +233,7 @@ class Tempo:
             svc_addr = re.sub(r"^[^.]+\.", "", query_frontend_addr)
         return tempo_config.Querier(
             frontend_worker=tempo_config.FrontendWorker(
-                frontend_address=f"{svc_addr}:{self.tempo_grpc_server_port}"
+                frontend_address=f"{svc_addr}:{self.tempo_grpc_server_port}",
             ),
         )
 
@@ -245,11 +248,12 @@ class Tempo:
                 # total trace retention
                 block_retention=f"{self._retention_period_hours}h",
                 compacted_block_retention="1h",
-            )
+            ),
         )
 
     def _build_memberlist_config(
-        self, peers: Optional[Tuple[str, ...]]
+        self,
+        peers: Optional[Tuple[str, ...]],
     ) -> tempo_config.Memberlist:
         """Build memberlist config"""
         return tempo_config.Memberlist(
@@ -276,13 +280,15 @@ class Tempo:
                 ring=tempo_config.Ring(
                     replication_factor=(
                         3 if ingester_addresses and len(ingester_addresses) >= 3 else 1
-                    )
+                    ),
                 ),
             ),
         )
 
     def _build_distributor_config(
-        self, receivers: Sequence[ReceiverProtocol], use_tls=False
+        self,
+        receivers: Sequence[ReceiverProtocol],
+        use_tls=False,
     ):  # noqa: C901
         """Build distributor config"""
         # receivers: the receivers we have to enable because the requirers we're related to
@@ -299,7 +305,7 @@ class Tempo:
                     "ca_file": str(self.tls_ca_path),
                     "cert_file": str(self.tls_cert_path),
                     "key_file": str(self.tls_key_path),
-                }
+                },
             }
         else:
             receiver_config = None
