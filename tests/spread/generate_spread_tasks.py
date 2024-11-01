@@ -12,7 +12,7 @@ execute: |
   make integration ARGS="{test_path}"
 """
 
-TESTS_ROOT = Path(__file__).parent.parent
+TESTS_ROOT = Path(__file__).parent.parent.absolute()
 SPREAD_ROOT = TESTS_ROOT / "spread"
 ITEST_TASKS_ROOT = SPREAD_ROOT / "integration_tests"
 
@@ -39,7 +39,7 @@ def _clean_existing_dirs():
 
 def main():
     _clean_existing_dirs()
-    itests_root = TESTS_ROOT.absolute().joinpath("integration")
+    itests_root = TESTS_ROOT / "integration"
     print(itests_root)
     for file in itests_root.glob("test_*.py"):
         _render_task(file)
