@@ -12,7 +12,7 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-24.04
+    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -23,7 +23,7 @@ jobs:
 
   unit-test:
     name: Unit tests
-    runs-on: ubuntu-24.04
+    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -34,7 +34,7 @@ jobs:
 
   lib-check:
     name: Check libraries
-    runs-on: ubuntu-24.04
+    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -47,9 +47,9 @@ jobs:
           credentials: "${{ secrets.CHARMHUB_TOKEN }}"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-  pack-charm:
+  pack-charms:
     name: Build charm and testers
-    runs-on: ubuntu-24.04
+    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -78,7 +78,7 @@ jobs:
 
   define-matrix:
     name: Define spread matrix
-    runs-on: ubuntu-24.04
+    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     outputs:
       suites: ${{ steps.suites.outputs.suites }}
     steps:
@@ -98,12 +98,12 @@ jobs:
 
   integration-test:
     name: Spread (${{ matrix.suite }})
-    runs-on: ubuntu-24.04
+    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     needs:
       - define-matrix
       - lib-check
       - lint
-      - pack-charm
+      - pack-charms
       - unit-test
     strategy:
       fail-fast: false
