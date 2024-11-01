@@ -14,15 +14,16 @@ execute: |
 
 TESTS_ROOT = Path(__file__).parent.parent.absolute()
 SPREAD_ROOT = TESTS_ROOT / "spread"
-ITEST_TASKS_ROOT = SPREAD_ROOT / "integration_tests"
+GENERATED_TASK_SUFFIX = "_generated"
 
 
 def _render_task(path: Path, summary: None | str = None, kill_timeout: int = 90):
     SPREAD_ROOT.mkdir(exist_ok=True)
-    ITEST_TASKS_ROOT.mkdir(exist_ok=True)
 
     test_name = path.name.split(".")[0]
-    spread_task_path = ITEST_TASKS_ROOT / f"{test_name}.yaml"
+    task_root = SPREAD_ROOT / (test_name + GENERATED_TASK_SUFFIX)
+    task_root.mkdir(exist_ok=True)
+    spread_task_path = task_root / "task.yaml"
     test_raw = template.format(
         summary=summary or f"Run integration test: {test_name!r}.",
         test_path=path,
@@ -32,13 +33,15 @@ def _render_task(path: Path, summary: None | str = None, kill_timeout: int = 90)
     spread_task_path.write_text(test_raw)
 
 
-def _clean_existing_dirs():
-    if ITEST_TASKS_ROOT.exists():
-        rmtree(ITEST_TASKS_ROOT)
+def _cleanup_existing_generated_tasks():
+    for subdir in SPREAD_ROOT.glob("*" + GENERATED_TASK_SUFFIX):
+        if subdir.is_dir():
+            rmtree(subdir)
 
 
 def main():
-    _clean_existing_dirs()
+    """Cleanup any previously generated tasks and generate them again."""
+    _cleanup_existing_generated_tasks()
     itests_root = TESTS_ROOT / "integration"
     print(itests_root)
     for file in itests_root.glob("test_*.py"):
