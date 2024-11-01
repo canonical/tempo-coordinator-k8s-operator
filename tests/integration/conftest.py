@@ -17,14 +17,7 @@ import yaml
 from juju import Juju
 from pytest import fixture
 
-from tests.integration.helpers import get_relation_data
-
-APP_NAME = "tempo"
-TESTER_NAME = "tester"
-TESTER_GRPC_NAME = "tester-grpc"
-TRAEFIK = "traefik"
-SSC = "self-signed-certificates"
-SSC_APP_NAME = "ssc"
+from tests.integration.helpers import get_relation_data, APP_NAME, TRAEFIK, SSC_APP_NAME
 
 logger = logging.getLogger(__name__)
 

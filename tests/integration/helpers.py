@@ -14,8 +14,6 @@ from minio import Minio
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from tempo import Tempo
-from tests.integration.conftest import APP_NAME
-from tests.integration.juju import Juju
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
@@ -195,14 +193,14 @@ def get_relation_data(
     return RelationData(provider=provider_data, requirer=requirer_data)
 
 
-def deploy_literal_bundle(bundle: str):
+def deploy_literal_bundle(juju, bundle: str):
     run_args = [
         "deploy",
         "--trust",
         bundle,
     ]
 
-    retcode, stdout, stderr = Juju.cli(*run_args)
+    retcode, stdout, stderr = juju.cli(*run_args)
     assert retcode == 0, f"Deploy failed: {(stderr or stdout).strip()}"
     logger.info(stdout)
 
@@ -248,8 +246,8 @@ def present_facade(
         )
 
 
-def get_unit_address(app_name, unit_no):
-    status = Juju.status()
+def get_unit_address(juju, app_name, unit_no):
+    status = juju.status()
     app = status["applications"][app_name]
     if app is None:
         assert False, f"no app exists with name {app_name}"
@@ -259,14 +257,14 @@ def get_unit_address(app_name, unit_no):
     return unit["address"]
 
 
-def deploy_and_configure_minio():
+def deploy_and_configure_minio(juju):
     config = {
         "access-key": ACCESS_KEY,
         "secret-key": SECRET_KEY,
     }
-    Juju.deploy(MINIO, channel="edge", trust=True, config=config)
-    Juju.wait_for_idle(applications=[MINIO], timeout=2000)
-    minio_addr = get_unit_address(MINIO, "0")
+    juju.deploy(MINIO, channel="edge", trust=True, config=config)
+    juju.wait(stop=lambda status: status.all_active(MINIO), timeout=2000)
+    minio_addr = get_unit_address(juju, MINIO, "0")
 
     mc_client = Minio(
         f"{minio_addr}:9000",
@@ -281,15 +279,15 @@ def deploy_and_configure_minio():
         mc_client.make_bucket(BUCKET_NAME)
 
     # configure s3-integrator
-    Juju.config(
+    juju.config(
         S3_INTEGRATOR,
         {
-            "endpoint": f"minio-0.minio-endpoints.{Juju.model_name()}.svc.cluster.local:9000",
+            "endpoint": f"minio-0.minio-endpoints.{juju.model_name()}.svc.cluster.local:9000",
             "bucket": BUCKET_NAME,
         },
     )
 
-    action = Juju.run(S3_INTEGRATOR, "sync-s3-credentials", params=config)
+    action = juju.run(S3_INTEGRATOR, "sync-s3-credentials", params=config)
     action_result = action.wait()
     assert action_result.status == "completed"
 
@@ -305,6 +303,9 @@ def tempo_worker_charm_and_channel():
     return "tempo-worker-k8s", "edge"
 
 
+APP_NAME = "tempo"
+
+
 def deploy_cluster(juju, tempo_app=APP_NAME):
     tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
     juju.deploy(tempo_worker_charm_url, alias=WORKER_NAME, channel=channel, trust=True)
@@ -313,7 +314,7 @@ def deploy_cluster(juju, tempo_app=APP_NAME):
     juju.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
     juju.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")
 
-    deploy_and_configure_minio()
+    deploy_and_configure_minio(juju)
     juju.wait(
         stop=lambda status: status.all_active(tempo_app, WORKER_NAME, S3_INTEGRATOR),
         timeout=2000,
@@ -352,3 +353,10 @@ def emit_trace(
         "python3 tracegen.py"
     )
     return subprocess.getoutput(cmd)
+
+
+TESTER_NAME = "tester"
+TESTER_GRPC_NAME = "tester-grpc"
+TRAEFIK = "traefik"
+SSC = "self-signed-certificates"
+SSC_APP_NAME = "ssc"

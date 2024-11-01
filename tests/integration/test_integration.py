@@ -4,9 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from conftest import APP_NAME, TESTER_GRPC_NAME, TESTER_NAME
 from helpers import WORKER_NAME, deploy_cluster
-from tests.integration.helpers import get_traces_patiently
+from tests.integration.helpers import (
+    get_traces_patiently,
+    APP_NAME,
+    TESTER_NAME,
+    TESTER_GRPC_NAME,
+)
 
 logger = logging.getLogger(__name__)
 
