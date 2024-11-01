@@ -2,13 +2,13 @@ from pathlib import Path
 from shutil import rmtree
 
 template = """
-summary: {summary}
+summary: |
+  {summary}
 kill-timeout: {kill_timeout}m
 systems:
   - ubuntu-24.04
 
 execute: |
-  pushd "$SPREAD_PATH"
   make integration ARGS="{test_path}"
 """
 
