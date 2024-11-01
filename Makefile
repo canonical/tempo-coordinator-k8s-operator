@@ -18,7 +18,7 @@ lint:
 	uv tool run ruff format --check --diff $(ALL)
 
 fmt:
-	uv tool run ruff check --fix $(ALL)
+	uv tool run ruff check --fix-only $(ALL)
 	uv tool run ruff format $(ALL)
 
 unit:
