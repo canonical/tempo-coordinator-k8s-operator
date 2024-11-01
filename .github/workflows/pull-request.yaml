@@ -138,4 +138,4 @@ jobs:
 
       - name: Run integration tests
         run: |
-          charmcraft test -v "github-ci:ubuntu-24.04:tests/spread/${{ matrix.suite }}"
+          charmcraft test -v "github-ci:ubuntu-24.04:${{ matrix.suite }}"
