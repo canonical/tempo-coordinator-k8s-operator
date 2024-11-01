@@ -62,29 +62,18 @@ jobs:
       - name: Pack charm
         run: charmcraft pack -v
 
-      - name: Upload charm artifact
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
-        with:
-          name: charm
-          path: ./*.charm
-
       - name: Pack tester
         run: charmcraft pack -v -p ./tests/integration/tester/
-
-      - name: Upload charm artifact
-        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
-        with:
-          name: tester-charm
-          path: ./tests/integration/tester/*.charm
 
       - name: Pack tester-grpc
         run: charmcraft pack -v -p ./tests/integration/tester-grpc/
 
-      - name: Upload charm artifact
+      - name: Upload charm artifacts
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         with:
-          name: tester-grpc-charm
-          path: ./tests/integration/tester-grpc/*.charm
+          name: charms
+          if-no-files-found: error
+          path: ./*.charm
 
   define-matrix:
     name: Define spread matrix
@@ -125,20 +114,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
-      - name: Download charm artifact
+      - name: Download charm artifacts
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
-          name: charm
+          name: charms
 
-      - name: Download tester-charm artifact
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
-        with:
-          name: tester-charm
-
-      - name: Download tester-grpc-charm artifact
-        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
-        with:
-          name: tester-grpc-charm
       - name: Generate matrix list and tasks
         id: suites
         run: |
