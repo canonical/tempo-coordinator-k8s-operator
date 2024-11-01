@@ -13,23 +13,28 @@ execute: |
 """
 
 TESTS_ROOT = Path(__file__).parent.parent
+SPREAD_ROOT = TESTS_ROOT / "spread"
+ITEST_TASKS_ROOT = SPREAD_ROOT / "integration_tests"
 
 
-def _render_task(path: Path, summary: str = "some test", kill_timeout: int = 90):
-    spread_test_root = Path(__file__).parent / path.name.split(".")[0]
-    spread_test_root.mkdir()
-    spread_test_path = spread_test_root / "task.yaml"
+def _render_task(path: Path, summary: None | str = None, kill_timeout: int = 90):
+    SPREAD_ROOT.mkdir(exist_ok=True)
+    ITEST_TASKS_ROOT.mkdir(exist_ok=True)
+
+    test_name = path.name.split(".")[0]
+    spread_task_path = ITEST_TASKS_ROOT / f"{test_name}.yaml"
     test_raw = template.format(
-        summary=summary, test_path=path, kill_timeout=kill_timeout
+        summary=summary or f"Run integration test: {test_name!r}.",
+        test_path=path,
+        kill_timeout=kill_timeout,
     )
-    print(f"dropping {spread_test_path}")
-    spread_test_path.write_text(test_raw)
+    print(f"dropping {spread_task_path}")
+    spread_task_path.write_text(test_raw)
 
 
 def _clean_existing_dirs():
-    for path in (TESTS_ROOT / "spread").glob("*"):
-        if path.is_dir():
-            rmtree(path)
+    if ITEST_TASKS_ROOT.exists():
+        rmtree(ITEST_TASKS_ROOT)
 
 
 def main():
