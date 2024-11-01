@@ -139,6 +139,10 @@ jobs:
       #        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
       #        with:
       #          name: tester-grpc-charm
+      - name: Generate matrix list and tasks
+        id: suites
+        run: |
+          python3 ./tests/spread/generate_spread_tasks.py
 
       - name: Setup LXD
         uses: canonical/setup-lxd@main
