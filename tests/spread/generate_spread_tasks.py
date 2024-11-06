@@ -9,6 +9,7 @@ systems:
   - ubuntu-24.04
 
 execute: |
+  pushd "$SPREAD_PATH"
   make integration ARGS="{test_path}"
 """
 
