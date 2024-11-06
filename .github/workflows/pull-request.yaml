@@ -52,6 +52,10 @@ jobs:
   pack-charms:
     name: Build charm and testers
     runs-on: ubuntu-24.04
+    needs:
+      - lib-check
+      - lint
+      - unit-test
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -103,10 +107,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs:
       - define-matrix
-      - lib-check
-      - lint
       - pack-charms
-      - unit-test
     strategy:
       fail-fast: false
       matrix:
