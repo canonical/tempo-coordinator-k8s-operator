@@ -254,7 +254,11 @@ def get_unit_address(juju, app_name, unit_no):
     unit = app["units"].get(f"{app_name}/{unit_no}")
     if unit is None:
         assert False, f"no unit exists in app {app_name} with index {unit_no}"
-    return unit["address"]
+    try:
+        return unit["address"]
+    except:
+        logger.exception(json.dumps(unit, indent=2))
+        raise
 
 
 def deploy_and_configure_minio(juju):
@@ -263,7 +267,10 @@ def deploy_and_configure_minio(juju):
         "secret-key": SECRET_KEY,
     }
     juju.deploy(MINIO, channel="edge", trust=True, config=config)
-    juju.wait(stop=lambda status: status.all_active(MINIO), timeout=2000)
+    juju.wait(
+        stop=lambda status: status.all_active(MINIO), timeout=2000, refresh_rate=5
+    )
+
     minio_addr = get_unit_address(juju, MINIO, "0")
 
     mc_client = Minio(

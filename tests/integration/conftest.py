@@ -24,6 +24,12 @@ logger = logging.getLogger(__name__)
 
 def pytest_addoption(parser):
     parser.addoption(
+        "--keep-models",
+        action="store_true",
+        default=False,
+        help="Do not destroy the models on exit.",
+    )
+    parser.addoption(
         "--charm-path",
         help="Pre-built charm file to deploy, rather than building from source",
     )
@@ -45,12 +51,18 @@ def _generate_random_model_name():
 
 
 @fixture(scope="module", autouse=True)
-def juju():
+def juju(request):
     model_name = _generate_random_model_name()
     unbound_juju = Juju()
     unbound_juju.cli("add-model", model_name, "--no-switch")
-    yield Juju(model_name)
-    unbound_juju.cli("destroy-model", model_name, "--destroy-storage", "true")
+    juju = Juju(model_name)
+    try:
+        yield juju
+    finally:
+        if not request.config.getoption("--keep-models"):
+            juju.destroy_model(destroy_storage=True)
+        else:
+            logger.info("--keep-models: skipping model destroy")
 
 
 @fixture(scope="session", autouse=True)

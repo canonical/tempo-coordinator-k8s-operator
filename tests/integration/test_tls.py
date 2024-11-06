@@ -11,7 +11,6 @@ from helpers import (
     get_traces_patiently,
     protocols_endpoints,
 )
-from juju.application import Application
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = "tempo"
@@ -57,20 +56,18 @@ def get_tempo_traces_internal_endpoint(protocol, juju):
 
 @pytest.mark.setup
 def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
-    juju.deploy(
-        tempo_charm, resources=tempo_resources, application_name=APP_NAME, trust=True
-    )
-    juju.deploy(SSC, application_name=SSC_APP_NAME)
-    juju.deploy(TRAEFIK, application_name=TRAEFIK_APP_NAME, channel="edge", trust=True)
+    juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
+    juju.deploy(SSC, alias=SSC_APP_NAME)
+    juju.deploy(TRAEFIK, alias=TRAEFIK_APP_NAME, channel="edge", trust=True)
 
     juju.integrate(SSC_APP_NAME + ":certificates", TRAEFIK_APP_NAME + ":certificates")
     # deploy cluster
     deploy_cluster(juju)
 
     juju.wait(
-        apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
-        status="active",
-        raise_on_blocked=True,
+        stop=lambda status: status.all_active(
+            APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME
+        ),
         timeout=2000,
     )
 
@@ -129,12 +126,11 @@ def test_relate_ingress(juju):
 
 
 def test_force_enable_protocols(juju):
-    tempo_app: Application = juju.applications[APP_NAME]
     config = {}
     for protocol in list(protocols_endpoints.keys()):
         config[f"always_enable_{protocol}"] = "True"
 
-    tempo_app.set_config(config)
+    juju.config(APP_NAME, config)
     juju.wait(
         apps=[APP_NAME, WORKER_NAME],
         status="active",
