@@ -40,7 +40,8 @@ integration:
 		-x \
 		-s \
 		--tb native \
-		$(TESTS)/integration \
+		--ignore=$(TESTS)/interface \
+		--ignore=$(TESTS)/unit \
 		--log-cli-level=INFO \
 		$(ARGS)
 

@@ -13,7 +13,9 @@ execute: |
 """
 
 TESTS_ROOT = Path(__file__).parent.parent.absolute()
+# project-root/tests
 SPREAD_ROOT = TESTS_ROOT / "spread"
+# project-root/tests/spread
 GENERATED_TASK_SUFFIX = "_generated"
 
 

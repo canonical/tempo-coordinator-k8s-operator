@@ -78,7 +78,7 @@ def copy_charm_libs_into_tester_charm():
 
 
 @fixture(scope="session", autouse=True)
-def copy_charm_libs_into_tester_grpc_charm(ops_test):
+def copy_charm_libs_into_tester_grpc_charm():
     """Ensure the tester GRPC charm has the libraries it uses."""
     libraries = [
         "tempo_coordinator_k8s/v0/tracing.py",
