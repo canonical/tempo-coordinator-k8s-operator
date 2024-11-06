@@ -9,7 +9,7 @@ from textwrap import dedent
 
 import yaml
 
-from helpers import deploy_literal_bundle, run_command
+from helpers import deploy_literal_bundle
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def test_build_and_deploy(tempo_charm: Path, juju):
 def test_scrape_jobs(juju):
     # Check scrape jobs
     cmd = ["curl", "-sS", "http://localhost:9090/api/v1/targets"]
-    result = run_command(juju.model_name(), PROM, 0, command=cmd)
+    result = juju.cli(PROM, 0, *cmd)
     logger.info(result)
     result_json = json.loads(result.decode("utf-8"))
 
@@ -71,7 +71,7 @@ def test_scrape_jobs(juju):
 def test_rules(juju):
     # Check Rules
     cmd = ["curl", "-sS", "http://localhost:9090/api/v1/rules"]
-    result = run_command(juju.model_name(), PROM, 0, command=cmd)
+    result = juju.cli(PROM, 0, *cmd)
     logger.info(result)
     result_json = json.loads(result.decode("utf-8"))
     groups = result_json["data"]["groups"]

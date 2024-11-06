@@ -18,8 +18,7 @@ SSC = "self-signed-certificates"
 SSC_APP_NAME = "ssc"
 TRAEFIK = "traefik-k8s"
 TRAEFIK_APP_NAME = "trfk"
-TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
-
+TRACEGEN_SCRIPT_PATH = Path().absolute() / "scripts" / "tracegen.py"
 
 logger = logging.getLogger(__name__)
 
@@ -75,17 +74,16 @@ def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
 def test_relate_ssc(juju):
     juju.integrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
     juju.wait(
-        apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
-        status="active",
-        raise_on_blocked=True,
+        stop=lambda status: status.all_active(
+            APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME
+        ),
         timeout=1000,
     )
 
 
 def test_push_tracegen_script_and_deps(juju):
-    juju.cli("scp", TRACEGEN_SCRIPT_PATH, f"{APP_NAME}/0:tracegen.py")
-    juju.cli(
-        "ssh",
+    juju.scp(f"{APP_NAME}/0", TRACEGEN_SCRIPT_PATH)
+    juju.ssh(
         f"{APP_NAME}/0",
         "python3 -m pip install opentelemetry-exporter-otlp-proto-grpc opentelemetry-exporter-otlp-proto-http"
         + " opentelemetry-exporter-zipkin opentelemetry-exporter-jaeger",
@@ -119,8 +117,9 @@ def test_verify_traces_otlp_http_tls(nonce, juju):
 def test_relate_ingress(juju):
     juju.integrate(APP_NAME + ":ingress", TRAEFIK_APP_NAME + ":traefik-route")
     juju.wait(
-        apps=[APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME],
-        status="active",
+        stop=lambda status: status.all_active(
+            APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME
+        ),
         timeout=1000,
     )
 
@@ -132,8 +131,7 @@ def test_force_enable_protocols(juju):
 
     juju.config(APP_NAME, config)
     juju.wait(
-        apps=[APP_NAME, WORKER_NAME],
-        status="active",
+        stop=lambda status: status.all_active(APP_NAME, WORKER_NAME),
         timeout=1000,
     )
 
@@ -154,4 +152,4 @@ def test_verify_traces_force_enabled_protocols_tls(nonce, protocol, juju):
 @pytest.mark.teardown
 def test_remove_relation(juju):
     juju.disintegrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
-    juju.wait(apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=1000)
+    juju.wait(stop=lambda status: status.all_active(APP_NAME), timeout=1000)

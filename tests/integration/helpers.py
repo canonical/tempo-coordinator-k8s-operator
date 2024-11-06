@@ -205,19 +205,6 @@ def deploy_literal_bundle(juju, bundle: str):
     logger.info(stdout)
 
 
-def run_command(model_name: str, app_name: str, unit_num: int, command: list) -> bytes:
-    cmd = ["juju", "ssh", "--model", model_name, f"{app_name}/{unit_num}", *command]
-    try:
-        res = subprocess.run(
-            cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-        )
-        logger.info(res)
-    except subprocess.CalledProcessError as e:
-        logger.error(e.stdout.decode())
-        raise e
-    return res.stdout
-
-
 def present_facade(
     interface: str,
     app_data: Dict = None,
@@ -294,9 +281,8 @@ def deploy_and_configure_minio(juju):
         },
     )
 
-    action = juju.run(S3_INTEGRATOR, "sync-s3-credentials", params=config)
-    action_result = action.wait()
-    assert action_result.status == "completed"
+    action_result = juju.run(S3_INTEGRATOR, "sync-s3-credentials", params=config)
+    assert action_result["status"] == "completed"
 
 
 def tempo_worker_charm_and_channel():

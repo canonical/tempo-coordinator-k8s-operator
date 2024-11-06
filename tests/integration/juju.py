@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from datetime import timedelta
 from logging import getLogger
 from pathlib import Path
-from typing import Dict, Iterable, Callable, Optional
+from typing import Dict, Iterable, Callable, Optional, Union
 
 logger = getLogger("juju")
 
@@ -119,18 +119,7 @@ class Juju:
 
     def config(self, app, config: Dict[str, bool | str]):
         args = ["config", app]
-        for k, v in config:
-            if isinstance(v, bool):
-                args.append(f"{k}={str(v).lower()}")
-            else:
-                args.append(f"{k}={str(v)}")
-
-        result = self.cli(*args)
-        return json.loads(result.stdout)
-
-    def model_config(self, config: Dict[str, bool | str] = None):
-        args = ["model-config"]
-        for k, v in config:
+        for k, v in config.items():
             if isinstance(v, bool):
                 args.append(f"{k}={str(v).lower()}")
             else:
@@ -138,6 +127,20 @@ class Juju:
 
         result = self.cli(*args)
         if result.stdout:
+            # if used without args, returns the current config
+            return json.loads(result.stdout)
+
+    def model_config(self, config: Dict[str, bool | str] = None):
+        args = ["model-config"]
+        for k, v in config.items():
+            if isinstance(v, bool):
+                args.append(f"{k}={str(v).lower()}")
+            else:
+                args.append(f"{k}={str(v)}")
+
+        result = self.cli(*args)
+        if result.stdout:
+            # if used without args, returns the current config
             return json.loads(result.stdout)
 
     @contextmanager
@@ -195,15 +198,34 @@ class Juju:
         args = ["remove-relation", requirer, provider]
         return self.cli(*args)
 
-    def run(self, unit: str, action: str, params: Dict[str, str]):
-        args = ["run", "--format", "json", unit, action]
+    def scp(
+        self, unit: str, origin: Union[str, Path], destination: Union[str, Path] = None
+    ):
+        args = [
+            "scp",
+            "-m",
+            self.model,
+            str(origin),
+            f"{unit}:{destination or Path(origin).name}",
+        ]
+        return self.cli(*args)
 
-        for k, v in params:
+    def ssh(self, unit: str, cmd: str):
+        args = ["ssh", "-m", self.model, unit, cmd]
+        return self.cli(*args)
+
+    def run(self, app: str, action: str, params: Dict[str, str], unit_id: int = None):
+        target = app + f"/{unit_id}" if unit_id is not None else app + "/leader"
+        args = ["run", "--format", "json", target, action]
+
+        for k, v in params.items():
             args.append(f"{k}={v}")
 
         act = self.cli(*args)
         result = json.loads(act.stdout)
-        return result[unit]["results"]
+
+        # even if you juju run foo/leader, the output will be for its specific ID: {"foo/0":...}
+        return list(result.values())[0]
 
     def wait(
         self,
@@ -270,10 +292,15 @@ class Juju:
 
         proc = subprocess.run(
             args_,
-            check=True,
+            check=False,  # we want to expose the stderr on failure
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
             env={"NO_COLOR": "true"},
         )
+        if proc.returncode and proc.stderr:
+            logger.error(
+                f"command {' '.join(args_)!r} exited with errors:\n{proc.stderr}"
+            )
+        proc.check_returncode()
         return proc
