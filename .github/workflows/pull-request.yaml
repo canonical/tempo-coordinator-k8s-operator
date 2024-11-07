@@ -122,6 +122,11 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
           name: charms
+          path: ./
+          merge-multiple: true
+
+      - name: Display CWD contents
+        run: ls ./
 
       - name: Generate matrix list and tasks
         id: suites
