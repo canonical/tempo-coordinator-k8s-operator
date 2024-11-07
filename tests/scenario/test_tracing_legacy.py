@@ -1,13 +1,9 @@
+import json
 import socket
 from dataclasses import replace
 
 import pytest
 from charms.tempo_coordinator_k8s.v0.charm_tracing import charm_tracing_disabled
-from charms.tempo_coordinator_k8s.v0.tracing import (
-    ProtocolType,
-    Receiver,
-    TracingProviderAppData,
-)
 from scenario import Relation, State
 
 
@@ -30,16 +26,21 @@ def test_tracing_v2_endpoint_published(context, s3, all_worker, evt_name, base_s
             out = mgr.run()
 
     tracing_out = out.get_relations(tracing.endpoint)[0]
-    expected_data = TracingProviderAppData(
-        receivers=[
-            Receiver(
-                protocol=ProtocolType(name="otlp_http", type="http"),
-                url=f"http://{socket.getfqdn()}:4318",
-            ),
-            Receiver(
-                protocol=ProtocolType(name="jaeger_thrift_http", type="http"),
-                url=f"http://{socket.getfqdn()}:14268",
-            ),
-        ]
-    ).dump()
-    assert tracing_out.local_app_data == expected_data
+    expected_data = [
+        {
+            "protocol": {"name": "jaeger_thrift_http", "type": "http"},
+            "url": f"http://{socket.getfqdn()}:14268",
+        },
+        {
+            "protocol": {"name": "otlp_http", "type": "http"},
+            "url": f"http://{socket.getfqdn()}:4318",
+        },
+    ]
+
+    assert (
+        sorted(
+            json.loads(tracing_out.local_app_data["receivers"]),
+            key=lambda x: x["protocol"]["name"],
+        )
+        == expected_data
+    )

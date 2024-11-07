@@ -1,14 +1,10 @@
+import json
 from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
 import yaml
 from charms.tempo_coordinator_k8s.v0.charm_tracing import charm_tracing_disabled
-from charms.tempo_coordinator_k8s.v0.tracing import (
-    ProtocolType,
-    Receiver,
-    TracingProviderAppData,
-)
 from scenario import Relation, State
 
 
@@ -31,19 +27,23 @@ def test_external_url_present(context, base_state, s3, all_worker):
 
     # THEN external_url is present in tracing relation databag
     tracing_out = out.get_relations(tracing.endpoint)[0]
-    expected_data = TracingProviderAppData(
-        receivers=[
-            Receiver(
-                protocol=ProtocolType(name="otlp_http", type="http"),
-                url="http://1.2.3.4:4318",
-            ),
-            Receiver(
-                protocol=ProtocolType(name="jaeger_thrift_http", type="http"),
-                url="http://1.2.3.4:14268",
-            ),
-        ]
-    ).dump()
-    assert tracing_out.local_app_data == expected_data
+    expected_data = [
+        {
+            "protocol": {"name": "jaeger_thrift_http", "type": "http"},
+            "url": "http://1.2.3.4:14268",
+        },
+        {
+            "protocol": {"name": "otlp_http", "type": "http"},
+            "url": "http://1.2.3.4:4318",
+        },
+    ]
+    assert (
+        sorted(
+            json.loads(tracing_out.local_app_data["receivers"]),
+            key=lambda x: x["protocol"]["name"],
+        )
+        == expected_data
+    )
 
 
 @pytest.mark.parametrize(
