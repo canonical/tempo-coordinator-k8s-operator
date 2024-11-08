@@ -10,8 +10,8 @@ on:
       - main
 
 jobs:
-  lint:
-    name: Lint
+  lint-qa:
+    name: QA - fast
     # to use self-hosted runners, replace with:
     # [ "self-hosted", "linux", "X64", "large", "jammy" ]
     runs-on: ubuntu-24.04
@@ -22,40 +22,22 @@ jobs:
         run: sudo snap install --classic astral-uv
       - name: Run linters
         run: make lint
-
-  unit-test:
-    name: Unit tests
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-      - name: Install dependencies
-        run: sudo snap install --classic astral-uv
-      - name: Run tests
-        run: make unit
-
-  lib-check:
-    name: Check libraries
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-        with:
-          fetch-depth: 0
       - name: Check libs
         uses: canonical/charming-actions/check-libraries@934193396735701141a1decc3613818e412da606 # 2.6.3
         with:
           charmcraft-channel: latest/stable
           credentials: "${{ secrets.CHARMHUB_TOKEN }}"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Run tests
+        run: make unit
 
-  pack-charms:
+  prepare-itest-runs:
     name: Build charm and testers
     runs-on: ubuntu-24.04
     needs:
-      - lib-check
-      - lint
-      - unit-test
+      - lint-qa
+    outputs:
+      suites: ${{ steps.suites.outputs.suites }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -82,18 +64,6 @@ jobs:
           if-no-files-found: error
           path: ./*.charm
 
-  define-matrix:
-    name: Define spread matrix
-    runs-on: ubuntu-24.04
-    outputs:
-      suites: ${{ steps.suites.outputs.suites }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
-
-      - name: Install charmcraft
-        run: sudo snap install charmcraft --classic
-
       - name: Generate matrix list and tasks
         id: suites
         run: |
@@ -106,8 +76,7 @@ jobs:
     name: Spread (${{ matrix.suite }})
     runs-on: ubuntu-24.04
     needs:
-      - define-matrix
-      - pack-charms
+      - prepare-itest-runs
     strategy:
       fail-fast: false
       matrix:
