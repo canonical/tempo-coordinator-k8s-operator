@@ -25,7 +25,6 @@ jobs:
       - name: Check libs
         uses: canonical/charming-actions/check-libraries@934193396735701141a1decc3613818e412da606 # 2.6.3
         with:
-          charmcraft-channel: latest/stable
           credentials: "${{ secrets.CHARMHUB_TOKEN }}"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
       - name: Run tests
