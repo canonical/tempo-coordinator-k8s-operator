@@ -80,7 +80,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: ${{ fromJSON(needs.define-matrix.outputs.suites) }}
+        suite: ${{ fromJSON(needs.prepare-itest-runs.outputs.suites) }}
     # Allow Juju 3.6 jobs to fail, given that it's in beta
     continue-on-error: ${{ contains(matrix.suite, 'juju_3_6') }}
     steps:
