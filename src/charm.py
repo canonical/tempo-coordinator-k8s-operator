@@ -214,6 +214,8 @@ class TempoCoordinatorCharm(CharmBase):
         enabled_receivers = set()
         # otlp_http is needed by charm_tracing
         enabled_receivers.add("otlp_http")
+        # jaeger_thrift_http is needed by Tempo's internal workload traces
+        enabled_receivers.add("jaeger_thrift_http")
         enabled_receivers.update(
             [
                 receiver

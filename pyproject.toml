@@ -34,7 +34,10 @@ dev = [
     "catan",
     "ops[testing]>=2.17",
     "pytest-interface-tester",
-    "minio"
+    "minio",
+    # opentelemetry-exporter-jaeger complains about old generated protos in integration tests
+    "protobuf==3.20.*"
+
 ]
 
 
