@@ -3,6 +3,7 @@
 """Nginx workload."""
 
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, cast
 
 import crossplane
@@ -163,7 +164,10 @@ class NginxConfig:
         ]
         return nginx_locations
 
-    def _resolver(self, custom_resolver: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
+    def _resolver(
+        self,
+        custom_resolver: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
         if custom_resolver:
             return [{"directive": "resolver", "args": [custom_resolver]}]
         return [{"directive": "resolver", "args": ["kube-dns.kube-system.svc.cluster.local."]}]
@@ -261,6 +265,7 @@ class NginxConfig:
                     "args": ["X-Scope-OrgID", "$ensured_x_scope_orgid"],
                 },
                 {"directive": "server_name", "args": [self.server_name]},
+                *self._resolver(custom_resolver=_get_dns_ip_address()),
                 *self._locations(upstream, grpc, tls),
             ],
         }
@@ -276,3 +281,12 @@ class NginxConfig:
         ):
             return True
         return False
+
+
+def _get_dns_ip_address():
+    """Obtain DNS ip address from /etc/resolv.conf"""
+    resolv = Path("/etc/resolv.conf").read_text()
+    for line in resolv.splitlines():
+        if line.startswith("nameserver"):
+            # assume there's only one
+            return line.split()[1].strip()
