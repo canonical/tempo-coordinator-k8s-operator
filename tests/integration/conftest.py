@@ -15,9 +15,9 @@ from subprocess import check_output
 
 import pytest
 import yaml
-from juju import Juju
 from pytest import fixture
 
+from juju import Juju
 from tests.integration.helpers import get_relation_data, APP_NAME, TRAEFIK, SSC_APP_NAME
 
 logger = logging.getLogger(__name__)
@@ -112,14 +112,12 @@ def copy_charm_libs_into_tester_grpc_charm():
     check_output(shlex.split("rm -rf ./tests/integration/tester-grpc/lib"))
 
 
-def get_charm(
+def _get_packed_charm(
     request,
     name: str,
-    charm_root_path: str = None,
-    packed_charm_filename: str = None,
+    charm_path: str,
     request_option_flag: str = None,
 ):
-    logger.info(f"getting charm {name!r}...")
     logger.info("checking if it was passed as a pytest option...")
     # check if user passed it as a config option to pytest
     option = request_option_flag or f"--{name}-charm-path"
@@ -127,16 +125,20 @@ def get_charm(
         logger.info(
             f"success: path to charm {name!r} was passed as pytest option {option}."
         )
-        return Path(charm_file).absolute()
+        return charm_file
 
     # check if packed file exists in charm_root_path folder
-    charm_path = packed_charm_filename or f"{name}_ubuntu-22.04-amd64.charm"
     logger.info(f"checking if a local file {charm_path!r} already exists...")
-    if (fpath := PROJECT_ROOT / (charm_path)).exists():
+    if (fpath := PROJECT_ROOT / charm_path).exists():
         logger.info(f"success: local charm {name!r} was found at {fpath}.")
-        return fpath.absolute()
+        return fpath.name
 
-    # last resort: pack it
+
+def _pack_charm(
+    name: str,
+    charm_path: str,
+    charm_root_path: str = None,
+):
     charm_root = charm_root_path or f"./tests/integration/{name}/"
     logger.info(f"local charm {name!r} not found. Packing project {charm_root!r} ...")
     proc = subprocess.run(
@@ -156,7 +158,7 @@ def get_charm(
     try:
         # TODO: check that this is indeed the right format, can't test
         #  because of https://github.com/canonical/charmcraft/issues/1985
-        out = list(json.loads(proc.stdout).keys())[0]
+        return list(json.loads(proc.stdout).keys())[0]
     except JSONDecodeError:
         hack = charm_path
         logger.error(
@@ -164,8 +166,31 @@ def get_charm(
             f"cfr. https://github.com/canonical/charmcraft/issues/1985 "
             f"This hardcoded value will be used instead: {hack!r}"
         )
-        out = hack
-    return Path(out).absolute()
+        return hack
+
+
+def get_charm(
+    request,
+    name: str,
+    charm_root_path: str = None,
+    packed_charm_filename: str = None,
+    request_option_flag: str = None,
+) -> str:
+    """Obtain a charm, either from a local filename or by running charmcraft."""
+    logger.info(f"getting charm {name!r}...")
+    charm_path = packed_charm_filename or f"{name}_ubuntu-22.04-amd64.charm"
+
+    if cached_charm := _get_packed_charm(
+        request,
+        name,
+        charm_path,
+        request_option_flag,
+    ):
+        return f"./{cached_charm}"
+
+    # last resort: pack it
+    packed_charm = _pack_charm(name, charm_path, charm_root_path)
+    return f"./{packed_charm}"
 
 
 @fixture(scope="session")
