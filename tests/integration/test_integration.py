@@ -29,9 +29,6 @@ def test_deploy_testers(
     # When deploying it together with testers
     # Then applications should eventually be created
 
-    tester_charm = "./tests/integration/tester/"
-    tester_grpc_charm = "./tests/integration/tester-grpc/"
-
     juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
 
     juju.deploy(
@@ -51,7 +48,8 @@ def test_deploy_testers(
 
     # for both testers, depending on the result of race with tempo it's either waiting or active
     juju.wait(
-        stop=lambda status: status.all_active(TESTER_NAME, TESTER_GRPC_NAME),
+        stop=lambda status: status.all_active(TESTER_NAME, TESTER_GRPC_NAME)
+        or status.all_waiting(TESTER_NAME, TESTER_GRPC_NAME),
         timeout=2000,
     )
 
@@ -76,9 +74,9 @@ def test_verify_traces_http(juju):
     # when traces endpoint is queried
     # then it should contain traces from the tester charm
     status = juju.status()
-    app = status["applications"][APP_NAME]
+    app_ip_address = status["applications"][APP_NAME]["address"]
     traces = get_traces_patiently(
-        tempo_host=app.public_address, service_name="TempoTesterCharm", tls=False
+        tempo_host=app_ip_address, service_name="TempoTesterCharm", tls=False
     )
     assert (
         traces
@@ -92,9 +90,9 @@ def test_verify_buffered_charm_traces_http(juju):
     # when traces endpoint is queried
     # then it should contain all traces from the tester charm since the setup phase, thanks to the buffer
     status = juju.status()
-    app = status["applications"][APP_NAME]
+    app_ip_address = status["applications"][APP_NAME]["address"]
     traces = get_traces_patiently(
-        tempo_host=app.public_address, service_name="TempoTesterCharm", tls=False
+        tempo_host=app_ip_address, service_name="TempoTesterCharm", tls=False
     )
 
     # charm-tracing trace names are in the format:
@@ -114,10 +112,10 @@ def test_verify_traces_grpc(juju):
     # the tester-grpc charm emits a single grpc trace in its common exit hook
     # we verify it's there
     status = juju.status()
-    app = status["applications"][APP_NAME]
-    logger.info(app.public_address)
+    app_ip_address = status["applications"][APP_NAME]["address"]
+    logger.info(app_ip_address)
     traces = get_traces_patiently(
-        tempo_host=app.public_address, service_name="TempoTesterGrpcCharm", tls=False
+        tempo_host=app_ip_address, service_name="TempoTesterGrpcCharm", tls=False
     )
     assert traces, f"There's no trace of generated grpc traces in tempo. {json.dumps(traces, indent=2)}"
 

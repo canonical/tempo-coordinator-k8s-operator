@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from datetime import timedelta
 from logging import getLogger
 from pathlib import Path
+from subprocess import CalledProcessError
 from typing import Dict, Iterable, Callable, Optional, Union
 
 logger = getLogger("juju")
@@ -85,6 +86,10 @@ class Status(dict):
         """Return True if all units of these apps (or all apps) are in active status."""
         return self._check_workload_status_all(apps, "active", True)
 
+    def all_waiting(self, *apps):
+        """Return True if all units of these apps (or all apps) are in active status."""
+        return self._check_workload_status_all(apps, "waiting", True)
+
     def all_blocked(self, *apps):
         """Return True if all units of these apps (or all apps) are in blocked status."""
         return self._check_workload_status_all(apps, "blocked", True)
@@ -106,13 +111,15 @@ class Status(dict):
 
 
 class Juju:
+    """Juju CLI wrapper for in-model operations."""
+
     def __init__(self, model: str = None):
         self.model = model
 
     def model_name(self):
         return self.model or self.status()["model"]["name"]
 
-    def status(self):
+    def status(self) -> dict:
         args = ["status", "--format", "json"]
         result = self.cli(*args)
         return Status(json.loads(result.stdout))
@@ -283,24 +290,28 @@ class Juju:
             args.append("--destroy-storage")
         return self.cli(*args, add_model_flag=False)
 
-    def cli(self, *args, add_model_flag: bool = True):
+    def cli(self, *args, add_model_flag: bool = True, quiet: bool = False):
         if add_model_flag and "-m" not in args and self.model:
             args = [*args, "-m", self.model]
 
         args_ = list(map(str, ["/snap/bin/juju", *args]))
-        logger.info(f"executing {' '.join(args_)!r}")
+        if not quiet:
+            logger.info(f"executing {' '.join(args_)!r}")
 
-        proc = subprocess.run(
-            args_,
-            check=False,  # we want to expose the stderr on failure
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env={"NO_COLOR": "true"},
-        )
-        if proc.returncode and proc.stderr:
-            logger.error(
-                f"command {' '.join(args_)!r} exited with errors:\n{proc.stderr}"
+        try:
+            proc = subprocess.run(
+                args_,
+                check=False,  # we want to expose the stderr on failure
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env={"NO_COLOR": "true"},
             )
+        except CalledProcessError:
+            logger.error(f"command {' '.join(args_)!r} errored out")
+            raise
+
+        if proc.stderr:
+            logger.error(f"command {' '.join(args_)!r} stderr:\n{proc.stderr}")
         proc.check_returncode()
         return proc

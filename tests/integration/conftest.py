@@ -9,6 +9,7 @@ import shutil
 import string
 import subprocess
 import tempfile
+from json import JSONDecodeError
 from pathlib import Path
 from subprocess import check_output
 
@@ -20,6 +21,7 @@ from pytest import fixture
 from tests.integration.helpers import get_relation_data, APP_NAME, TRAEFIK, SSC_APP_NAME
 
 logger = logging.getLogger(__name__)
+PROJECT_ROOT = Path(__file__).parent.parent.parent.absolute()
 
 
 def pytest_addoption(parser):
@@ -30,7 +32,7 @@ def pytest_addoption(parser):
         help="Do not destroy the models on exit.",
     )
     parser.addoption(
-        "--charm-path",
+        "--tempo-coordinator-k8s-charm-path",
         help="Pre-built charm file to deploy, rather than building from source",
     )
     parser.addoption(
@@ -110,49 +112,78 @@ def copy_charm_libs_into_tester_grpc_charm():
     check_output(shlex.split("rm -rf ./tests/integration/tester-grpc/lib"))
 
 
-@fixture(scope="session")
-def tempo_charm(request):
-    """Tempo charm used for integration testing."""
-    if charm_file := request.config.getoption("--charm-path"):
-        return charm_file
+def get_charm(
+    request,
+    name: str,
+    charm_root_path: str = None,
+    packed_charm_filename: str = None,
+    request_option_flag: str = None,
+):
+    logger.info(f"getting charm {name!r}...")
+    logger.info("checking if it was passed as a pytest option...")
+    # check if user passed it as a config option to pytest
+    option = request_option_flag or f"--{name}-charm-path"
+    if charm_file := request.config.getoption(option):
+        logger.info(
+            f"success: path to charm {name!r} was passed as pytest option {option}."
+        )
+        return Path(charm_file).absolute()
 
-    subprocess.run(
-        ["/snap/bin/charmcraft", "pack", "--verbose"],
+    # check if packed file exists in charm_root_path folder
+    charm_path = packed_charm_filename or f"{name}_ubuntu-22.04-amd64.charm"
+    logger.info(f"checking if a local file {charm_path!r} already exists...")
+    if (fpath := PROJECT_ROOT / (charm_path)).exists():
+        logger.info(f"success: local charm {name!r} was found at {fpath}.")
+        return fpath.absolute()
+
+    # last resort: pack it
+    charm_root = charm_root_path or f"./tests/integration/{name}/"
+    logger.info(f"local charm {name!r} not found. Packing project {charm_root!r} ...")
+    proc = subprocess.run(
+        [
+            "/snap/bin/charmcraft",
+            "pack",
+            "--verbose",
+            "-p",
+            charm_root,
+            "--format",
+            "json",
+        ],
         check=True,
         capture_output=True,
         text=True,
     )
-    return next(Path.glob(Path("."), "*.charm")).absolute()
+    try:
+        # TODO: check that this is indeed the right format, can't test
+        #  because of https://github.com/canonical/charmcraft/issues/1985
+        out = list(json.loads(proc.stdout).keys())[0]
+    except JSONDecodeError:
+        hack = charm_path
+        logger.error(
+            f"`charmcraft pack` has produced useless output; "
+            f"cfr. https://github.com/canonical/charmcraft/issues/1985 "
+            f"This hardcoded value will be used instead: {hack!r}"
+        )
+        out = hack
+    return Path(out).absolute()
+
+
+@fixture(scope="session")
+def tempo_charm(request):
+    """Tempo charm used for integration testing."""
+    return get_charm(request, "tempo-coordinator-k8s", charm_root_path="./")
 
 
 @fixture(scope="session")
 def tester_charm(request):
     """Tempo charm used for integration testing."""
-    if charm_file := request.config.getoption("--tester-path"):
-        return charm_file
-    path = "./tests/integration/tester/"
-    subprocess.run(
-        ["/snap/bin/charmcraft", "pack", "--verbose", "-p", path],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return next(Path.glob(Path(path), "*.charm")).absolute()
+    return get_charm(request, "tester")
 
 
 @fixture(scope="session")
 def tester_grpc_charm(request):
     """Tempo charm used for integration testing."""
-    if charm_file := request.config.getoption("--tester-grpc-path"):
-        return charm_file
-    path = "./tests/integration/tester-grpc/"
-    subprocess.run(
-        ["/snap/bin/charmcraft", "pack", "--verbose", "-p", path],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    return next(Path.glob(Path(path), "*.charm")).absolute()
+    return get_charm(request, "tester-grpc")
 
 
 @pytest.fixture(scope="session")
