@@ -236,6 +236,7 @@ class Juju:
         stop: Optional[Callable[[Status], bool]] = None,
         fail: Optional[Callable[[Status], bool]] = None,
         refresh_rate: float = 1.0,
+        print_status_every: Optional[int] = 60,
     ):
         """Wait for the stop condition to be met.
 
@@ -251,12 +252,22 @@ class Juju:
         start = time.time()
         soak_time = _parse_time(soak)
         pass_counter = 0
+        last_status_printed_time = (
+            0  # number of seconds since the epoch, that is, very long ago
+        )
 
         logger.info(f"Waiting for conditions; stop={stop}, fail={fail}")
 
         while time.time() - start < timeout:
             try:
                 status = self.status()
+                if print_status_every is not None and (
+                    (time.time() - last_status_printed_time) <= print_status_every
+                ):
+                    last_status_printed_time = time.time()
+                    print("current juju status:")
+                    print(self.cli("status", "--relations"))
+
                 if stop:
                     if stop(status):
                         pass_counter += 1
