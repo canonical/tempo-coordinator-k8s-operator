@@ -42,6 +42,7 @@ class TempoCoordinator(Coordinator):
 
     @property
     def _charm_tracing_receivers_urls(self) -> Dict[str, str]:
+        """Override with Tempo's enabled and requested receivers."""
         # if Tempo is related to another Tempo instance, use the endpoints of that instance instead
         if self.charm_tracing.is_ready():
             return super()._charm_tracing_receivers_urls
@@ -49,6 +50,7 @@ class TempoCoordinator(Coordinator):
 
     @property
     def _workload_tracing_receivers_urls(self) -> Dict[str, str]:
+        """Override with Tempo's enabled and requested receivers."""
         # if Tempo is related to another Tempo instance, use the endpoints of that instance instead
         if self.workload_tracing.is_ready():
             return super()._workload_tracing_receivers_urls
