@@ -5,11 +5,9 @@
 import json
 import logging
 from pathlib import Path
-from textwrap import dedent
 
 import yaml
 
-from helpers import deploy_literal_bundle
 from tests.integration.juju import WorkloadStatus
 
 logger = logging.getLogger(__name__)
@@ -20,35 +18,14 @@ PROM = "prom"
 apps = [TEMPO, PROM]
 
 
-def test_build_and_deploy(tempo_charm: Path, juju):
+def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
     """Build the charm-under-test and deploy it together with related charms."""
 
-    test_bundle = dedent(
-        f"""
-        ---
-        bundle: kubernetes
-        name: test-charm
-        applications:
-          {TEMPO}:
-            charm: {tempo_charm}
-            trust: true
-            scale: 1
-            resources:
-              nginx-image: {METADATA["resources"]["nginx-image"]["upstream-source"]}
-              nginx-prometheus-exporter-image: {METADATA["resources"]["nginx-prometheus-exporter-image"]["upstream-source"]}
-          {PROM}:
-            charm: prometheus-k8s
-            channel: edge
-            scale: 1
-            trust: true
-        relations:
-        - - {PROM}:metrics-endpoint
-          - {TEMPO}:metrics-endpoint
-        """
-    )
+    # Deploy the charms and wait for active/idle status
+    juju.deploy(tempo_charm, resources=tempo_resources, alias=TEMPO, trust=True)
+    juju.deploy("prometheus-k8s", channel="edge", alias=PROM, trust=True)
+    juju.integrate(TEMPO + ":metrics-endpoint", PROM + ":metrics-endpoint")
 
-    # Deploy the charm and wait for active/idle status
-    deploy_literal_bundle(juju, test_bundle)  # See appendix below
     juju.wait(
         stop=lambda status: status.all((PROM, TEMPO), WorkloadStatus.active),
         fail=lambda status: status.any((TEMPO,), WorkloadStatus.error),

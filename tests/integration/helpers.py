@@ -1,12 +1,10 @@
 import json
 import logging
 import os
-import shlex
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Literal
+from typing import Dict
 
 import requests
 import yaml
@@ -192,46 +190,6 @@ def get_relation_data(
         requirer_endpoint, provider_endpoint, include_default_juju_keys, model
     )
     return RelationData(provider=provider_data, requirer=requirer_data)
-
-
-def deploy_literal_bundle(juju, bundle: str):
-    run_args = [
-        "deploy",
-        "--trust",
-        bundle,
-    ]
-
-    retcode, stdout, stderr = juju.cli(*run_args)
-    assert retcode == 0, f"Deploy failed: {(stderr or stdout).strip()}"
-    logger.info(stdout)
-
-
-def present_facade(
-    interface: str,
-    app_data: Dict = None,
-    unit_data: Dict = None,
-    role: Literal["provide", "require"] = "provide",
-    model: str = None,
-    app: str = "facade",
-):
-    """Set up the facade charm to present this data over the interface ``interface``."""
-    data = {
-        "endpoint": f"{role}-{interface}",
-    }
-    if app_data:
-        data["app_data"] = json.dumps(app_data)
-    if unit_data:
-        data["unit_data"] = json.dumps(unit_data)
-
-    with tempfile.NamedTemporaryFile(dir=os.getcwd()) as f:
-        fpath = Path(f.name)
-        fpath.write_text(yaml.safe_dump(data))
-
-        _model = f" --model {model}" if model else ""
-
-        subprocess.run(
-            shlex.split(f"juju run {app}/0{_model} update --params {fpath.absolute()}")
-        )
 
 
 def get_unit_address(juju, app_name, unit_no):
