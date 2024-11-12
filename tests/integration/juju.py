@@ -36,7 +36,7 @@ class WaitFailed(Exception):
     """Raised when the ``Juju.wait()`` fail condition triggers."""
 
 
-class WorkloadStatus(Enum, str):
+class WorkloadStatus(str, Enum):
     """Juju unit/app workload status."""
 
     active = "active"
