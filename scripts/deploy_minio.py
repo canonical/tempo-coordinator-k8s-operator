@@ -63,8 +63,7 @@ def deploy(s3_app_name: str,
 
     print("deploying minio and s3 integrator...")
 
-    _run(
-        f"juju deploy minio --channel edge --trust --config access-key={user} --config secret-key={password} {minio_app_name}")
+    _run(f"juju deploy minio --channel edge --trust --config access-key={user} --config secret-key={password} {minio_app_name}")
     _run(f"juju deploy s3-integrator --channel edge --trust {s3_app_name}")
 
     print(f"waiting for minio ({minio_app_name}) to become active...", end='')

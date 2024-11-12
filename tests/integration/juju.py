@@ -262,7 +262,7 @@ class Juju:
             try:
                 status = self.status()
                 if print_status_every is not None and (
-                    (time.time() - last_status_printed_time) <= print_status_every
+                    (last_status_printed_time - time.time()) <= print_status_every
                 ):
                     last_status_printed_time = time.time()
                     print("current juju status:")
