@@ -10,6 +10,7 @@ from textwrap import dedent
 import yaml
 
 from helpers import deploy_literal_bundle
+from tests.integration.juju import WorkloadStatus
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +50,8 @@ def test_build_and_deploy(tempo_charm: Path, juju):
     # Deploy the charm and wait for active/idle status
     deploy_literal_bundle(juju, test_bundle)  # See appendix below
     juju.wait(
-        stop=lambda status: status.all_active(PROM, TEMPO),
-        fail=lambda status: status.workload_status(f"{TEMPO}/0") == "error",
+        stop=lambda status: status.all((PROM, TEMPO), WorkloadStatus.active),
+        fail=lambda status: status.any((TEMPO,), WorkloadStatus.error),
         timeout=600,
     )
 

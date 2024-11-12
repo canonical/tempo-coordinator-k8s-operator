@@ -14,6 +14,7 @@ from minio import Minio
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from tempo import Tempo
+from tests.integration.juju import WorkloadStatus
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
@@ -255,7 +256,9 @@ def deploy_and_configure_minio(juju):
     }
     juju.deploy(MINIO, channel="edge", trust=True, config=config)
     juju.wait(
-        stop=lambda status: status.all_active(MINIO), timeout=2000, refresh_rate=5
+        stop=lambda status: status.all((MINIO,), WorkloadStatus.active),
+        timeout=2000,
+        refresh_rate=5,
     )
 
     minio_addr = get_unit_address(juju, MINIO, "0")
@@ -309,7 +312,9 @@ def deploy_cluster(juju, tempo_app=APP_NAME):
 
     deploy_and_configure_minio(juju)
     juju.wait(
-        stop=lambda status: status.all_active(tempo_app, WORKER_NAME, S3_INTEGRATOR),
+        stop=lambda status: status.all(
+            (tempo_app, WORKER_NAME, S3_INTEGRATOR), WorkloadStatus.active
+        ),
         timeout=2000,
     )
 

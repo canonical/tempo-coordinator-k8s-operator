@@ -11,6 +11,7 @@ from helpers import (
     deploy_cluster,
     get_traces_patiently,
 )
+from tests.integration.juju import WorkloadStatus
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +35,8 @@ def test_build_and_deploy(tempo_charm: Path, tempo_resources, juju):
     deploy_cluster(juju, APP_NAME)
 
     juju.wait(
-        stop=lambda status: status.all_active(APP_NAME, WORKER_NAME)
-        and status.all_blocked(APP_REMOTE_NAME),
+        stop=lambda status: status.all((APP_NAME, WORKER_NAME), WorkloadStatus.active)
+        and status.all(APP_REMOTE_NAME, WorkloadStatus.blocked),
         timeout=1000,
     )
 
@@ -54,7 +55,8 @@ def test_verify_trace_http_self(juju):
 def test_relate_remote_instance(juju):
     juju.integrate(APP_NAME + ":tracing", APP_REMOTE_NAME + ":self-tracing")
     juju.wait(
-        stop=lambda status: status.all_active(APP_NAME, WORKER_NAME), timeout=1000
+        stop=lambda status: status.all((APP_NAME, WORKER_NAME), WorkloadStatus.active),
+        timeout=1000,
     )
 
 

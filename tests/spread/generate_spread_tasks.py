@@ -9,7 +9,13 @@ systems:
   - ubuntu-24.04
 
 execute: |
+  # set CWD to charm root
   pushd "$SPREAD_PATH"
+
+  # change ownership of all charms
+  chown $(id -u):$(id -g) $PWD/*.charm
+
+  # run integration tests
   make integration ARGS="{test_path}"
 """
 

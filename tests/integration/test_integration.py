@@ -11,6 +11,7 @@ from tests.integration.helpers import (
     TESTER_NAME,
     TESTER_GRPC_NAME,
 )
+from tests.integration.juju import WorkloadStatus
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,10 @@ def test_deploy_testers(
 
     # for both testers, depending on the result of race with tempo it's either waiting or active
     juju.wait(
-        stop=lambda status: status.all_active(TESTER_NAME, TESTER_GRPC_NAME)
-        or status.all_waiting(TESTER_NAME, TESTER_GRPC_NAME),
+        stop=lambda status: status.all(
+            (TESTER_NAME, TESTER_GRPC_NAME), WorkloadStatus.active
+        )
+        or status.all((TESTER_NAME, TESTER_GRPC_NAME), WorkloadStatus.waiting),
         timeout=2000,
     )
 
@@ -62,8 +65,9 @@ def test_relate(juju):
     juju.integrate(APP_NAME + ":tracing", TESTER_NAME + ":tracing")
     juju.integrate(APP_NAME + ":tracing", TESTER_GRPC_NAME + ":tracing")
     juju.wait(
-        stop=lambda status: status.all_active(
-            APP_NAME, WORKER_NAME, TESTER_NAME, TESTER_GRPC_NAME
+        stop=lambda status: status.all(
+            (APP_NAME, WORKER_NAME, TESTER_NAME, TESTER_GRPC_NAME),
+            WorkloadStatus.active,
         ),
         timeout=1000,
     )
@@ -129,6 +133,8 @@ def test_remove_relation(juju):
     juju.disintegrate(APP_NAME + ":tracing", TESTER_GRPC_NAME + ":tracing")
 
     juju.wait(
-        stop=lambda status: status.all_active(APP_NAME, TESTER_NAME, TESTER_GRPC_NAME),
+        stop=lambda status: status.all(
+            (APP_NAME, TESTER_NAME, TESTER_GRPC_NAME), WorkloadStatus.active
+        ),
         timeout=1000,
     )

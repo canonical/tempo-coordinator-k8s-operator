@@ -9,10 +9,11 @@ import subprocess
 import time
 from contextlib import contextmanager
 from datetime import timedelta
+from enum import Enum
 from logging import getLogger
 from pathlib import Path
 from subprocess import CalledProcessError
-from typing import Dict, Iterable, Callable, Optional, Union
+from typing import Dict, Iterable, Callable, Optional, Union, Tuple
 
 logger = getLogger("juju")
 
@@ -35,6 +36,16 @@ class WaitFailed(Exception):
     """Raised when the ``Juju.wait()`` fail condition triggers."""
 
 
+class WorkloadStatus(Enum, str):
+    """Juju unit/app workload status."""
+
+    active = "active"
+    waiting = "waiting"
+    maintenance = "maintenance"
+    blocked = "blocked"
+    error = "error"
+
+
 class Status(dict):
     def juju_status(self, application: str):
         """Mapping from unit name to active/idle, unknown/executing..."""
@@ -46,65 +57,49 @@ class Status(dict):
         units = self["applications"][application]["units"]
         return {u: units[u]["workload-status"]["current"] for u in units}
 
+    def _sanitize_apps_input(self, apps: Iterable[str]) -> Tuple[str, ...]:
+        if not apps:
+            return tuple(self["applications"])
+        if isinstance(apps, str):
+            # str is Iterable[str]...
+            return (apps,)
+        return tuple(apps)
+
     def _check_workload_status_all(
         self,
         apps: Iterable[str],
         status: str,
-        predicate_return: bool,
     ):
-        if not apps:
-            apps = self["applications"]
-
-        for app in apps:
+        for app in self._sanitize_apps_input(apps):
             wss = self.workload_status(app)
             if not wss:  # avoid vacuous quantification
-                return not predicate_return
+                return False
 
             if not all(us == status for us in wss.values()):
-                return not predicate_return
-        return predicate_return
+                return False
+        return True
 
     def _check_workload_status_any(
         self,
         apps: Iterable[str],
         status: str,
-        predicate_return: bool,
     ):
-        if not apps:
-            apps = self["applications"]
-
-        for app in apps:
+        for app in self._sanitize_apps_input(apps):
             wss = self.workload_status(app)
             if not wss:  # avoid vacuous quantification
-                return not predicate_return
+                return True
 
             if any(us == status for us in wss.values()):
-                return not predicate_return
-        return predicate_return
+                return True
+        return False
 
-    def all_active(self, *apps):
-        """Return True if all units of these apps (or all apps) are in active status."""
-        return self._check_workload_status_all(apps, "active", True)
+    def all(self, apps: Iterable[str], status: WorkloadStatus):
+        """Return True if all units of these apps (or all apps) are in this status."""
+        return self._check_workload_status_all(apps, status)
 
-    def all_waiting(self, *apps):
-        """Return True if all units of these apps (or all apps) are in active status."""
-        return self._check_workload_status_all(apps, "waiting", True)
-
-    def all_blocked(self, *apps):
-        """Return True if all units of these apps (or all apps) are in blocked status."""
-        return self._check_workload_status_all(apps, "blocked", True)
-
-    def any_error(self, *apps):
-        """Return True if any unit of these apps (or all apps) are in error status."""
-        return self._check_workload_status_any(apps, "error", False)
-
-    def any_blocked(self, *apps):
-        """Return True if any unit of these apps (or all apps) are in blocked status."""
-        return self._check_workload_status_any(apps, "blocked", False)
-
-    def any_waiting(self, *apps):
-        """Return True if any unit of these apps (or all apps) are in waiting status."""
-        return self._check_workload_status_any(apps, "waiting", False)
+    def any(self, apps: Iterable[str], status: WorkloadStatus):
+        """Return True if any unit of these apps (or all apps) are in this status."""
+        return self._check_workload_status_any(apps, status)
 
     def get_application_ip(self, app_name: str):
         return self["applications"][app_name]["public-address"]
@@ -246,8 +241,8 @@ class Juju:
 
         Examples:
         >>> Juju("mymodel").wait(
-        ...   stop=lambda s:s.all_active("foo"),
-        ...   fail=lambda s:s.any_blocked("foo"),
+        ...   stop=lambda s:s.all("foo", WorkloadStatus.active),
+        ...   fail=lambda s:s.any("foo", WorkloadStatus.blocked),
         ...   timeout=2000)
 
         This will block until all "foo" units go to "active" status, and raise if any goes
