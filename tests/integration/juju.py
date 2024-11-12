@@ -306,7 +306,9 @@ class Juju:
             logger.error(f"command {' '.join(args_)!r} errored out")
             raise
 
+        if proc.stdout:
+            logger.info(f"command {' '.join(args_)!r} stdout:\n{proc.stdout}")
         if proc.stderr:
-            logger.error(f"command {' '.join(args_)!r} stderr:\n{proc.stderr}")
+            logger.info(f"command {' '.join(args_)!r} stderr:\n{proc.stderr}")
         proc.check_returncode()
         return proc

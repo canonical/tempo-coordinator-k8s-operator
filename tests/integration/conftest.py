@@ -26,6 +26,10 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.absolute()
 
 def pytest_addoption(parser):
     parser.addoption(
+        "--model",
+        help="Use this model name instead of a randomly generated one. Implies --keep-models.",
+    )
+    parser.addoption(
         "--keep-models",
         action="store_true",
         default=False,
@@ -54,17 +58,19 @@ def _generate_random_model_name():
 
 @fixture(scope="module", autouse=True)
 def juju(request):
-    model_name = _generate_random_model_name()
+    model_name = request.config.getoption("--model") or _generate_random_model_name()
     unbound_juju = Juju()
     unbound_juju.cli("add-model", model_name, "--no-switch")
     juju = Juju(model_name)
     try:
         yield juju
     finally:
-        if not request.config.getoption("--keep-models"):
+        if not request.config.getoption(
+            "--keep-models"
+        ) and not request.config.getoption("--model"):
             juju.destroy_model(destroy_storage=True)
         else:
-            logger.info("--keep-models: skipping model destroy")
+            logger.info("--keep-models|--model: skipping model destroy")
 
 
 @fixture(scope="session", autouse=True)
