@@ -4,15 +4,18 @@ output "app_name" {
 
 output "endpoints" {
   value = {
+    # Requires
     certificates      = "certificates",
-    grafana_dashboard = "grafana-dashboard",
-    grafana_source    = "grafana-source",
     ingress           = "ingress",
     logging           = "logging",
-    metrics_endpoint  = "metrics-endpoint",
     s3                = "s3",
     self_tracing      = "self-tracing",
     send-remote-write = "send-remote-write",
+    
+    # Provides
+    grafana_dashboard = "grafana-dashboard",
+    grafana_source    = "grafana-source",
+    metrics_endpoint  = "metrics-endpoint",
     tempo_cluster     = "tempo-cluster",
     tracing           = "tracing",
   }
