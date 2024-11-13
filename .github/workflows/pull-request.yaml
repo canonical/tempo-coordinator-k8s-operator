@@ -13,6 +13,7 @@ jobs:
   lint-qa:
     name: QA - lint + unit
     runs-on: ubuntu-24.04
+    # runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -31,8 +32,8 @@ jobs:
 
   prepare-itest-runs:
     name: Build charm and testers
-    #    runs-on: ubuntu-24.04
-    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
+    runs-on: ubuntu-24.04
+    # runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     needs:
       - lint-qa
     outputs:
@@ -78,8 +79,8 @@ jobs:
 
   integration-test:
     name: Spread (${{ matrix.suite }})
-    #    runs-on: ubuntu-24.04
-    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
+    runs-on: ubuntu-24.04
+    # runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     needs:
       - prepare-itest-runs
     strategy:
