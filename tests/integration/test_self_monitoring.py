@@ -35,11 +35,10 @@ def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
 
 def test_scrape_jobs(juju):
     # Check scrape jobs
-    cmd = ["curl", "-sS", "http://localhost:9090/api/v1/targets"]
-    result = juju.cli(PROM, 0, *cmd)
+    cmd = "curl -sS http://localhost:9090/api/v1/targets"
+    result = juju.ssh(f"{PROM}/0", cmd)
     logger.info(result)
     result_json = json.loads(result.decode("utf-8"))
-
     active_targets = result_json["data"]["activeTargets"]
 
     for at in active_targets:
@@ -48,8 +47,8 @@ def test_scrape_jobs(juju):
 
 def test_rules(juju):
     # Check Rules
-    cmd = ["curl", "-sS", "http://localhost:9090/api/v1/rules"]
-    result = juju.cli(PROM, 0, *cmd)
+    cmd = "curl -sS http://localhost:9090/api/v1/rules"
+    result = juju.ssh(f"{PROM}/0", cmd)
     logger.info(result)
     result_json = json.loads(result.decode("utf-8"))
     groups = result_json["data"]["groups"]
