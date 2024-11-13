@@ -27,7 +27,7 @@ def test_build_and_deploy(tempo_charm: Path, tempo_resources, juju):
     juju.deploy(
         tempo_charm,
         resources=tempo_resources,
-        application_name=APP_REMOTE_NAME,
+        alias=APP_REMOTE_NAME,
         trust=True,
     )
 

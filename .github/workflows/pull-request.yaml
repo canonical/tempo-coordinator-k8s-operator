@@ -11,7 +11,7 @@ on:
 
 jobs:
   lint-qa:
-    name: QA - fast
+    name: QA - lint + unit
     # to use self-hosted runners, replace with:
     # [ "self-hosted", "linux", "X64", "large", "jammy" ]
     runs-on: ubuntu-24.04

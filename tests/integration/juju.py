@@ -343,7 +343,7 @@ class Juju:
         # text arguments
         for argname, value in (("level", level),):
             if value is not None:
-                args.extend(f"--{argname}={value}")
+                args.append(f"--{argname}={value}")
 
         # boolean flags
         for flagname, value in (
@@ -366,7 +366,7 @@ class Juju:
             if not values:
                 continue
             for value in values:
-                args.extend(f"--{flagname}={value}")
+                args.append(f"--{flagname}={value}")
 
         return self.cli(*args).stdout
 
