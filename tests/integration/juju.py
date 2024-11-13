@@ -12,8 +12,8 @@ from datetime import timedelta
 from enum import Enum
 from logging import getLogger
 from pathlib import Path
-from subprocess import CalledProcessError
-from typing import Dict, Iterable, Callable, Optional, Union, Tuple
+from subprocess import CalledProcessError, CompletedProcess
+from typing import Dict, Iterable, Callable, Optional, Union, Tuple, List
 
 logger = getLogger("juju")
 
@@ -44,6 +44,16 @@ class WorkloadStatus(str, Enum):
     maintenance = "maintenance"
     blocked = "blocked"
     error = "error"
+    unknown = "unknown"
+
+
+class AgentStatus(str, Enum):
+    """Juju unit/app agent status."""
+
+    idle = "idle"
+    executing = "executing"
+    allocating = "allocating"
+    error = "error"
 
 
 class Status(dict):
@@ -52,10 +62,19 @@ class Status(dict):
         units = self["applications"][application]["units"]
         return {u: units[u]["juju-status"]["current"] for u in units}
 
-    def workload_status(self, application: str):
-        """Mapping from unit name to active/idle, unknown/executing..."""
+    def app_status(self, application: str) -> WorkloadStatus:
+        """Application status."""
+        return self["applications"][application]["application-status"]["current"]
+
+    def workload_status(self, application: str) -> Dict[str, WorkloadStatus]:
+        """Mapping from unit name to active/unknown/error..."""
         units = self["applications"][application]["units"]
         return {u: units[u]["workload-status"]["current"] for u in units}
+
+    def agent_status(self, application: str) -> Dict[str, AgentStatus]:
+        """Mapping from unit name to idle/executing/error..."""
+        units = self["applications"][application]["units"]
+        return {u: units[u]["juju-status"]["current"] for u in units}
 
     def _sanitize_apps_input(self, apps: Iterable[str]) -> Tuple[str, ...]:
         if not apps:
@@ -65,44 +84,59 @@ class Status(dict):
             return (apps,)
         return tuple(apps)
 
-    def _check_workload_status_all(
-        self,
-        apps: Iterable[str],
-        status: str,
+    def _check_status_all(
+        self, apps: Iterable[str], status: str, status_getter=Callable[["Status"], str]
     ):
         for app in self._sanitize_apps_input(apps):
-            wss = self.workload_status(app)
-            if not wss:  # avoid vacuous quantification
+            statuses = status_getter(app)
+            if not statuses:  # avoid vacuous quantification
                 return False
 
-            if not all(us == status for us in wss.values()):
+            if not all(us == status for us in statuses.values()):
                 return False
         return True
 
-    def _check_workload_status_any(
-        self,
-        apps: Iterable[str],
-        status: str,
+    def _check_status_any(
+        self, apps: Iterable[str], status: str, status_getter=Callable[["Status"], str]
     ):
         for app in self._sanitize_apps_input(apps):
-            wss = self.workload_status(app)
-            if not wss:  # avoid vacuous quantification
+            statuses = status_getter(app)
+            if not statuses:  # avoid vacuous quantification
+                # logically this should be false, but for consistency with 'all'...
                 return True
 
-            if any(us == status for us in wss.values()):
+            if any(us == status for us in statuses.values()):
                 return True
         return False
 
-    def all(self, apps: Iterable[str], status: WorkloadStatus):
-        """Return True if all units of these apps (or all apps) are in this status."""
-        return self._check_workload_status_all(apps, status)
+    def all_workloads(self, apps: Iterable[str], status: WorkloadStatus):
+        """Return True if all workloads of these apps (or all apps) are in this status."""
+        return self._check_status_all(apps, status, status_getter=self.workload_status)
 
-    def any(self, apps: Iterable[str], status: WorkloadStatus):
-        """Return True if any unit of these apps (or all apps) are in this status."""
-        return self._check_workload_status_any(apps, status)
+    def any_workload(self, apps: Iterable[str], status: WorkloadStatus):
+        """Return True if any workload of these apps (or all apps) are in this status."""
+        return self._check_status_any(apps, status, status_getter=self.workload_status)
+
+    def all_agents(self, apps: Iterable[str], status: WorkloadStatus):
+        """Return True if all agents of these apps (or all apps) are in this status."""
+        return self._check_status_all(apps, status, status_getter=self.agent_status)
+
+    def any_agent(self, apps: Iterable[str], status: WorkloadStatus):
+        """Return True if any agent of these apps (or all apps) are in this status."""
+        return self._check_status_any(apps, status, status_getter=self.agent_status)
 
     def get_application_ip(self, app_name: str):
         return self["applications"][app_name]["public-address"]
+
+
+class JujuLogLevel(str, Enum):
+    """Juju loglevels enum."""
+
+    TRACE = "TRACE"
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
 
 
 class Juju:
@@ -266,7 +300,7 @@ class Juju:
                 ):
                     last_status_printed_time = time.time()
                     print("current juju status:")
-                    print(self.cli("status", "--relations"))
+                    print(self.cli("status", "--relations", quiet=True).stdout)
 
                 if stop:
                     if stop(status):
@@ -289,6 +323,53 @@ class Juju:
 
             time.sleep(refresh_rate)
 
+    def debug_log(
+        self,
+        replay: bool = False,
+        include: Optional[List[str]] = None,
+        exclude: Optional[List[str]] = None,
+        include_module: Optional[List[str]] = None,
+        exclude_module: Optional[List[str]] = None,
+        include_label: Optional[List[str]] = None,
+        exclude_label: Optional[List[str]] = None,
+        ms: Optional[bool] = False,
+        date: Optional[bool] = False,
+        level: JujuLogLevel = JujuLogLevel.DEBUG,
+    ) -> str:
+        """Get the juju debug-log."""
+        args = ["debug-log", "--tail", "false", self.model_name()]
+        _bool_str = {True: "true", False: "False"}
+
+        # text arguments
+        for argname, value in (("level", level),):
+            if value is not None:
+                args.extend(f"--{argname}={value}")
+
+        # boolean flags
+        for flagname, value in (
+            ("ms", ms),
+            ("date", date),
+            ("replay", replay),
+        ):
+            if value is not None:
+                args.append(f"--{flagname}={_bool_str[value]}")
+
+        # include/exclude sequences
+        for flagname, values in (
+            ("include", include),
+            ("exclude", exclude),
+            ("include-module", include_module),
+            ("exclude-module", exclude_module),
+            ("include-label", include_label),
+            ("exclude-label", exclude_label),
+        ):
+            if not values:
+                continue
+            for value in values:
+                args.extend(f"--{flagname}={value}")
+
+        return self.cli(*args).stdout
+
     def destroy_model(self, destroy_storage: bool = False):
         """Destroy this model."""
         args = ["destroy-model", "--no-prompt", self.model_name()]
@@ -296,7 +377,9 @@ class Juju:
             args.append("--destroy-storage")
         return self.cli(*args, add_model_flag=False)
 
-    def cli(self, *args, add_model_flag: bool = True, quiet: bool = False):
+    def cli(
+        self, *args, add_model_flag: bool = True, quiet: bool = False
+    ) -> CompletedProcess:
         if add_model_flag and "-m" not in args and self.model:
             args = [*args, "-m", self.model]
 

@@ -37,7 +37,6 @@ dev = [
     "minio",
     # opentelemetry-exporter-jaeger complains about old generated protos in integration tests
     "protobuf==3.20.*"
-
 ]
 
 

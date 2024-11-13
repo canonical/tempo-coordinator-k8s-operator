@@ -19,6 +19,7 @@ from pytest import fixture
 
 from juju import Juju
 from tests.integration.helpers import get_relation_data, APP_NAME, TRAEFIK, SSC_APP_NAME
+from tests.integration.juju import JujuLogLevel
 
 logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).parent.parent.parent.absolute()
@@ -65,12 +66,21 @@ def juju(request):
     try:
         yield juju
     finally:
+        print(f"==== captured juju debug-log for model {juju.model_name()} =====")
+        print(juju.debug_log(replay=True, level=JujuLogLevel.DEBUG))
+
         if not request.config.getoption(
             "--keep-models"
         ) and not request.config.getoption("--model"):
             juju.destroy_model(destroy_storage=True)
         else:
             logger.info("--keep-models|--model: skipping model destroy")
+
+
+@fixture(scope="session", autouse=True)
+def generate_requirements_files():
+    """Ensure we have our dependencies ready in case we need to pack things."""
+    check_output(shlex.split("make generate-requirements"))
 
 
 @fixture(scope="session", autouse=True)

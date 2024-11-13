@@ -27,8 +27,8 @@ def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
     juju.integrate(TEMPO + ":metrics-endpoint", PROM + ":metrics-endpoint")
 
     juju.wait(
-        stop=lambda status: status.all((PROM, TEMPO), WorkloadStatus.active),
-        fail=lambda status: status.any((TEMPO,), WorkloadStatus.error),
+        stop=lambda status: status.all_workloads((PROM, TEMPO), WorkloadStatus.active),
+        fail=lambda status: status.any_workload((TEMPO,), WorkloadStatus.error),
         timeout=600,
     )
 

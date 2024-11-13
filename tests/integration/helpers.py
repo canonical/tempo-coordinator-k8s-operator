@@ -214,7 +214,7 @@ def deploy_and_configure_minio(juju):
     }
     juju.deploy(MINIO, channel="edge", trust=True, config=config)
     juju.wait(
-        stop=lambda status: status.all((MINIO,), WorkloadStatus.active),
+        stop=lambda status: status.all_workloads((MINIO,), WorkloadStatus.active),
         timeout=2000,
         refresh_rate=5,
     )
@@ -270,7 +270,7 @@ def deploy_cluster(juju, tempo_app=APP_NAME):
 
     deploy_and_configure_minio(juju)
     juju.wait(
-        stop=lambda status: status.all(
+        stop=lambda status: status.all_workloads(
             (tempo_app, WORKER_NAME, S3_INTEGRATOR), WorkloadStatus.active
         ),
         timeout=2000,

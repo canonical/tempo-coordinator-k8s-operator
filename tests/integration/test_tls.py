@@ -65,7 +65,7 @@ def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
     deploy_cluster(juju)
 
     juju.wait(
-        stop=lambda status: status.all(
+        stop=lambda status: status.all_workloads(
             (APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME),
             WorkloadStatus.active,
         ),
@@ -76,7 +76,7 @@ def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
 def test_relate_ssc(juju):
     juju.integrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
     juju.wait(
-        stop=lambda status: status.all(
+        stop=lambda status: status.all_workloads(
             (APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME),
             WorkloadStatus.active,
         ),
@@ -120,7 +120,7 @@ def test_verify_traces_otlp_http_tls(nonce, juju):
 def test_relate_ingress(juju):
     juju.integrate(APP_NAME + ":ingress", TRAEFIK_APP_NAME + ":traefik-route")
     juju.wait(
-        stop=lambda status: status.all(
+        stop=lambda status: status.all_workloads(
             (APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME),
             WorkloadStatus.active,
         ),
@@ -135,7 +135,9 @@ def test_force_enable_protocols(juju):
 
     juju.config(APP_NAME, config)
     juju.wait(
-        stop=lambda status: status.all((APP_NAME, WORKER_NAME), WorkloadStatus.active),
+        stop=lambda status: status.all_workloads(
+            (APP_NAME, WORKER_NAME), WorkloadStatus.active
+        ),
         timeout=1000,
     )
 
@@ -157,5 +159,6 @@ def test_verify_traces_force_enabled_protocols_tls(nonce, protocol, juju):
 def test_remove_relation(juju):
     juju.disintegrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
     juju.wait(
-        stop=lambda status: status.all((APP_NAME,), WorkloadStatus.active), timeout=1000
+        stop=lambda status: status.all_workloads((APP_NAME,), WorkloadStatus.active),
+        timeout=1000,
     )

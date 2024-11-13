@@ -35,8 +35,10 @@ def test_build_and_deploy(tempo_charm: Path, tempo_resources, juju):
     deploy_cluster(juju, APP_NAME)
 
     juju.wait(
-        stop=lambda status: status.all((APP_NAME, WORKER_NAME), WorkloadStatus.active)
-        and status.all(APP_REMOTE_NAME, WorkloadStatus.blocked),
+        stop=lambda status: status.all_workloads(
+            (APP_NAME, WORKER_NAME), WorkloadStatus.active
+        )
+        and status.all_workloads(APP_REMOTE_NAME, WorkloadStatus.blocked),
         timeout=1000,
     )
 
@@ -55,7 +57,9 @@ def test_verify_trace_http_self(juju):
 def test_relate_remote_instance(juju):
     juju.integrate(APP_NAME + ":tracing", APP_REMOTE_NAME + ":self-tracing")
     juju.wait(
-        stop=lambda status: status.all((APP_NAME, WORKER_NAME), WorkloadStatus.active),
+        stop=lambda status: status.all_workloads(
+            (APP_NAME, WORKER_NAME), WorkloadStatus.active
+        ),
         timeout=1000,
     )
 
