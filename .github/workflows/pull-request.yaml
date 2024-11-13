@@ -12,8 +12,6 @@ on:
 jobs:
   lint-qa:
     name: QA - lint + unit
-    # to use self-hosted runners, replace with:
-    # [ "self-hosted", "linux", "X64", "large", "jammy" ]
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -33,7 +31,8 @@ jobs:
 
   prepare-itest-runs:
     name: Build charm and testers
-    runs-on: ubuntu-24.04
+    #    runs-on: ubuntu-24.04
+    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     needs:
       - lint-qa
     outputs:
@@ -79,7 +78,8 @@ jobs:
 
   integration-test:
     name: Spread (${{ matrix.suite }})
-    runs-on: ubuntu-24.04
+    #    runs-on: ubuntu-24.04
+    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
     needs:
       - prepare-itest-runs
     strategy:

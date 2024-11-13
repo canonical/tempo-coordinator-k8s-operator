@@ -295,6 +295,9 @@ class Juju:
         while time.time() - start < timeout:
             try:
                 status = self.status()
+
+                # if the time elapsed since the last status-print is less than print_status_every,
+                # we print out the status.
                 if print_status_every is not None and (
                     (last_status_printed_time - time.time()) <= print_status_every
                 ):
