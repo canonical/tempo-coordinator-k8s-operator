@@ -57,10 +57,14 @@ jobs:
         run: charmcraft pack -v
 
       - name: Pack tester
-        run: charmcraft pack -v -p ./tests/integration/tester/
+        run: |
+          cp -r ./lib/ ./tests/integration/tester/lib
+          charmcraft pack -v -p ./tests/integration/tester/
 
       - name: Pack tester-grpc
-        run: charmcraft pack -v -p ./tests/integration/tester-grpc/
+        run: |
+          cp -r ./lib/ ./tests/integration/tester-grpc/lib
+          charmcraft pack -v -p ./tests/integration/tester-grpc/
 
       - name: Upload charm artifacts
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
