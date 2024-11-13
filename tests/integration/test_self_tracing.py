@@ -21,9 +21,7 @@ APP_REMOTE_NAME = "tempo-remote"
 
 
 def test_build_and_deploy(tempo_charm: Path, tempo_resources, juju):
-    juju.deploy(
-        tempo_charm, resources=tempo_resources, application_name=APP_NAME, trust=True
-    )
+    juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
     juju.deploy(
         tempo_charm,
         resources=tempo_resources,
