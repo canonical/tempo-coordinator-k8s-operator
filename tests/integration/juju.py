@@ -272,7 +272,7 @@ class Juju:
         refresh_rate: float = 1.0,
         print_status_every: Optional[int] = 60,
     ):
-        """Wait for the stop condition to be met.
+        """Wait for the stop/fail condition to be met.
 
         Examples:
         >>> Juju("mymodel").wait(
@@ -289,42 +289,59 @@ class Juju:
         last_status_printed_time = (
             0  # number of seconds since the epoch, that is, very long ago
         )
+        if not (stop or fail):
+            raise ValueError(
+                "pass a `stop` or a `fail` condition; "
+                "else we don't know what to wait for."
+            )
 
         logger.info(f"Waiting for conditions; stop={stop}, fail={fail}")
 
-        while time.time() - start < timeout:
-            try:
-                status = self.status()
+        def _display_status():
+            print("current juju status:")
+            print(self.cli("status", "--relations", quiet=True).stdout)
 
-                # if the time elapsed since the last status-print is less than print_status_every,
-                # we print out the status.
-                if print_status_every is not None and (
-                    (last_status_printed_time - time.time()) <= print_status_every
-                ):
-                    last_status_printed_time = time.time()
-                    print("current juju status:")
-                    print(self.cli("status", "--relations", quiet=True).stdout)
+        try:
+            while time.time() - start < timeout:
+                try:
+                    status = self.status()
 
-                if stop:
-                    if stop(status):
-                        pass_counter += 1
-                        if pass_counter >= soak_time.total_seconds():
-                            return True
+                    # if the time elapsed since the last status-print is less than print_status_every,
+                    # we print out the status.
+                    if print_status_every is not None and (
+                        (abs(last_status_printed_time - time.time()))
+                        >= print_status_every
+                    ):
+                        last_status_printed_time = time.time()
+                        _display_status()
 
-                    else:
-                        pass_counter = 0
+                    if stop:
+                        if stop(status):
+                            pass_counter += 1
+                            if pass_counter >= soak_time.total_seconds():
+                                return True
 
-                if fail and fail(status):
-                    raise WaitFailed()
+                        else:
+                            pass_counter = 0
 
-            except WaitFailed:
-                raise
+                    if fail and fail(status):
+                        raise WaitFailed("fail condition met during wait")
 
-            except Exception as e:
-                logger.debug(f"error encountered while waiting: {e}")
-                pass
+                except WaitFailed:
+                    raise
 
-            time.sleep(refresh_rate)
+                except Exception as e:
+                    logger.debug(f"error encountered while waiting: {e}")
+                    pass
+
+                time.sleep(refresh_rate)
+            raise TimeoutError(
+                "timeout hit before any of the pass/fail conditions were met"
+            )
+
+        finally:
+            # before we return, whether it's an exception or a True, we print out the status.
+            _display_status()
 
     def debug_log(
         self,
@@ -418,3 +435,10 @@ class Juju:
         # now we let it raise
         proc.check_returncode()
         return proc
+
+
+if __name__ == "__main__":
+    Juju().wait(
+        timeout=2000,
+        stop=lambda status: (status.app_status("traefik") == WorkloadStatus.error),
+    )
