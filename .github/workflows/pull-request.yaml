@@ -44,7 +44,7 @@ jobs:
       - name: Setup LXD
         uses: canonical/setup-lxd@main
 
-      - name: Install charmcraft
+      - name: Install lxd and charmcraft
         run: sudo snap install charmcraft --classic
 
       - name: Generate dependency files

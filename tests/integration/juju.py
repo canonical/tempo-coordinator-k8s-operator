@@ -328,7 +328,9 @@ class Juju:
 
     def debug_log(
         self,
+        *,
         replay: bool = False,
+        tail: bool = False,
         include: Optional[List[str]] = None,
         exclude: Optional[List[str]] = None,
         include_module: Optional[List[str]] = None,
@@ -340,8 +342,12 @@ class Juju:
         level: JujuLogLevel = JujuLogLevel.DEBUG,
     ) -> str:
         """Get the juju debug-log."""
-        args = ["debug-log", "--tail", "false", self.model_name()]
-        _bool_str = {True: "true", False: "False"}
+        args = ["debug-log"]
+
+        if tail:
+            args.append("--tail")
+        else:
+            args.append("--no-tail")
 
         # text arguments
         for argname, value in (("level", level),):
@@ -349,6 +355,7 @@ class Juju:
                 args.append(f"--{argname}={value}")
 
         # boolean flags
+        _bool_str = {True: "true", False: "false"}
         for flagname, value in (
             ("ms", ms),
             ("date", date),
