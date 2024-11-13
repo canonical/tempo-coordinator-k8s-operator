@@ -11,7 +11,6 @@ output "endpoints" {
     s3                = "s3",
     self_tracing      = "self-tracing",
     send-remote-write = "send-remote-write",
-    
     # Provides
     grafana_dashboard = "grafana-dashboard",
     grafana_source    = "grafana-source",
