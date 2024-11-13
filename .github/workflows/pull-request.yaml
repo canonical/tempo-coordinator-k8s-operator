@@ -48,8 +48,10 @@ jobs:
       - name: Install charmcraft
         run: sudo snap install charmcraft --classic
 
-      - name: Generate dependency files before packing anything
-        run: make generate-requirements
+      - name: Generate dependency files
+        run: |
+          sudo snap install --classic astral-uv
+          make generate-requirements
 
       - name: Pack charm
         run: charmcraft pack -v
