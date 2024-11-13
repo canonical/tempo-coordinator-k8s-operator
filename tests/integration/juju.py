@@ -148,7 +148,7 @@ class Juju:
     def model_name(self):
         return self.model or self.status()["model"]["name"]
 
-    def status(self) -> dict:
+    def status(self) -> Status:
         args = ["status", "--format", "json"]
         result = self.cli(*args)
         return Status(json.loads(result.stdout))
