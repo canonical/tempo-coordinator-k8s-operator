@@ -366,10 +366,8 @@ class Juju:
         else:
             args.append("--no-tail")
 
-        # text arguments
-        for argname, value in (("level", level),):
-            if value is not None:
-                args.append(f"--{argname}={value}")
+        if level is not None:
+            args.append(f"--level={level.value}")
 
         # boolean flags
         _bool_str = {True: "true", False: "false"}
@@ -438,7 +436,4 @@ class Juju:
 
 
 if __name__ == "__main__":
-    Juju().wait(
-        timeout=2000,
-        stop=lambda status: (status.app_status("traefik") == WorkloadStatus.error),
-    )
+    print(Juju().debug_log(replay=True))
