@@ -8,16 +8,23 @@ from typing import Dict
 
 import requests
 import yaml
+from cosl.coordinated_workers.nginx import CA_CERT_PATH
 from minio import Minio
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from tempo import Tempo
 from tests.integration.juju import WorkloadStatus
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
 ACCESS_KEY = "accesskey"
 SECRET_KEY = "secretkey"
+
+
+TESTER_NAME = "tester"
+TESTER_GRPC_NAME = "tester-grpc"
+TRAEFIK = "traefik"
+SSC = "self-signed-certificates"
+SSC_APP_NAME = "ssc"
 MINIO = "minio"
 BUCKET_NAME = "tempo"
 S3_INTEGRATOR = "s3-integrator"
@@ -304,15 +311,8 @@ def emit_trace(
         f"TRACEGEN_ENDPOINT={endpoint} "
         f"TRACEGEN_VERBOSE={verbose} "
         f"TRACEGEN_PROTOCOL={proto} "
-        f"TRACEGEN_CERT={Tempo.tls_ca_path if use_cert else ''} "
+        f"TRACEGEN_CERT={CA_CERT_PATH if use_cert else ''} "
         f"TRACEGEN_NONCE={nonce} "
         "python3 tracegen.py"
     )
     return subprocess.getoutput(cmd)
-
-
-TESTER_NAME = "tester"
-TESTER_GRPC_NAME = "tester-grpc"
-TRAEFIK = "traefik"
-SSC = "self-signed-certificates"
-SSC_APP_NAME = "ssc"

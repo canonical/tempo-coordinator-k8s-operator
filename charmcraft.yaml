@@ -61,7 +61,12 @@ provides:
       Integration to offer other charms the possibility to send traces to Tempo.
 
 requires:
-  self-tracing:
+  self-charm-tracing:
+    interface: tracing
+    description: |
+      Integration to enable Tempo to send its own charm traces to another Tempo instance.
+    limit: 1
+  self-workload-tracing:
     interface: tracing
     description: |
       Integration to enable Tempo to send its own traces to another Tempo instance.
