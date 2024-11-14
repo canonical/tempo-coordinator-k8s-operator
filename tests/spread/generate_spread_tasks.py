@@ -12,8 +12,8 @@ execute: |
   # set CWD to charm root
   pushd "$SPREAD_PATH"
 
-  # change ownership of all charms
-  chown $(id -u):$(id -g) $PWD/*.charm
+  # change ownership of the whole repo to self
+  chown -R $(id -u):$(id -g) $PWD
 
   # run integration tests
   make integration ARGS="{test_path}"

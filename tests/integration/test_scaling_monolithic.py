@@ -19,7 +19,7 @@ def test_deploy_tempo(tempo_charm: Path, tempo_resources, juju):
     juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
 
     juju.wait(
-        stop=lambda status: status.all_workloads(APP_NAME, WorkloadStatus.active),
+        stop=lambda status: status.all_workloads(APP_NAME, WorkloadStatus.blocked),
         # coordinator will be blocked on s3 and workers integration
         timeout=10000,
     )

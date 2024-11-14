@@ -148,9 +148,9 @@ class Juju:
     def model_name(self):
         return self.model or self.status()["model"]["name"]
 
-    def status(self) -> Status:
+    def status(self, quiet: bool = False) -> Status:
         args = ["status", "--format", "json"]
-        result = self.cli(*args)
+        result = self.cli(*args, quiet=quiet)
         return Status(json.loads(result.stdout))
 
     def config(self, app, config: Dict[str, bool | str]):
@@ -166,18 +166,21 @@ class Juju:
             # if used without args, returns the current config
             return json.loads(result.stdout)
 
-    def model_config(self, config: Dict[str, bool | str] = None):
+    def model_config_get(self):
+        """Get this model's configuration."""
+        result = self.cli("model-config")
+        # if used without args, returns the current config
+        return json.loads(result.stdout)
+
+    def model_config_set(self, config: Dict[str, bool | str]):
+        """Update this model's configuration."""
         args = ["model-config"]
         for k, v in config.items():
             if isinstance(v, bool):
                 args.append(f"{k}={str(v).lower()}")
             else:
                 args.append(f"{k}={str(v)}")
-
-        result = self.cli(*args)
-        if result.stdout:
-            # if used without args, returns the current config
-            return json.loads(result.stdout)
+        self.cli(*args)
 
     @contextmanager
     def fast_forward(self, fast_interval: str = "5s", slow_interval: None | str = None):
@@ -185,11 +188,11 @@ class Juju:
         if slow_interval:
             interval_after = slow_interval
         else:
-            interval_after = (self.model_config())[update_interval_key]
+            interval_after = self.model_config_get()[update_interval_key]
 
-        self.model_config({update_interval_key: fast_interval})
+        self.model_config_set({update_interval_key: fast_interval})
         yield
-        self.model_config({update_interval_key: interval_after})
+        self.model_config_set({update_interval_key: interval_after})
 
     def deploy(
         self,
@@ -271,6 +274,7 @@ class Juju:
         fail: Optional[Callable[[Status], bool]] = None,
         refresh_rate: float = 1.0,
         print_status_every: Optional[int] = 60,
+        quiet: bool = True,
     ):
         """Wait for the stop/fail condition to be met.
 
@@ -304,7 +308,7 @@ class Juju:
         try:
             while time.time() - start < timeout:
                 try:
-                    status = self.status()
+                    status = self.status(quiet=quiet)
 
                     # if the time elapsed since the last status-print is less than print_status_every,
                     # we print out the status.
