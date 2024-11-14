@@ -312,7 +312,7 @@ class TempoCoordinatorCharm(CharmBase):
 
     def server_ca_cert(self) -> str:
         """For charm tracing."""
-        return self.tempo.tls_ca_path
+        return CA_CERT_PATH
 
     def tempo_otlp_http_endpoint(self) -> Optional[str]:
         """Endpoint at which the charm tracing information will be forwarded."""
@@ -420,7 +420,7 @@ class TempoCoordinatorCharm(CharmBase):
     def is_workload_ready(self):
         """Whether the tempo built-in readiness check reports 'ready'."""
         if self.coordinator.tls_available:
-            tls, s = f" --cacert {self.tempo.tls_ca_path}", "s"
+            tls, s = f" --cacert {CA_CERT_PATH}", "s"
         else:
             tls = s = ""
 
