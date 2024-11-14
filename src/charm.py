@@ -42,19 +42,21 @@ class TempoCoordinator(Coordinator):
 
     @property
     def _charm_tracing_receivers_urls(self) -> Dict[str, str]:
-        """Override with Tempo's enabled and requested receivers."""
-        # if Tempo is related to another Tempo instance, use the endpoints of that instance instead
+        """Override with custom enabled and requested receivers."""
+        # if related to a remote instance, return the remote instance's endpoints
         if self.charm_tracing.is_ready():
             return super()._charm_tracing_receivers_urls
-        return self._charm.requested_receivers_urls()
+        # return this instance's endpoints
+        return self._charm.requested_receivers_urls()  # type: ignore
 
     @property
     def _workload_tracing_receivers_urls(self) -> Dict[str, str]:
-        """Override with Tempo's enabled and requested receivers."""
-        # if Tempo is related to another Tempo instance, use the endpoints of that instance instead
+        """Override with custom enabled and requested receivers."""
+        # if related to a remote instance, return the remote instance's endpoints
         if self.workload_tracing.is_ready():
             return super()._workload_tracing_receivers_urls
-        return self._charm.requested_receivers_urls()
+        # return this instance's endpoints
+        return self._charm.requested_receivers_urls()  # type: ignore
 
 
 class PeerData(DatabagModel):
@@ -112,6 +114,7 @@ class TempoCoordinatorCharm(CharmBase):
             resources_requests=self.get_resources_requests,
             container_name="charm",
             remote_write_endpoints=self.remote_write_endpoints,  # type: ignore
+            # TODO: future Tempo releases would be using otlp_xx protocols instead.
             workload_tracing_protocols=["jaeger_thrift_http"],
         )
 
@@ -315,7 +318,7 @@ class TempoCoordinatorCharm(CharmBase):
         """Endpoint at which the charm tracing information will be forwarded."""
         # the charm container and the tempo workload container have apparently the same
         # IP, so we can talk to tempo at localhost.
-        if self.coordinator and self.coordinator.charm_tracing.is_ready():
+        if hasattr(self, "coordinator") and self.coordinator.charm_tracing.is_ready():
             return self.coordinator.charm_tracing.get_endpoint("otlp_http")
         # In absence of another Tempo instance, we don't want to lose this instance's charm traces
         elif self.is_workload_ready():
