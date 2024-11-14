@@ -109,7 +109,7 @@ def cluster_tester(interface_tester: InterfaceTester):
 
 
 @pytest.fixture
-def tracing_tester(interface_tester: InterfaceTester):
+def charm_tracing_tester(interface_tester: InterfaceTester):
     with patch("lightkube.core.client.GenericSyncClient"):
         with patch.multiple(
             "cosl.coordinated_workers.worker.KubernetesComputeResourcesPatch",

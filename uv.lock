@@ -851,16 +851,12 @@ wheels = [
 [[package]]
 name = "pytest-interface-tester"
 version = "3.2.0"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "http://github.com/canonical/pytest-interface-tester?rev=multiple-endpoint-support#e984c35e97c8930a39fb44f1e1f4fbbe58220486" }
 dependencies = [
     { name = "ops-scenario" },
     { name = "pydantic" },
     { name = "pytest" },
     { name = "typer" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d4/b8/6becf6cb02698bf77c725538edb385fea8bcec673d0818a0383d1c338c8b/pytest_interface_tester-3.2.0.tar.gz", hash = "sha256:0e81329523c874a96044fcdca4cd98084bfe562c66e9e22d3400ce7a8bc896fd", size = 26936 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d9/fc/22c9f7885e8cdc5e68c320745ff760bb41b14d623e69d62b56914badeb7d/pytest_interface_tester-3.2.0-py3-none-any.whl", hash = "sha256:0971e65e386a6cce6108582f6bc333d070970c391e44258295cf4cfdb4056aee", size = 21412 },
 ]
 
 [[package]]
@@ -1007,7 +1003,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2" },
     { name = "pydantic", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'" },
-    { name = "pytest-interface-tester", marker = "extra == 'dev'" },
+    { name = "pytest-interface-tester", marker = "extra == 'dev'", git = "http://github.com/canonical/pytest-interface-tester?rev=multiple-endpoint-support" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "tenacity", specifier = "==8.2.3" },
 ]

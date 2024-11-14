@@ -33,7 +33,8 @@ dev = [
     "ruff",
     "catan",
     "ops[testing]>=2.17",
-    "pytest-interface-tester",
+    # we can unpin this once https://github.com/canonical/pytest-interface-tester/pull/28 merges
+    "pytest-interface-tester@git+http://github.com/canonical/pytest-interface-tester@multiple-endpoint-support",
     "minio",
     # opentelemetry-exporter-jaeger complains about old generated protos in integration tests
     "protobuf==3.20.*"
