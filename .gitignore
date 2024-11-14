@@ -17,5 +17,6 @@ src/prometheus_alert_rules/consolidated_rules/**
 requirements*.txt
 .spread*
 tests/spread/**/
+tests/interface/src/prometheus_alert_rules
 tests/integration/tester/lib/**/
 tests/integration/tester-grpc/lib/**/
