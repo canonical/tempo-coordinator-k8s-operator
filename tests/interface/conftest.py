@@ -16,6 +16,13 @@ from scenario.state import Container, PeerRelation, State
 
 from charm import TempoCoordinatorCharm
 
+
+@pytest.fixture
+def interface_tester():
+    # FIXME: remove this once https://github.com/canonical/charm-relation-interfaces/pull/199 merges
+    return InterfaceTester(branch="tracing-tests-fix")
+
+
 nginx_container = Container(
     name="nginx",
     can_connect=True,

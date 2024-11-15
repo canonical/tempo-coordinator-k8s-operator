@@ -9,5 +9,4 @@ def test_tracing_v2_interface(charm_tracing_tester: InterfaceTester):
         interface_version=2,
     )
 
-    charm_tracing_tester._RAISE_IMMEDIATELY = True
     charm_tracing_tester.run()

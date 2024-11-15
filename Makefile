@@ -22,7 +22,8 @@ fmt:
 	uv tool run ruff format $(ALL)
 
 unit:
-	uv run --all-extras \
+	uv run --isolated \
+	    --extra dev \
 		coverage run \
 		--source=$(SRC) \
 		-m pytest \
