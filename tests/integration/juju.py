@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2024 Jon Seager (@jnsgruk)
+# Copyright 2024 Pietro Pasotti (@ppasotti)
 # See LICENSE file for licensing details.
 
 
@@ -125,8 +125,41 @@ class Status(dict):
         """Return True if any agent of these apps (or all apps) are in this status."""
         return self._check_status_any(apps, status, status_getter=self.agent_status)
 
-    def get_application_ip(self, app_name: str):
-        return self["applications"][app_name]["public-address"]
+    def get_leader_name(self, app_name: str) -> Optional[str]:
+        """Return the leader for this application."""
+        units = self["applications"][app_name].get("units")
+        if not units:
+            logger.error(f"get_leader_name: no units found for {app_name}")
+            return
+
+        leaders = [unit for unit, meta in units.items() if meta.get("leader")]
+        if leaders:
+            return leaders[0]
+
+        logger.error("get_leader_name: no leader elected yet")
+        return
+
+    def get_application_ip(self, app_name: str) -> Optional[str]:
+        """Return the juju application IP."""
+        address = self["applications"][app_name].get("address")
+        if not address:
+            logger.error(f"get_application_ip: no address assigned yet to {app_name}")
+        return address
+
+    def get_unit_ips(self, app_name: str) -> Dict[str, str]:
+        """Return the juju unit IP for all units of this app."""
+        units = self["applications"][app_name].get("units")
+        if not units:
+            logger.error(f"get_leader_name: no units found for {app_name}")
+        out = {}
+        for unit, meta in units.items():
+            address = meta.get("address")
+            if address:
+                out[unit] = address
+            else:
+                logger.error(f"get_unit_ips: no address assigned yet to {unit}")
+
+        return out
 
 
 class JujuLogLevel(str, Enum):
@@ -462,4 +495,6 @@ class Juju:
 
 
 if __name__ == "__main__":
-    print(Juju().debug_log(replay=True))
+    print(Juju().status().get_application_ip("tempo"))
+    print(Juju().status().get_leader_name("tempo"))
+    print(Juju().status().get_unit_ips("tempo"))
