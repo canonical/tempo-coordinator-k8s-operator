@@ -2,23 +2,21 @@ output "app_name" {
   value = juju_application.tempo_coordinator.name
 }
 
-output "requires" {
+output "endpoints" {
   value = {
-    self_tracing      = "self-tracing",
-    s3                = "s3",
-    logging           = "logging",
-    ingress           = "ingress",
-    certificates      = "certificates",
-    send-remote-write = "send-remote-write",
-  }
-}
-
-output "provides" {
-  value = {
-    tempo_cluster     = "tempo-cluster",
+    # Requires
+    certificates          = "certificates",
+    ingress               = "ingress",
+    logging               = "logging",
+    s3                    = "s3",
+    self_charm_tracing    = "self-charm-tracing",
+    self_workload_tracing = "self-workload-tracing",
+    send-remote-write     = "send-remote-write",
+    # Provides
     grafana_dashboard = "grafana-dashboard",
     grafana_source    = "grafana-source",
     metrics_endpoint  = "metrics-endpoint",
+    tempo_cluster     = "tempo-cluster",
     tracing           = "tracing",
   }
 }
