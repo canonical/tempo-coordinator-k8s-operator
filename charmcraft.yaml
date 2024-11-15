@@ -131,8 +131,8 @@ parts:
       make generate-requirements
       craftctl default
     #    uncomment this if you add git+ dependencies in requirements.txt
-    #    build-packages:
-    #      - "git"
+    build-packages:
+      - "git"
     charm-binary-python-packages:
       - "pydantic>=2"
       - "cryptography"

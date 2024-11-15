@@ -11,7 +11,6 @@ update-dependencies:
 
 generate-requirements:
 	uv pip compile -q --no-cache pyproject.toml -o requirements.txt
-	uv pip compile -q --no-cache --all-extras pyproject.toml -o requirements-dev.txt
 
 lint:
 	uv tool run ruff check $(ALL)
