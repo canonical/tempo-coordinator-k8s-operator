@@ -168,7 +168,7 @@ class Juju:
 
     def model_config_get(self):
         """Get this model's configuration."""
-        result = self.cli("model-config")
+        result = self.cli("model-config", "--format", "json")
         # if used without args, returns the current config
         return json.loads(result.stdout)
 
@@ -184,6 +184,7 @@ class Juju:
 
     @contextmanager
     def fast_forward(self, fast_interval: str = "5s", slow_interval: None | str = None):
+        """Context manager to temporarily speed up update-status hook execution."""
         update_interval_key = "update-status-hook-interval"
         if slow_interval:
             interval_after = slow_interval
@@ -193,6 +194,16 @@ class Juju:
         self.model_config_set({update_interval_key: fast_interval})
         yield
         self.model_config_set({update_interval_key: interval_after})
+
+    def add_unit(self, app: str, *, n: int = 1):
+        """Add one or multiple units to an application."""
+        args = ["add-unit", "-n", str(n), app]
+        return self.cli(*args)
+
+    def remove_unit(self, app: str, *, n: int = 1):
+        """Remove one or multiple units from an application."""
+        args = ["remove-unit", "--num-units", str(n), app]
+        return self.cli(*args)
 
     def deploy(
         self,
@@ -205,6 +216,7 @@ class Juju:
         trust: bool = False,
         scale: int = 1,
     ):
+        """Deploy a charm."""
         args = ["deploy", str(charm)]
 
         if alias:
@@ -230,16 +242,19 @@ class Juju:
         return self.cli(*args)
 
     def integrate(self, requirer: str, provider: str):
+        """Integrate two application endpoints"""
         args = ["integrate", requirer, provider]
         return self.cli(*args)
 
     def disintegrate(self, requirer: str, provider: str):
+        """Remove an integration."""
         args = ["remove-relation", requirer, provider]
         return self.cli(*args)
 
     def scp(
         self, unit: str, origin: Union[str, Path], destination: Union[str, Path] = None
     ):
+        """Juju scp wrapper."""
         args = [
             "scp",
             "-m",
@@ -250,10 +265,12 @@ class Juju:
         return self.cli(*args)
 
     def ssh(self, unit: str, cmd: str):
+        """Juju ssh wrapper."""
         args = ["ssh", "-m", self.model, unit, cmd]
         return self.cli(*args)
 
     def run(self, app: str, action: str, params: Dict[str, str], unit_id: int = None):
+        """Run an action."""
         target = app + f"/{unit_id}" if unit_id is not None else app + "/leader"
         args = ["run", "--format", "json", target, action]
 
@@ -409,6 +426,11 @@ class Juju:
     def cli(
         self, *args, add_model_flag: bool = True, quiet: bool = False
     ) -> CompletedProcess:
+        """Raw cli access.
+
+        Thin wrapper on top of Popen, but appends `-m <model name>` to the command args
+        if this Juju is bound to a model.
+        """
         if add_model_flag and "-m" not in args and self.model:
             args = [*args, "-m", self.model]
 

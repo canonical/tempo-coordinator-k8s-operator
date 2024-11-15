@@ -26,7 +26,7 @@ def test_deploy_tempo(tempo_charm: Path, tempo_resources, juju):
 
 
 def test_scale_tempo_up_without_s3_blocks(juju):
-    juju.cli("add-unit", APP_NAME, 1)
+    juju.add_unit(APP_NAME, 1)
     juju.wait(
         stop=lambda status: status.all_workloads(APP_NAME, WorkloadStatus.blocked),
         timeout=1000,
