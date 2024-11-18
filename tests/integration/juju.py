@@ -162,6 +162,46 @@ class Status(dict):
         return out
 
 
+class _JujuConfigBase:
+    def __init__(self, raw: dict):
+        self.raw = raw
+
+    def get(self, key: str) -> Union[int, str, bool, float, None]:
+        meta = self.raw[key]
+        if meta["source"] in {"unset", "default"}:
+            out = meta.get("default")
+        else:
+            out = meta["value"]
+
+        if out == "''":
+            return None
+
+        return out
+
+
+class _ApplicationConfig(_JujuConfigBase):
+    pass
+
+
+class _CharmConfig(_JujuConfigBase):
+    pass
+
+
+class Config:
+    """Juju config wrapper."""
+
+    def __init__(self, raw: dict):
+        self.raw = raw
+
+    @property
+    def charm(self):
+        return _CharmConfig(self.raw["settings"])
+
+    @property
+    def app(self):
+        return _ApplicationConfig(self.raw["application-config"])
+
+
 class JujuLogLevel(str, Enum):
     """Juju loglevels enum."""
 
@@ -186,20 +226,28 @@ class Juju:
         result = self.cli(*args, quiet=quiet)
         return Status(json.loads(result.stdout))
 
-    def config(self, app, config: Dict[str, bool | str]):
+    def application_config_get(self, app) -> Config:
+        """Fetch the current configuration of an application."""
+        args = ["config", app, "--format", "json"]
+        result = self.cli(*args)
+        return Config(json.loads(result.stdout))
+
+    def application_config_set(self, app, config: Dict[str, bool | str]):
+        """Update the configuration of an application."""
+        if not config:
+            raise ValueError("cannot call application_config_set with an empty config")
         args = ["config", app]
+
         for k, v in config.items():
             if isinstance(v, bool):
                 args.append(f"{k}={str(v).lower()}")
+            elif v is None:  # unset
+                args.append(f"{k}=''")
             else:
                 args.append(f"{k}={str(v)}")
+        self.cli(*args)
 
-        result = self.cli(*args)
-        if result.stdout:
-            # if used without args, returns the current config
-            return json.loads(result.stdout)
-
-    def model_config_get(self) -> Dict[str : Dict[str, str]]:
+    def model_config_get(self) -> Dict[str, Dict[str, str]]:
         """Get this model's configuration."""
         result = self.cli("model-config", "--format", "json")
         # if used without args, returns the current config
