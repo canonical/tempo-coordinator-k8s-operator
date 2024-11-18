@@ -6,7 +6,7 @@
 
 import logging
 import re
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, Optional, Sequence, Set, Tuple
 
 import yaml
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol
@@ -93,7 +93,9 @@ class Tempo:
             ),
             storage=self._build_storage_config(coordinator._s3_config),
             metrics_generator=self._build_metrics_generator_config(
-                coordinator.remote_write_endpoints_getter(),
+                coordinator.remote_write_endpoints_getter()  # type: ignore
+                if coordinator.remote_write_endpoints_getter
+                else [],
                 coordinator.tls_available,  # type: ignore
             ),
         )
@@ -148,7 +150,7 @@ class Tempo:
 
     def _build_metrics_generator_config(
         self,
-        remote_write_endpoints: List[Dict[str, Any]],
+        remote_write_endpoints: Sequence[Dict[str, Any]],
         use_tls=False,
     ):
         if len(remote_write_endpoints) == 0:

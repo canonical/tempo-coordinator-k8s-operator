@@ -11,7 +11,7 @@ from helpers import (
     get_traces_patiently,
     protocols_endpoints,
 )
-from tests.integration.juju import WorkloadStatus
+from tests.integration.juju import WorkloadStatus, Juju
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = "tempo"
@@ -128,12 +128,12 @@ def test_relate_ingress(juju):
     )
 
 
-def test_force_enable_protocols(juju):
+def test_force_enable_protocols(juju: Juju):
     config = {}
     for protocol in list(protocols_endpoints.keys()):
         config[f"always_enable_{protocol}"] = "True"
 
-    juju.config(APP_NAME, config)
+    juju.application_config_set(APP_NAME, config)
     juju.wait(
         stop=lambda status: status.all_workloads(
             (APP_NAME, WORKER_NAME), WorkloadStatus.active

@@ -82,7 +82,7 @@ class TempoCoordinatorCharm(CharmBase):
 
         self.ingress = TraefikRouteRequirer(
             self,
-            self.model.get_relation("ingress"),
+            self.model.get_relation("ingress"),  # type: ignore
             "ingress",
         )  # type: ignore
         self.tempo = Tempo(

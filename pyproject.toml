@@ -42,6 +42,10 @@ dev = [
 
 
 [tool.pyright]
+include = [
+    "src",
+    "lib/charms/tempo_coordinator_k8s/"
+  ]
 extraPaths = ["lib"]
 pythonVersion = "3.8"
 pythonPlatform = "All"

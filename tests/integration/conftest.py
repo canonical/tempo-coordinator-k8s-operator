@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 from json import JSONDecodeError
 from pathlib import Path
-from subprocess import check_output
+from subprocess import check_output, CalledProcessError
 
 import pytest
 import yaml
@@ -58,13 +58,12 @@ def _generate_random_model_name():
 
 
 @fixture(scope="module", autouse=True)
-def juju(request):
+def juju(request) -> Juju:
     model_name = request.config.getoption("--model") or _generate_random_model_name()
     unbound_juju = Juju()
     try:
-        Juju(model_name).status()
-        # model does not exist
-    except:
+        Juju(model_name).status(quiet=True)
+    except CalledProcessError:
         unbound_juju.cli("add-model", model_name, "--no-switch")
 
     juju = Juju(model_name)

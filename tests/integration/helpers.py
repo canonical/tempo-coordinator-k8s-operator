@@ -12,7 +12,7 @@ from cosl.coordinated_workers.nginx import CA_CERT_PATH
 from minio import Minio
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from tests.integration.juju import WorkloadStatus
+from tests.integration.juju import WorkloadStatus, Juju
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
@@ -214,7 +214,7 @@ def get_unit_address(juju, app_name, unit_no):
         raise
 
 
-def deploy_and_configure_minio(juju):
+def deploy_and_configure_minio(juju: Juju):
     config = {
         "access-key": ACCESS_KEY,
         "secret-key": SECRET_KEY,
@@ -241,7 +241,7 @@ def deploy_and_configure_minio(juju):
         mc_client.make_bucket(BUCKET_NAME)
 
     # configure s3-integrator
-    juju.config(
+    juju.application_config_set(
         S3_INTEGRATOR,
         {
             "endpoint": f"minio-0.minio-endpoints.{juju.model_name()}.svc.cluster.local:9000",
