@@ -15,7 +15,7 @@ generate-requirements:
 lint:
 	uv tool run ruff check $(ALL)
 	uv tool run ruff format --check --diff $(ALL)
-	uv run pyright
+	uv run --extra dev pyright
 
 fmt:
 	uv tool run ruff check --fix-only $(ALL)
