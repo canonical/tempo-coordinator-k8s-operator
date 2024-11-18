@@ -65,7 +65,8 @@ jobs:
         continue-on-error: true
         # ./charm-md5sum.txt may not exist if this is the first run, but we're good
         run: |
-          cache_valid=$(( diff ./charm-md5sum.txt.new ./charm-md5sum.txt ) && echo "yes" || echo "no") >> $GITHUB_OUTPUT
+          DIFF=$(( diff ./charm-md5sum.txt.new ./charm-md5sum.txt ) && echo "yes" || echo "no")
+          echo "cache_valid=$DIFF" >> "$GITHUB_OUTPUT"
 
       # these steps should only run IF hash comparison has failed, which means our cache is dirty
       - name: Setup LXD

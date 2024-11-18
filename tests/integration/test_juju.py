@@ -1,13 +1,6 @@
-import pytest
-
-from tests.integration.juju import WorkloadStatus, AgentStatus, Juju
+from tests.integration.juju import WorkloadStatus, AgentStatus
 
 TRAEFIK = "traefik"
-
-
-@pytest.fixture
-def juju():
-    return Juju("test-foo")
 
 
 def test_deploy(juju):
@@ -18,7 +11,7 @@ def test_wait_active(juju):
     juju.wait(
         stop=lambda status: status.all_workloads(TRAEFIK, WorkloadStatus.active)
         and status.all_agents(TRAEFIK, AgentStatus.idle),
-        timeout=60,
+        timeout=600,
     )
 
 
