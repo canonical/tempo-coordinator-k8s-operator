@@ -48,6 +48,8 @@ jobs:
         # allow this to fail, as it could be the first run
         continue-on-error: true
         with:
+          # search from most to least recent
+          workflow_search: true
           # don't care about the workflow outcome
           workflow_conclusion: ""
           # THIS PR only
