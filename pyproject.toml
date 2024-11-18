@@ -30,6 +30,7 @@ dev = [
     "coverage[toml]",
     "pydantic",
     "pytest",
+    "pyright",
     "ruff",
     "catan",
     "ops[testing]>=2.17",
