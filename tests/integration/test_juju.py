@@ -4,7 +4,7 @@ TRAEFIK = "traefik"
 
 
 def test_deploy(juju):
-    juju.deploy("traefik-k8s", alias=TRAEFIK)
+    juju.deploy("traefik-k8s", alias=TRAEFIK, trust=True)
 
 
 def test_wait_active(juju):
