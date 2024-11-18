@@ -17,7 +17,8 @@ def test_deploy(juju):
 def test_wait_active(juju):
     juju.wait(
         stop=lambda status: status.all_workloads(TRAEFIK, WorkloadStatus.active)
-        and status.all_agents(TRAEFIK, AgentStatus.idle)
+        and status.all_agents(TRAEFIK, AgentStatus.idle),
+        timeout=60,
     )
 
 

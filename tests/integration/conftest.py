@@ -61,7 +61,12 @@ def _generate_random_model_name():
 def juju(request):
     model_name = request.config.getoption("--model") or _generate_random_model_name()
     unbound_juju = Juju()
-    unbound_juju.cli("add-model", model_name, "--no-switch")
+    try:
+        Juju(model_name).status()
+        # model does not exist
+    except:
+        unbound_juju.cli("add-model", model_name, "--no-switch")
+
     juju = Juju(model_name)
     try:
         yield juju
