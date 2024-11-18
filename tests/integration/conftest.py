@@ -27,6 +27,10 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent.absolute()
 
 def pytest_addoption(parser):
     parser.addoption(
+        "--nuke",
+        help="--force teardown the model when done.",
+    )
+    parser.addoption(
         "--model",
         help="Use this model name instead of a randomly generated one. Implies --keep-models.",
     )
@@ -76,7 +80,9 @@ def juju(request) -> Juju:
         if not request.config.getoption(
             "--keep-models"
         ) and not request.config.getoption("--model"):
-            juju.destroy_model(destroy_storage=True)
+            juju.destroy_model(
+                destroy_storage=True, force=request.config.getoption("--nuke")
+            )
         else:
             logger.info("--keep-models|--model: skipping model destroy")
 

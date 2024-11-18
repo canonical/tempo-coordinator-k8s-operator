@@ -507,11 +507,13 @@ class Juju:
 
         return self.cli(*args).stdout
 
-    def destroy_model(self, destroy_storage: bool = False):
+    def destroy_model(self, destroy_storage: bool = False, force: bool = False):
         """Destroy this model."""
         args = ["destroy-model", "--no-prompt", self.model_name()]
         if destroy_storage:
             args.append("--destroy-storage")
+        if force:
+            args.append("--force")
         return self.cli(*args, add_model_flag=False)
 
     def cli(
@@ -522,6 +524,9 @@ class Juju:
         Thin wrapper on top of Popen, but appends `-m <model name>` to the command args
         if this Juju is bound to a model.
         """
+        if "--force" in args:
+            logger.warning("running commands with --force is, like, **super bad**")
+
         if add_model_flag and "-m" not in args and self.model:
             args = [*args, "-m", self.model]
 
