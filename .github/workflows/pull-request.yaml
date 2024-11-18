@@ -55,6 +55,12 @@ jobs:
           # download the 'charms' artifact
           name: charms
 
+      - name: Install dependencies
+        run: sudo snap install --classic astral-uv
+
+      - name: Generate requirements.txt
+        run: make generate-requirements
+
       - name: Verify cache
         id: check-cache
         continue-on-error: true
