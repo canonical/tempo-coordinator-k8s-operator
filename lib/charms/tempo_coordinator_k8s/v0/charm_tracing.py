@@ -19,15 +19,19 @@ Then edit your charm code to include:
 
 ```python
 # import the necessary charm libs
-from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer, charm_tracing_config
+from charms.tempo_coordinator_k8s.v0.tracing import (
+    TracingEndpointRequirer,
+    charm_tracing_config,
+)
 from charms.tempo_coordinator_k8s.v0.charm_tracing import charm_tracing
+
 
 # decorate your charm class with charm_tracing:
 @charm_tracing(
     # forward-declare the instance attributes that the instrumentor will look up to obtain the
     # tempo endpoint and server certificate
     tracing_endpoint="tracing_endpoint",
-    server_cert="server_cert"
+    server_cert="server_cert",
 )
 class MyCharm(CharmBase):
     _path_to_cert = "/path/to/cert.crt"
@@ -37,10 +41,12 @@ class MyCharm(CharmBase):
     # If you do support TLS, you'll need to make sure that the server cert is copied to this location
     # and kept up to date so the instrumentor can use it.
 
-    def __init__(self, ...):
-        ...
+    def __init__(self, *args, **kwargs):
+        # ...
         self.tracing = TracingEndpointRequirer(self, ...)
-        self.tracing_endpoint, self.server_cert = charm_tracing_config(self.tracing, self._path_to_cert)
+        self.tracing_endpoint, self.server_cert = charm_tracing_config(
+            self.tracing, self._path_to_cert
+        )
 ```
 
 # Detailed usage
@@ -365,7 +371,7 @@ _BUFFER_CACHE_FILE_SIZE_LIMIT_MiB_MIN = 10
 BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH = 100
 _MiB_TO_B = 2**20  # megabyte to byte conversion rate
 _OTLP_SPAN_EXPORTER_TIMEOUT = 1
-"""Timeout in seconds that the OTLP span exporter has to push traces to the backend."""
+# Timeout in seconds that the OTLP span exporter has to push traces to the backend.
 
 
 class _Buffer:
@@ -647,7 +653,7 @@ def _get_server_cert(
     server_cert_attr: str,
     charm_instance: ops.CharmBase,
     charm_type: Type[ops.CharmBase],
-):
+) -> Optional[Union[str, Path]]:
     _server_cert = getattr(charm_instance, server_cert_attr)
     if callable(_server_cert):
         server_cert = _server_cert()
@@ -659,6 +665,10 @@ def _get_server_cert(
             f"{charm_type}.{server_cert_attr} is None; sending traces over INSECURE connection."
         )
         return
+
+    if not isinstance(server_cert, (Path, str)):
+        raise TypeError(f"'{server_cert_attr} should return str|Path, not {type(server_cert)}")
+
     elif not Path(server_cert).is_absolute():
         raise ValueError(
             f"{charm_type}.{server_cert_attr} should resolve to a valid tls cert absolute path (string | Path)); "
