@@ -4,7 +4,7 @@ TRAEFIK = "traefik"
 
 
 def test_deploy(juju):
-    juju.deploy("traefik-k8s")
+    juju.deploy("traefik-k8s", alias=TRAEFIK)
 
 
 def test_wait_active(juju):
@@ -12,6 +12,7 @@ def test_wait_active(juju):
         stop=lambda status: status.all_workloads(TRAEFIK, WorkloadStatus.active)
         and status.all_agents(TRAEFIK, AgentStatus.idle),
         timeout=600,
+        soak=1,
     )
 
 

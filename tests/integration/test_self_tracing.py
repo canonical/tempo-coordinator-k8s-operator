@@ -53,7 +53,7 @@ def test_verify_trace_http_self(juju):
 
 
 def test_relate_remote_instance(juju):
-    juju.integrate(APP_NAME + ":tracing", APP_REMOTE_NAME + ":self-tracing")
+    juju.integrate(APP_NAME + ":tracing", APP_REMOTE_NAME + ":self-charm-tracing")
     juju.wait(
         stop=lambda status: status.all_workloads(
             (APP_NAME, WORKER_NAME), WorkloadStatus.active

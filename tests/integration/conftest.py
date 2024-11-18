@@ -70,7 +70,7 @@ def juju(request) -> Juju:
     try:
         yield juju
     finally:
-        print(f"==== captured juju debug-log for model {juju.model_name()} =====")
+        logger.info(f"==== captured juju debug-log for model {juju.model_name()} =====")
         print(juju.debug_log(replay=True, level=JujuLogLevel.DEBUG))
 
         if not request.config.getoption(

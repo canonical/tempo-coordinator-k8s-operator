@@ -368,7 +368,7 @@ class Juju:
     def wait(
         self,
         timeout: int,
-        soak: str = "10s",
+        soak: int = 10,
         stop: Optional[Callable[[Status], bool]] = None,
         fail: Optional[Callable[[Status], bool]] = None,
         refresh_rate: float = 1.0,
@@ -387,8 +387,8 @@ class Juju:
          to "blocked" before the stop condition is met.
         """
         start = time.time()
-        soak_time = _parse_time(soak)
-        pass_counter = 0
+        soak_time = timedelta(seconds=soak)
+        stop_condition_first_hit: Optional[float] = None
         last_status_printed_time = (
             0  # number of seconds since the epoch, that is, very long ago
         )
@@ -420,12 +420,21 @@ class Juju:
 
                     if stop:
                         if stop(status):
-                            pass_counter += 1
-                            if pass_counter >= soak_time.total_seconds():
-                                return True
+                            if not stop_condition_first_hit:
+                                stop_condition_first_hit = time.time()
+                                print("started soak period")
+                                continue
 
+                            if (
+                                time.time() - stop_condition_first_hit
+                                >= soak_time.seconds
+                            ):
+                                print("soak successfully terminated")
+                                return True
                         else:
-                            pass_counter = 0
+                            if stop_condition_first_hit:
+                                print("soak interrupted: stop condition no longer met")
+                                stop_condition_first_hit = None
 
                     if fail and fail(status):
                         raise WaitFailed("fail condition met during wait")
