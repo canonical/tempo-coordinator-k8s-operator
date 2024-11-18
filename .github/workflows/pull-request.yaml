@@ -42,6 +42,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
 
+      - name: Get branch name
+        shell: bash
+        run: echo "name=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: branch
+
       - name: Download cache
         # https://github.com/dawidd6/action-download-artifact
         uses: dawidd6/action-download-artifact@v6
@@ -52,8 +57,8 @@ jobs:
           workflow_search: true
           # don't care about the workflow outcome
           workflow_conclusion: ""
-          # THIS PR only
-          pr: ${{github.event.pull_request.number}}
+          # THIS branch only
+          branch: ${{ steps.branch.outputs.name }}
           # download the 'charms' artifact
           name: charms
 
