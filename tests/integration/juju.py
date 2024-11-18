@@ -199,7 +199,7 @@ class Juju:
             # if used without args, returns the current config
             return json.loads(result.stdout)
 
-    def model_config_get(self):
+    def model_config_get(self) -> Dict[str : Dict[str, str]]:
         """Get this model's configuration."""
         result = self.cli("model-config", "--format", "json")
         # if used without args, returns the current config
@@ -222,7 +222,8 @@ class Juju:
         if slow_interval:
             interval_after = slow_interval
         else:
-            interval_after = self.model_config_get()[update_interval_key]
+            # don't ask me why it's capitalized
+            interval_after = self.model_config_get()[update_interval_key]["Value"]
 
         self.model_config_set({update_interval_key: fast_interval})
         yield

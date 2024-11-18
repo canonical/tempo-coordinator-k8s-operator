@@ -147,7 +147,6 @@ parts:
       - -Makefile
       - -pyproject.toml
       - -README.md
-      - -requirements-dev.txt
       - -scripts/
       - -tests/
       - -uv.lock
