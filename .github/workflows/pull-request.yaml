@@ -73,7 +73,7 @@ jobs:
         continue-on-error: true
         # ./charm-md5sum.txt may not exist if this is the first run, but we're good
         run: |
-          find ./src ./lib ./metadata.yaml ./requirements.txt ./charmcraft.yaml \( -type d -name .git -prune \) -o -type f -exec md5sum '{}' \; | md5sum >> ./charm-md5sum.txt.new
+          find ./src ./lib ./requirements.txt ./charmcraft.yaml \( -type d -name .git -prune \) -o -type f -exec md5sum '{}' \; | md5sum >> ./charm-md5sum.txt.new
           DIFF=$(( diff ./charm-md5sum.txt.new ./charm-md5sum.txt ) && echo "yes" || echo "no")
           echo "cache_valid=$DIFF" >> "$GITHUB_OUTPUT"
           echo $([ "$DIFF" = "yes" ] && echo "cache is clean" || echo "cache is dirty")

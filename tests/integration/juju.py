@@ -422,18 +422,20 @@ class Juju:
                         if stop(status):
                             if not stop_condition_first_hit:
                                 stop_condition_first_hit = time.time()
-                                print("started soak period")
+                                logger.debug("started soak period")
                                 continue
 
                             if (
                                 time.time() - stop_condition_first_hit
                                 >= soak_time.seconds
                             ):
-                                print("soak successfully terminated")
+                                logger.debug("soak successfully terminated")
                                 return True
                         else:
                             if stop_condition_first_hit:
-                                print("soak interrupted: stop condition no longer met")
+                                logger.debug(
+                                    "soak interrupted: stop condition no longer met"
+                                )
                                 stop_condition_first_hit = None
 
                     if fail and fail(status):
