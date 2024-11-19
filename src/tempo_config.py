@@ -40,6 +40,7 @@ class TempoRole(str, Enum):
 
     @staticmethod
     def all_nonmeta():
+        """All nonmeta roles."""
         return {
             TempoRole.querier,
             TempoRole.query_frontend,
@@ -80,7 +81,7 @@ RECOMMENDED_DEPLOYMENT = {
 
 
 TEMPO_ROLES_CONFIG = ClusterRolesConfig(
-    roles={role for role in TempoRole},
+    roles=set(role for role in TempoRole),
     meta_roles=META_ROLES,
     minimal_deployment=MINIMAL_DEPLOYMENT,
     recommended_deployment=RECOMMENDED_DEPLOYMENT,

@@ -11,6 +11,7 @@ from helpers import (
     deploy_cluster,
     get_traces_patiently,
 )
+
 from tests.integration.juju import WorkloadStatus
 
 logger = logging.getLogger(__name__)

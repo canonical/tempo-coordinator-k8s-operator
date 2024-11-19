@@ -6,26 +6,59 @@ import os
 import random
 import shlex
 import shutil
-import string
 import subprocess
 import tempfile
 from json import JSONDecodeError
 from pathlib import Path
-from subprocess import check_output, CalledProcessError
+from subprocess import CalledProcessError, check_output
 
 import pytest
 import yaml
+from juju import Juju, generate_random_model_name
 from pytest import fixture
 
-from juju import Juju
-from tests.integration.helpers import get_relation_data, APP_NAME, TRAEFIK, SSC_APP_NAME
+from tests.integration.helpers import APP_NAME, SSC_APP_NAME, TRAEFIK, get_relation_data
 from tests.integration.juju import JujuLogLevel
 
 logger = logging.getLogger(__name__)
 PROJECT_ROOT = Path(__file__).parent.parent.parent.absolute()
 
 
+def pytest_configure(config):
+    # register your new marker to avoid warnings
+    config.addinivalue_line("markers", "setup: setup tests")
+    config.addinivalue_line("markers", "teardown: teardown tests")
+
+
+def pytest_collection_modifyitems(config, items):
+    for option, mark in (("--no-setup", "setup"), ("--no-teardown", "teardown")):
+        if config.getoption(option):
+            skip = pytest.mark.skip(reason=f"{option} provided")
+            for item in items:
+                if mark in item.keywords:
+                    # collect all items that have a key marker with that value
+                    item.add_marker(skip)
+
+
 def pytest_addoption(parser):
+    parser.addoption(
+        "--no-setup",
+        action="store_true",
+        default=False,
+        help="Only execute tests marked as 'startup'.",
+    )
+    parser.addoption(
+        "--no-teardown",
+        action="store_true",
+        default=False,
+        help="Only execute tests marked as 'teardown'.",
+    )
+    parser.addoption(
+        "--switch",
+        action="store_true",
+        default=False,
+        help="Switch to the model you're testing in.",
+    )
     parser.addoption(
         "--nuke",
         help="--force teardown the model when done.",
@@ -54,37 +87,39 @@ def pytest_addoption(parser):
     )
 
 
-def _generate_random_model_name():
-    name = "test-"
-    for _ in range(15):
-        name += random.choice(string.ascii_lowercase)
-    return name
-
-
 @fixture(scope="module", autouse=True)
 def juju(request) -> Juju:
-    model_name = request.config.getoption("--model") or _generate_random_model_name()
+    model_name = request.config.getoption("--model") or generate_random_model_name()
     unbound_juju = Juju()
     try:
         Juju(model_name).status(quiet=True)
     except CalledProcessError:
-        unbound_juju.cli("add-model", model_name, "--no-switch")
+        unbound_juju.add_model(model_name, switch=False)
 
     juju = Juju(model_name)
+    if request.config.getoption("--switch"):
+        juju.switch()
+
     try:
         yield juju
     finally:
         logger.info(f"==== captured juju debug-log for model {juju.model_name()} =====")
         print(juju.debug_log(replay=True, level=JujuLogLevel.DEBUG))
 
-        if not request.config.getoption(
-            "--keep-models"
-        ) and not request.config.getoption("--model"):
+        should_teardown_model = True
+
+        if request.config.getoption("--keep-models"):
+            should_teardown_model = False
+        elif request.config.getoption("--model"):
+            should_teardown_model = False
+        elif request.config.getoption("--no-teardown"):
+            should_teardown_model = False
+        if should_teardown_model:
             juju.destroy_model(
                 destroy_storage=True, force=request.config.getoption("--nuke")
             )
         else:
-            logger.info("--keep-models|--model: skipping model destroy")
+            logger.info("skipping model teardown")
 
 
 @fixture(scope="session", autouse=True)

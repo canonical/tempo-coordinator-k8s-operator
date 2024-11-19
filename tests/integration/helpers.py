@@ -12,7 +12,7 @@ from cosl.coordinated_workers.nginx import CA_CERT_PATH
 from minio import Minio
 from tenacity import retry, stop_after_attempt, wait_exponential
 
-from tests.integration.juju import WorkloadStatus, Juju
+from tests.integration.juju import Juju, WorkloadStatus
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")

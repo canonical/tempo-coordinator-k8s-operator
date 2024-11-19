@@ -3,13 +3,13 @@ import logging
 from pathlib import Path
 
 import pytest
-
 from helpers import WORKER_NAME, deploy_cluster
+
 from tests.integration.helpers import (
-    get_traces_patiently,
     APP_NAME,
-    TESTER_NAME,
     TESTER_GRPC_NAME,
+    TESTER_NAME,
+    get_traces_patiently,
 )
 from tests.integration.juju import WorkloadStatus
 

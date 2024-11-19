@@ -228,7 +228,7 @@ class TempoCoordinatorCharm(CharmBase):
 
     @property
     def enabled_receivers(self) -> Set[str]:
-        """Extra receivers enabled through config"""
+        """Extra receivers enabled through config."""
         enabled_receivers = set()
         # otlp_http is needed by charm_tracing
         enabled_receivers.add("otlp_http")
@@ -407,7 +407,7 @@ class TempoCoordinatorCharm(CharmBase):
         }
 
     def _build_lb_server_config(self, scheme: str, port: int) -> List[Dict[str, str]]:
-        """build the server portion of the loadbalancer config of Traefik ingress."""
+        """Build the server portion of the loadbalancer config of Traefik ingress."""
 
         def to_url(fqdn: str):
             return {"url": f"{scheme}://{fqdn}:{port}"}
@@ -467,11 +467,11 @@ class TempoCoordinatorCharm(CharmBase):
         return out == "ready"
 
     def get_resources_requests(self, _) -> Dict[str, str]:
-        """Returns a dictionary for the "requests" portion of the resources requirements."""
+        """Return a dictionary for the "requests" portion of the resources requirements."""
         return {"cpu": "50m", "memory": "100Mi"}
 
     def remote_write_endpoints(self):
-        """Return remote-write endpoints."""
+        """Return the remote-write endpoints."""
         return self._remote_write.endpoints
 
     def _reconcile(self):

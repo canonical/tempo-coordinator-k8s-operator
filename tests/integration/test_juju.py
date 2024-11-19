@@ -1,6 +1,25 @@
-from tests.integration.juju import WorkloadStatus, AgentStatus
+from tests.integration.juju import (
+    AgentStatus,
+    Juju,
+    WorkloadStatus,
+    generate_random_model_name,
+)
 
 TRAEFIK = "traefik"
+
+
+def test_model_mgmt():
+    m0 = Juju()
+    m1 = m0.add_model(generate_random_model_name())
+    m2 = m1.add_model(generate_random_model_name())
+
+    assert not m0.model  # unbound juju
+    assert m1.model
+    assert m2.model
+    assert m2.model != m1.model
+
+    m1.destroy_model()
+    m2.destroy_model()
 
 
 def test_deploy(juju):

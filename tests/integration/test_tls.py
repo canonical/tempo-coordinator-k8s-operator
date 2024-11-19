@@ -11,7 +11,8 @@ from helpers import (
     get_traces_patiently,
     protocols_endpoints,
 )
-from tests.integration.juju import WorkloadStatus, Juju
+
+from tests.integration.juju import Juju, WorkloadStatus
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = "tempo"

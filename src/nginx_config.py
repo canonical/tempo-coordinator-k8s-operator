@@ -313,9 +313,7 @@ class NginxConfig:
         }
 
     def _is_protocol_grpc(self, protocol: str) -> bool:
-        """
-        Return True if the given protocol is gRPC
-        """
+        """Return True if the given protocol is gRPC."""
         if (
             protocol == "tempo_grpc"
             or receiver_protocol_to_transport_protocol.get(

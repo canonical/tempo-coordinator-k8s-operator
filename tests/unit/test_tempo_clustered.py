@@ -8,11 +8,11 @@ import scenario
 from charms.tempo_coordinator_k8s.v0.tracing import TracingRequirerAppData
 from charms.tls_certificates_interface.v3.tls_certificates import ProviderCertificate
 from cosl.coordinated_workers.interface import ClusterProvider, ClusterProviderAppData
+from helpers import get_tempo_config
 from scenario import Relation, State
 
 from charm import TempoCoordinatorCharm
 from tempo import Tempo
-from helpers import get_tempo_config
 
 
 @pytest.fixture(scope="function")

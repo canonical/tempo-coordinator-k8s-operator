@@ -2,14 +2,12 @@ import logging
 from pathlib import Path
 
 import pytest
-import yaml
 from helpers import deploy_cluster
+
 from tests.integration.juju import WorkloadStatus
 
-METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = "tempo"
 S3_INTEGRATOR = "s3-integrator"
-TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +23,7 @@ def test_deploy_tempo(tempo_charm: Path, tempo_resources, juju):
     )
 
 
+@pytest.mark.setup
 def test_scale_tempo_up_without_s3_blocks(juju):
     juju.add_unit(APP_NAME, n=1)
     juju.wait(

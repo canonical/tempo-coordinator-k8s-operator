@@ -4,7 +4,9 @@
 
 
 import json
+import random
 import re
+import string
 import subprocess
 import time
 from contextlib import contextmanager
@@ -13,7 +15,7 @@ from enum import Enum
 from logging import getLogger
 from pathlib import Path
 from subprocess import CalledProcessError, CompletedProcess
-from typing import Dict, Iterable, Callable, Optional, Union, Tuple, List
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 logger = getLogger("juju")
 
@@ -32,8 +34,16 @@ def _parse_time(delta: str) -> None | timedelta:
     return timedelta(**time_params)
 
 
-class WaitFailed(Exception):
+class JujuError(Exception):
+    """Base class for custom exceptions raised by this module."""
+
+
+class WaitFailedError(JujuError):
     """Raised when the ``Juju.wait()`` fail condition triggers."""
+
+
+class StatusError(JujuError):
+    """Raised when the ``Juju.status()`` fails."""
 
 
 class WorkloadStatus(str, Enum):
@@ -58,7 +68,7 @@ class AgentStatus(str, Enum):
 
 class Status(dict):
     def juju_status(self, application: str):
-        """Mapping from unit name to active/idle, unknown/executing..."""
+        """Get a mapping from unit name to active/idle, unknown/executing..."""
         units = self["applications"][application]["units"]
         return {u: units[u]["juju-status"]["current"] for u in units}
 
@@ -67,12 +77,12 @@ class Status(dict):
         return self["applications"][application]["application-status"]["current"]
 
     def workload_status(self, application: str) -> Dict[str, WorkloadStatus]:
-        """Mapping from unit name to active/unknown/error..."""
+        """Get a mapping from unit name to active/unknown/error..."""
         units = self["applications"][application]["units"]
         return {u: units[u]["workload-status"]["current"] for u in units}
 
     def agent_status(self, application: str) -> Dict[str, AgentStatus]:
-        """Mapping from unit name to idle/executing/error..."""
+        """Get a mapping from unit name to idle/executing/error..."""
         units = self["applications"][application]["units"]
         return {u: units[u]["juju-status"]["current"] for u in units}
 
@@ -212,6 +222,13 @@ class JujuLogLevel(str, Enum):
     ERROR = "ERROR"
 
 
+def generate_random_model_name(prefix: str = "test-", suffix: str = ""):
+    name = "test-"
+    for _ in range(15):
+        name += random.choice(string.ascii_lowercase)
+    return name
+
+
 class Juju:
     """Juju CLI wrapper for in-model operations."""
 
@@ -219,11 +236,16 @@ class Juju:
         self.model = model
 
     def model_name(self):
+        """Get the name of the current model."""
         return self.model or self.status()["model"]["name"]
 
     def status(self, quiet: bool = False) -> Status:
+        """Fetch the juju status."""
         args = ["status", "--format", "json"]
         result = self.cli(*args, quiet=quiet)
+        if not result:
+            raise StatusError(f"cannot get status for {self.model}")
+
         return Status(json.loads(result.stdout))
 
     def application_config_get(self, app) -> Config:
@@ -324,7 +346,7 @@ class Juju:
         return self.cli(*args)
 
     def integrate(self, requirer: str, provider: str):
-        """Integrate two application endpoints"""
+        """Integrate two application endpoints."""
         args = ["integrate", requirer, provider]
         return self.cli(*args)
 
@@ -365,7 +387,11 @@ class Juju:
         # even if you juju run foo/leader, the output will be for its specific ID: {"foo/0":...}
         return list(result.values())[0]
 
-    def wait(
+    def display_status(self, quiet: bool = True):
+        """Print the `juju status` to stdout."""
+        print(self.cli("status", "--relations", quiet=quiet).stdout)
+
+    def wait(  # noqa: C901
         self,
         timeout: int,
         soak: int = 10,
@@ -400,10 +426,6 @@ class Juju:
 
         logger.info(f"Waiting for conditions; stop={stop}, fail={fail}")
 
-        def _display_status():
-            print("current juju status:")
-            print(self.cli("status", "--relations", quiet=True).stdout)
-
         try:
             while time.time() - start < timeout:
                 try:
@@ -416,7 +438,7 @@ class Juju:
                         >= print_status_every
                     ):
                         last_status_printed_time = time.time()
-                        _display_status()
+                        self.display_status()
 
                     if stop:
                         if stop(status):
@@ -439,9 +461,9 @@ class Juju:
                                 stop_condition_first_hit = None
 
                     if fail and fail(status):
-                        raise WaitFailed("fail condition met during wait")
+                        raise WaitFailedError("fail condition met during wait")
 
-                except WaitFailed:
+                except WaitFailedError:
                     raise
 
                 except Exception as e:
@@ -455,7 +477,7 @@ class Juju:
 
         finally:
             # before we return, whether it's an exception or a True, we print out the status.
-            _display_status()
+            self.display_status()
 
     def debug_log(
         self,
@@ -557,6 +579,27 @@ class Juju:
         # now we let it raise
         proc.check_returncode()
         return proc
+
+    def switch(self, model: Optional[str] = None) -> "Juju":
+        """Switch to this model or a different one."""
+        target_model = model or self.model
+        if not target_model:
+            raise RuntimeError("cannot `switch()` an unbound model")
+
+        self.cli("switch", target_model, add_model_flag=False)
+        return Juju(target_model)
+
+    def add_model(self, model: Optional[str] = None, switch: bool = False) -> "Juju":
+        """Add this or a new model to the current controller."""
+        target_model = model or self.model
+        if not target_model:
+            raise RuntimeError("cannot `switch()` an unbound model")
+
+        args = ["add-model", target_model]
+        if switch:
+            args.append("--no-switch")
+        self.cli(*args, add_model_flag=False)
+        return Juju(target_model)
 
 
 if __name__ == "__main__":

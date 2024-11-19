@@ -125,7 +125,6 @@ class Tempo:
 
     def _build_tls_config(self, workers_addrs: Tuple[str, ...]):
         """Build TLS config to be used by Tempo's internal clients to communicate with each other."""
-
         # cfr:
         # https://grafana.com/docs/tempo/latest/configuration/network/tls/#client-configuration
         return {
@@ -240,7 +239,7 @@ class Tempo:
         )
 
     def _build_compactor_config(self):
-        """Build compactor config"""
+        """Build compactor config."""
         return tempo_config.Compactor(
             compaction=tempo_config.Compaction(
                 # blocks in this time window will be compacted together
@@ -257,7 +256,7 @@ class Tempo:
         self,
         peers: Optional[Tuple[str, ...]],
     ) -> tempo_config.Memberlist:
-        """Build memberlist config"""
+        """Build memberlist config."""
         return tempo_config.Memberlist(
             abort_if_cluster_join_fails=False,
             bind_port=self.memberlist_port,
@@ -267,7 +266,7 @@ class Tempo:
         )
 
     def _build_ingester_config(self, roles_addresses: Dict[str, Set[str]]):
-        """Build ingester config"""
+        """Build ingester config."""
         ingester_addresses = roles_addresses.get(tempo_config.TempoRole.ingester)
         # the length of time after a trace has not received spans to consider it complete and flush it
         # cut the head block when it hits this number of traces or ...
@@ -287,12 +286,12 @@ class Tempo:
             ),
         )
 
-    def _build_distributor_config(
+    def _build_distributor_config(  # noqa: C901
         self,
         receivers: Sequence[ReceiverProtocol],
         use_tls=False,
-    ):  # noqa: C901
-        """Build distributor config"""
+    ):
+        """Build distributor config."""
         # receivers: the receivers we have to enable because the requirers we're related to
         # intend to use them. It already includes receivers that are always enabled
         # through config or because *this charm* will use them.
