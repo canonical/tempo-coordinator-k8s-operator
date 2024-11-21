@@ -304,9 +304,42 @@ class Juju:
         args = ["add-unit", "-n", str(n), app]
         return self.cli(*args)
 
-    def remove_unit(self, app: str, *, n: int = 1):
+    def remove_unit(
+        self,
+        app: str,
+        *,
+        n: int = 1,
+        destroy_storage: bool = True,
+        wait: bool = False,
+        force: bool = False,
+    ):
         """Remove one or multiple units from an application."""
-        args = ["remove-unit", "--num-units", str(n), app]
+        args = ["remove-unit", "--num-units", str(n), "--no-prompt"]
+        if destroy_storage:
+            args.append("--destroy-storage")
+        if not wait:
+            args.append("--no-wait")
+        if force:
+            args.append("--force")
+        args.append(app)
+        return self.cli(*args)
+
+    def remove_application(
+        self,
+        app: str,
+        destroy_storage: bool = True,
+        wait: bool = False,
+        force: bool = False,
+    ):
+        """Remove one or multiple units from an application."""
+        args = ["remove-application", "--no-prompt"]
+        if destroy_storage:
+            args.append("--destroy-storage")
+        if not wait:
+            args.append("--no-wait")
+        if force:
+            args.append("--force")
+        args.append(app)
         return self.cli(*args)
 
     def deploy(
@@ -531,13 +564,20 @@ class Juju:
 
         return self.cli(*args).stdout
 
-    def destroy_model(self, destroy_storage: bool = False, force: bool = False):
-        """Destroy this model."""
-        args = ["destroy-model", "--no-prompt", self.model_name()]
+    def destroy_model(
+        self,
+        *,
+        model_name: str = None,
+        destroy_storage: bool = False,
+        force: bool = False,
+    ):
+        """Destroy this or another model."""
+        args = ["destroy-model", "--no-prompt"]
         if destroy_storage:
             args.append("--destroy-storage")
         if force:
             args.append("--force")
+        args.append(model_name or self.model_name())
         return self.cli(*args, add_model_flag=False)
 
     def cli(

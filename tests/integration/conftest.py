@@ -42,6 +42,11 @@ def pytest_collection_modifyitems(config, items):
 
 def pytest_addoption(parser):
     parser.addoption(
+        "--dump-jdl",
+        action="store",
+        help="Folder in which to save the juju debug-logs when the tests are done.",
+    )
+    parser.addoption(
         "--no-setup",
         action="store_true",
         default=False,
@@ -104,10 +109,21 @@ def juju(request) -> Juju:
         yield juju
     finally:
         logger.info(f"==== captured juju debug-log for model {juju.model_name()} =====")
-        print(juju.debug_log(replay=True, level=JujuLogLevel.DEBUG))
+        model_jdl = juju.debug_log(replay=True, level=JujuLogLevel.DEBUG)
+        if jdl_dir := request.config.getoption("--dump-jdl"):
+            try:
+                jdl_dir = Path(jdl_dir)
+                jdl_dir.mkdir(parents=True, exist_ok=True)
+                jdl_path = jdl_dir / juju.model_name()
+                jdl_path.write_text(model_jdl)
+                logger.info(f"jdl written to {jdl_path}")
+            except Exception:
+                logger.exception(f"failed writing jdl to {jdl_dir}")
+                print(model_jdl)
+        else:
+            print(model_jdl)
 
         should_teardown_model = True
-
         if request.config.getoption("--keep-models"):
             should_teardown_model = False
         elif request.config.getoption("--model"):

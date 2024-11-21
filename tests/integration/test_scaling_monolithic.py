@@ -39,7 +39,7 @@ def test_tempo_active_when_deploy_s3_and_workers(juju):
 
 @pytest.mark.teardown
 def test_tempo_blocks_if_s3_goes_away(juju):
-    juju.cli("remove-application", S3_INTEGRATOR, "--remove-storage=true")
+    juju.remove_application(S3_INTEGRATOR)
     juju.wait(
         stop=lambda status: status.all_workloads(APP_NAME, WorkloadStatus.blocked),
         timeout=1000,

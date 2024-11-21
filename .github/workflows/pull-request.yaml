@@ -142,6 +142,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: ${{ fromJSON(needs.prepare-itest-runs.outputs.suites) }}
+
     # Allow Juju 3.6 jobs to fail, given that it's in beta
     continue-on-error: ${{ contains(matrix.suite, 'juju_3_6') }}
     steps:
@@ -172,3 +173,13 @@ jobs:
       - name: Run integration tests
         run: |
           charmcraft test -v "github-ci:ubuntu-24.04:tests/spread/${{ matrix.suite }}"
+
+      - name: Gather debug logs
+        run: |
+          find ./jdl/ -type f -exec cat {} +
+
+      - name: Upload logfiles
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        with:
+          name: logs
+          path: jdl/
