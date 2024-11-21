@@ -175,8 +175,7 @@ jobs:
           charmcraft test -v "github-ci:ubuntu-24.04:tests/spread/${{ matrix.suite }}"
 
       - name: Gather debug logs
-        run: |
-          find ./jdl/ -type f -exec cat {} +
+        run: find ./jdl/ -type f -exec cat {} +
 
       - name: Upload logfiles
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
