@@ -16,7 +16,7 @@ execute: |
   chown -R $(id -u):$(id -g) $PWD
 
   # run integration tests
-  make integration ARGS="{test_path} --dump-jdl ./jdl"
+  make integration ARGS="{test_path} --dump-jdl $SPREAD_PATH/jdl"
 """
 
 TESTS_ROOT = Path(__file__).parent.parent.absolute()

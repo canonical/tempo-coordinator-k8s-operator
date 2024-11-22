@@ -116,7 +116,7 @@ def juju(request) -> Juju:
                 jdl_dir.mkdir(parents=True, exist_ok=True)
                 jdl_path = jdl_dir / juju.model_name()
                 jdl_path.write_text(model_jdl)
-                logger.info(f"jdl written to {jdl_path}")
+                logger.info(f"jdl written to {jdl_path.absolute()}")
             except Exception:
                 logger.exception(f"failed writing jdl to {jdl_dir}")
                 print(model_jdl)
