@@ -156,9 +156,6 @@ jobs:
           path: ./
           merge-multiple: true
 
-      - name: Display CWD contents
-        run: ls ./
-
       - name: Generate matrix list and tasks
         id: suites
         run: |
@@ -175,7 +172,7 @@ jobs:
 
       - name: Gather debug logs
         if: always()
-        run: find ./jdl/ -type f -exec cat {} +
+        run: find ~/.jdl/ -type f -exec cat {} +
 
       - name: Upload logfiles
         if: always()

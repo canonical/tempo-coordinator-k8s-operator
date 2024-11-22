@@ -42,8 +42,9 @@ def update_relations_tls_and_verify(
     tracing,
 ):
     state = replace(base_state, relations=relations)
-    with charm_tracing_disabled(), patch.object(
-        TempoCoordinatorCharm, "are_certificates_on_disk", local_has_tls
+    with (
+        charm_tracing_disabled(),
+        patch.object(TempoCoordinatorCharm, "are_certificates_on_disk", local_has_tls),
     ):
         out = context.run(context.on.relation_changed(tracing), state)
     tracing_provider_app_data = TracingProviderAppData.load(
