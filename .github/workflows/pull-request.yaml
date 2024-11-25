@@ -172,7 +172,7 @@ jobs:
 
       - name: Gather debug logs
         if: always()
-        run: find ~/.jdl/ -type f -exec cat {} +
+        run: find /var/log/jdl/ -type f -exec cat {} +
 
       - name: Upload logfiles
         if: always()
