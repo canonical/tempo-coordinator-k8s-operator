@@ -4,6 +4,7 @@
 
 
 import json
+import os
 import random
 import re
 import string
@@ -599,13 +600,16 @@ class Juju:
             logger.info(f"executing {' '.join(args_)!r}")
 
         try:
+            env = os.environ.copy()
+            env["NO_COLOR"] = "true"
+
             proc = subprocess.run(
                 args_,
                 check=False,  # we want to expose the stderr on failure
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                env={"NO_COLOR": "true"},
+                env=env,
             )
         except CalledProcessError:
             logger.error(f"command {' '.join(args_)!r} errored out")
