@@ -560,6 +560,7 @@ class Juju:
         for flagname, value in (
             ("ms", ms),
             ("date", date),
+            ("replay", replay),
         ):
             if value is not None:
                 args.append(f"--{flagname}={_bool_str[value]}")
