@@ -181,5 +181,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         with:
-          name: logs
+          name: ${{ matrix.suite }}-jdl
           path: /var/log/jdl/
