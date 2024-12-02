@@ -155,3 +155,31 @@ def s3_tester(interface_tester: InterfaceTester):
                         ),
                     )
                     yield interface_tester
+
+
+@pytest.fixture
+def grafana_datasource_tester(interface_tester: InterfaceTester):
+    with patch("lightkube.core.client.GenericSyncClient"):
+        with patch.multiple(
+            "cosl.coordinated_workers.worker.KubernetesComputeResourcesPatch",
+            _namespace="test-namespace",
+            _patch=lambda _: None,
+            is_ready=k8s_resource_patch_ready,
+        ):
+            with patch.multiple(
+                "cosl.coordinated_workers.coordinator.KubernetesComputeResourcesPatch",
+                _namespace="test-namespace",
+                _patch=lambda _: None,
+                get_status=lambda _: ActiveStatus(""),
+                is_ready=k8s_resource_patch_ready,
+            ):
+                with charm_tracing_disabled():
+                    interface_tester.configure(
+                        charm_type=TempoCoordinatorCharm,
+                        state_template=State(
+                            leader=True,
+                            containers=[nginx_container, nginx_prometheus_exporter_container],
+                            relations=[peers, cluster_relation],
+                        ),
+                    )
+                    yield interface_tester

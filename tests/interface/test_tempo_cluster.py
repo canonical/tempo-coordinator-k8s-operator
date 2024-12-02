@@ -2,10 +2,12 @@
 # See LICENSE file for licensing details.
 from interface_tester import InterfaceTester
 
+from tests.interface.conftest import cluster_tester
 
-def test_tempo_cluster_v0_interface(interface_tester: InterfaceTester):
-    interface_tester.configure(
+
+def test_tempo_cluster_v0_interface(cluster_tester: InterfaceTester):
+    cluster_tester.configure(
         interface_name="tempo_cluster",
         interface_version=0,
     )
-    interface_tester.run()
+    cluster_tester.run()
