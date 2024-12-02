@@ -81,14 +81,14 @@ jobs:
           echo "cache_valid=$DIFF" >> "$GITHUB_OUTPUT"
           echo $([ "$DIFF" = "yes" ] && echo "cache is clean" || echo "cache is dirty")
 
+      # do this unconditionally as the `suites` step below needs charmcraft
+      - name: Install charmcraft
+        run: sudo snap install charmcraft --classic
+
       # these steps should only run IF hash comparison has failed, which means our cache is dirty
       - name: Setup LXD
         if: steps.check-cache.outputs.cache_valid == 'no'
         uses: canonical/setup-lxd@main
-
-      - name: Install lxd and charmcraft
-        if: steps.check-cache.outputs.cache_valid == 'no'
-        run: sudo snap install charmcraft --classic
 
       - name: Generate dependency files
         if: steps.check-cache.outputs.cache_valid == 'no'
