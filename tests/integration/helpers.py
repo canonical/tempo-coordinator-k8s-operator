@@ -282,7 +282,7 @@ def deploy_cluster(
 ):
     """Deploys tempo, worker, s3, minio..."""
     if deploy_tempo:
-        juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
+        juju.deploy(tempo_charm, resources=tempo_resources, alias=tempo_app, trust=True)
 
     if deploy_worker:
         tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
@@ -294,12 +294,12 @@ def deploy_cluster(
         juju.deploy(s3_app, channel="edge")
 
     juju.integrate(tempo_app + ":s3", s3_app + ":s3-credentials")
-    juju.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")
+    juju.integrate(tempo_app + ":tempo-cluster", worker_app + ":tempo-cluster")
 
     deploy_and_configure_minio(juju)
     juju.wait(
         stop=lambda status: status.all_workloads(
-            (tempo_app, WORKER_NAME, s3_app), WorkloadStatus.active
+            (tempo_app, worker_app, s3_app), WorkloadStatus.active
         ),
         timeout=2000,
     )
