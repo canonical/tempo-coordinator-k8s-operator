@@ -55,13 +55,14 @@ jobs:
           # search from most to least recent
           search_artifacts: true
           # look for the most recent completed workflow (to avoid matching the current one)
-          #          workflow_conclusion: completed
+          workflow_conclusion: completed
           # THIS branch only
           branch: ${{ steps.branch.outputs.name }}
           # download the 'charms' artifact
           name: charms
-
+          # why even
           allow_forks: false
+          # warn on no cache found
           if_no_artifact_found: warn
 
       - name: Install dependencies
