@@ -3,10 +3,9 @@
 from interface_tester import InterfaceTester
 
 
-def test_tracing_v2_interface(charm_tracing_tester: InterfaceTester):
-    charm_tracing_tester.configure(
+def test_tracing_v2_interface(tracing_tester: InterfaceTester):
+    tracing_tester.configure(
         interface_name="tracing",
         interface_version=2,
     )
-
-    charm_tracing_tester.run()
+    tracing_tester.run()
