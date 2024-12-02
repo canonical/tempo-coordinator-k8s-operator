@@ -16,9 +16,7 @@ from tests.integration.juju import Juju, WorkloadStatus
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = "tempo"
-SSC = "self-signed-certificates"
 SSC_APP_NAME = "ssc"
-TRAEFIK = "traefik-k8s"
 TRAEFIK_APP_NAME = "trfk"
 TRACEGEN_SCRIPT_PATH = Path().absolute() / "scripts" / "tracegen.py"
 
@@ -26,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_ingress_proxied_hostname(juju):
-    status = juju.get_status()
+    status = juju.status()
     app = status["applications"][TRAEFIK_APP_NAME]
     status_msg = app["status"]["info"]
 
@@ -60,8 +58,8 @@ def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
     # deploy cluster
     deploy_cluster(juju, tempo_charm, tempo_resources)
 
-    juju.deploy(SSC, alias=SSC_APP_NAME)
-    juju.deploy(TRAEFIK, alias=TRAEFIK_APP_NAME, channel="edge", trust=True)
+    juju.deploy("self-signed-certificates", alias=SSC_APP_NAME)
+    juju.deploy("traefik-k8s", alias=TRAEFIK_APP_NAME, channel="edge", trust=True)
     juju.integrate(SSC_APP_NAME + ":certificates", TRAEFIK_APP_NAME + ":certificates")
 
     juju.wait(
@@ -75,7 +73,7 @@ def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
 
 def test_relate_ssc(juju):
     juju.integrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
-    juju.integrate(APP_NAME + ":ingress", TRAEFIK + ":ingress")
+    juju.integrate(APP_NAME + ":ingress", TRAEFIK_APP_NAME + ":ingress")
     juju.wait(
         stop=lambda status: status.all_workloads(
             (APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME),
