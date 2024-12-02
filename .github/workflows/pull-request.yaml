@@ -51,16 +51,20 @@ jobs:
         # https://github.com/dawidd6/action-download-artifact
         uses: dawidd6/action-download-artifact@v6
         # allow this to fail, as it could be the first run
-        continue-on-error: true
         with:
+          # search in this workflow only
+          workflow: Build/Test
           # search from most to least recent
-          workflow_search: true
-          # don't care about the workflow outcome
-          workflow_conclusion: ""
+          search_artifacts: true
+          # look for the most recent completed workflow (to avoid matching the current one)
+          #          workflow_conclusion: completed
           # THIS branch only
           branch: ${{ steps.branch.outputs.name }}
           # download the 'charms' artifact
           name: charms
+
+          allow_forks: false
+          if_no_artifact_found: warn
 
       - name: Install dependencies
         run: sudo snap install --classic astral-uv
