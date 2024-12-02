@@ -174,12 +174,19 @@ jobs:
         run: charmcraft test -v "github-ci:ubuntu-24.04:tests/spread/${{ matrix.suite }}"
 
       - name: Gather debug logs
+        id: jdl
         if: always()
-        run: find /var/log/jdl/ -type f -exec cat {} +
+        continue-on-error: true
+        run: |
+          find /var/log/jdl/ -type f -exec cat {} +
+          JDL_ARTIFACT_NAME=$( ${{ matrix.suite }} | sed 's/:/-/g')
+          echo "jdl_artifact_name=JDL_ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+          echo $JDL_ARTIFACT_NAME
 
       - name: Upload logfiles
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
         with:
-          name: ${{ matrix.suite }}-jdl
+          name: ${{ steps.jdl.outputs.jdl_artifact_name }}
           path: /var/log/jdl/
