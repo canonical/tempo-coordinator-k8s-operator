@@ -279,6 +279,7 @@ def deploy_cluster(
     deploy_tempo: bool = True,
     deploy_worker: bool = True,
     deploy_s3: bool = True,
+    deploy_minio: bool = True,
 ):
     """Deploys tempo, worker, s3, minio..."""
     if deploy_tempo:
@@ -293,10 +294,12 @@ def deploy_cluster(
     if deploy_s3:
         juju.deploy(s3_app, channel="edge")
 
+    if deploy_minio:
+        deploy_and_configure_minio(juju)
+
     juju.integrate(tempo_app + ":s3", s3_app + ":s3-credentials")
     juju.integrate(tempo_app + ":tempo-cluster", worker_app + ":tempo-cluster")
 
-    deploy_and_configure_minio(juju)
     juju.wait(
         stop=lambda status: status.all_workloads(
             (tempo_app, worker_app, s3_app), WorkloadStatus.active

@@ -26,7 +26,7 @@ def test_build_and_deploy(tempo_charm: Path, tempo_resources, juju):
     # deploy cluster
     deploy_cluster(juju, tempo_charm, tempo_resources, tempo_app=APP_NAME)
 
-    # we deploy a second tempo cluster under a different alias (but reuse s3)
+    # we deploy a second tempo cluster under a different alias (but reuse s3 and minio)
     deploy_cluster(
         juju,
         tempo_charm,
@@ -34,6 +34,7 @@ def test_build_and_deploy(tempo_charm: Path, tempo_resources, juju):
         tempo_app=APP_REMOTE_NAME,
         worker_app=APP_WORKER_REMOTE_NAME,
         deploy_s3=False,
+        deploy_minio=False,
     )
 
     juju.wait(
