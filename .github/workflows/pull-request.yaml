@@ -52,8 +52,6 @@ jobs:
         uses: dawidd6/action-download-artifact@v6
         # allow this to fail, as it could be the first run
         with:
-          # search in this workflow only
-          workflow: Build/Test
           # search from most to least recent
           search_artifacts: true
           # look for the most recent completed workflow (to avoid matching the current one)
