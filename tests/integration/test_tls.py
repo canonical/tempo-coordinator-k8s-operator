@@ -156,6 +156,16 @@ def test_verify_traces_force_enabled_protocols_tls(nonce, protocol, juju):
     get_traces_patiently(tempo_host, service_name=f"tracegen-{protocol}")
 
 
+@pytest.mark.abort_on_fail
+async def test_workload_traces_tls(ops_test: OpsTest):
+    tempo_host = await get_ingress_proxied_hostname(ops_test)
+    # verify traces from tempo-scalable-single-binary are ingested
+    assert await get_traces_patiently(
+        tempo_host,
+        service_name="tempo-scalable-single-binary",
+    )
+
+
 @pytest.mark.teardown
 def test_remove_relation(juju):
     juju.disintegrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
