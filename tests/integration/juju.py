@@ -551,12 +551,15 @@ class Juju:
         if level is not None:
             args.append(f"--level={level.value}")
 
+        if replay:
+            # very many
+            args.append("--lines=100000000000000")
+
         # boolean flags
         _bool_str = {True: "true", False: "false"}
         for flagname, value in (
             ("ms", ms),
             ("date", date),
-            ("replay", replay),
         ):
             if value is not None:
                 args.append(f"--{flagname}={_bool_str[value]}")
