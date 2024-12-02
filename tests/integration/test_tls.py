@@ -73,7 +73,7 @@ def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
 
 def test_relate_ssc(juju):
     juju.integrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
-    juju.integrate(APP_NAME + ":ingress", TRAEFIK_APP_NAME + ":ingress")
+    juju.integrate(APP_NAME + ":ingress", TRAEFIK_APP_NAME + ":traefik-route")
     juju.wait(
         stop=lambda status: status.all_workloads(
             (APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME),

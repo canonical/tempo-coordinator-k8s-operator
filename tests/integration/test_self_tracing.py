@@ -38,10 +38,8 @@ def test_build_and_deploy(tempo_charm: Path, tempo_resources, juju):
     )
 
     juju.wait(
-        stop=lambda status: status.all_workloads(
-            (APP_NAME, WORKER_NAME), WorkloadStatus.active
-        )
-        and status.all_workloads(APP_REMOTE_NAME, WorkloadStatus.blocked),
+        stop=lambda status: status.all_workloads(status=WorkloadStatus.active)
+        and status.any_workload(status=WorkloadStatus.blocked),
         timeout=1000,
     )
 
