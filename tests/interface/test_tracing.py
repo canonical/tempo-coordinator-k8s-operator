@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 from interface_tester import InterfaceTester
 
-from tests.interface.conftest import tracing_tester
 
 
 def test_tracing_v2_interface(tracing_tester: InterfaceTester):

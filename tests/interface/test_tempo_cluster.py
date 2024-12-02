@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 from interface_tester import InterfaceTester
 
-from tests.interface.conftest import cluster_tester
 
 
 def test_tempo_cluster_v0_interface(cluster_tester: InterfaceTester):
