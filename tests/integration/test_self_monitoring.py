@@ -38,7 +38,7 @@ def test_scrape_jobs(juju):
     cmd = "curl -sS http://localhost:9090/api/v1/targets"
     result = juju.ssh(f"{PROM}/0", cmd)
     logger.info(result)
-    result_json = json.loads(result.decode("utf-8"))
+    result_json = json.loads(result.stdout.decode("utf-8"))
     active_targets = result_json["data"]["activeTargets"]
 
     for at in active_targets:

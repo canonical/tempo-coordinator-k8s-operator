@@ -338,7 +338,7 @@ class Juju:
         self,
         app: str,
         destroy_storage: bool = True,
-        wait: bool = False,
+        wait: bool = True,
         force: bool = False,
     ):
         """Remove one or multiple units from an application."""
@@ -347,6 +347,9 @@ class Juju:
             args.append("--destroy-storage")
         if not wait:
             args.append("--no-wait")
+            if not force:
+                logger.debug("--no-wait without --force is invalid; adding force=True")
+                force = True
         if force:
             args.append("--force")
         args.append(app)
