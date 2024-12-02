@@ -271,27 +271,35 @@ def deploy_cluster(
     juju,
     tempo_charm,
     tempo_resources,
+    # names of deployed applications
     tempo_app=APP_NAME,
     worker_app=WORKER_NAME,
-    deploy_tempo: bool = False,
-    deploy_s3: bool = False,
+    s3_app=S3_INTEGRATOR,
+    # what to deploy
+    deploy_tempo: bool = True,
+    deploy_worker: bool = True,
+    deploy_s3: bool = True,
 ):
     """Deploys tempo, worker, s3, minio..."""
     if deploy_tempo:
         juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
 
-    tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
-    juju.deploy(tempo_worker_charm_url, alias=worker_app, channel=channel, trust=True)
-    if deploy_s3:
-        juju.deploy(S3_INTEGRATOR, channel="edge")
+    if deploy_worker:
+        tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
+        juju.deploy(
+            tempo_worker_charm_url, alias=worker_app, channel=channel, trust=True
+        )
 
-    juju.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
+    if deploy_s3:
+        juju.deploy(s3_app, channel="edge")
+
+    juju.integrate(tempo_app + ":s3", s3_app + ":s3-credentials")
     juju.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")
 
     deploy_and_configure_minio(juju)
     juju.wait(
         stop=lambda status: status.all_workloads(
-            (tempo_app, WORKER_NAME, S3_INTEGRATOR), WorkloadStatus.active
+            (tempo_app, WORKER_NAME, s3_app), WorkloadStatus.active
         ),
         timeout=2000,
     )
