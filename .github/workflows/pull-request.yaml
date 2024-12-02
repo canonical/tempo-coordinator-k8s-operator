@@ -183,7 +183,7 @@ jobs:
         if: always()
         continue-on-error: true
         run: |
-          JDL_ARTIFACT_NAME=$( ${{ matrix.suite }} | sed 's/:/-/g')
+          JDL_ARTIFACT_NAME=$( echo "${{ matrix.suite }}" | sed 's/:/-/g')
           echo "jdl_artifact_name=JDL_ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
           echo $JDL_ARTIFACT_NAME
 
