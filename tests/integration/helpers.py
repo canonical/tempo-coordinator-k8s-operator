@@ -267,10 +267,23 @@ def tempo_worker_charm_and_channel():
 APP_NAME = "tempo"
 
 
-def deploy_cluster(juju, tempo_app=APP_NAME):
+def deploy_cluster(
+    juju,
+    tempo_charm,
+    tempo_resources,
+    tempo_app=APP_NAME,
+    worker_app=WORKER_NAME,
+    deploy_tempo: bool = False,
+    deploy_s3: bool = False,
+):
+    """Deploys tempo, worker, s3, minio..."""
+    if deploy_tempo:
+        juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
+
     tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
-    juju.deploy(tempo_worker_charm_url, alias=WORKER_NAME, channel=channel, trust=True)
-    juju.deploy(S3_INTEGRATOR, channel="edge")
+    juju.deploy(tempo_worker_charm_url, alias=worker_app, channel=channel, trust=True)
+    if deploy_s3:
+        juju.deploy(S3_INTEGRATOR, channel="edge")
 
     juju.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
     juju.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")

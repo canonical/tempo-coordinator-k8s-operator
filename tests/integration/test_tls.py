@@ -57,13 +57,12 @@ def get_tempo_traces_internal_endpoint(protocol, juju):
 
 @pytest.mark.setup
 def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
-    juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
+    # deploy cluster
+    deploy_cluster(juju, tempo_charm, tempo_resources)
+
     juju.deploy(SSC, alias=SSC_APP_NAME)
     juju.deploy(TRAEFIK, alias=TRAEFIK_APP_NAME, channel="edge", trust=True)
-
     juju.integrate(SSC_APP_NAME + ":certificates", TRAEFIK_APP_NAME + ":certificates")
-    # deploy cluster
-    deploy_cluster(juju)
 
     juju.wait(
         stop=lambda status: status.all_workloads(
@@ -76,6 +75,7 @@ def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
 
 def test_relate_ssc(juju):
     juju.integrate(APP_NAME + ":certificates", SSC_APP_NAME + ":certificates")
+    juju.integrate(APP_NAME + ":ingress", TRAEFIK + ":ingress")
     juju.wait(
         stop=lambda status: status.all_workloads(
             (APP_NAME, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME),

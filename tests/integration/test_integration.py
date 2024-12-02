@@ -29,9 +29,6 @@ def test_deploy_testers(
     # Given a fresh build of the charm
     # When deploying it together with testers
     # Then applications should eventually be created
-
-    juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
-
     juju.deploy(
         tester_charm,
         resources=tester_resources,
@@ -45,7 +42,7 @@ def test_deploy_testers(
         scale=3,
     )
 
-    deploy_cluster(juju)
+    deploy_cluster(juju, tempo_charm, tempo_resources)
 
     # for both testers, depending on the result of race with tempo it's either waiting or active
     juju.wait(

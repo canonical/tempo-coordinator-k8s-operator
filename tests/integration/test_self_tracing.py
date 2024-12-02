@@ -6,12 +6,12 @@ import logging
 from pathlib import Path
 
 import yaml
+
 from helpers import (
     WORKER_NAME,
     deploy_cluster,
     get_traces_patiently,
 )
-
 from tests.integration.juju import WorkloadStatus
 
 logger = logging.getLogger(__name__)
@@ -19,19 +19,22 @@ logger = logging.getLogger(__name__)
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = "tempo"
 APP_REMOTE_NAME = "tempo-remote"
+APP_WORKER_REMOTE_NAME = "tempo-remote-worker"
 
 
 def test_build_and_deploy(tempo_charm: Path, tempo_resources, juju):
-    juju.deploy(tempo_charm, resources=tempo_resources, alias=APP_NAME, trust=True)
-    juju.deploy(
-        tempo_charm,
-        resources=tempo_resources,
-        alias=APP_REMOTE_NAME,
-        trust=True,
-    )
-
     # deploy cluster
-    deploy_cluster(juju, APP_NAME)
+    deploy_cluster(juju, tempo_charm, tempo_resources, tempo_app=APP_NAME)
+
+    # we deploy a second tempo cluster under a different alias (but reuse s3)
+    deploy_cluster(
+        juju,
+        tempo_charm,
+        tempo_resources,
+        tempo_app=APP_REMOTE_NAME,
+        worker_app=APP_WORKER_REMOTE_NAME,
+        deploy_s3=False,
+    )
 
     juju.wait(
         stop=lambda status: status.all_workloads(

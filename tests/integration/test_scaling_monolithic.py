@@ -33,8 +33,8 @@ def test_scale_tempo_up_without_s3_blocks(juju):
 
 
 @pytest.mark.setup
-def test_tempo_active_when_deploy_s3_and_workers(juju):
-    deploy_cluster(juju)
+def test_tempo_active_when_deploy_s3_and_workers(juju, tempo_charm, tempo_resources):
+    deploy_cluster(juju, tempo_charm, tempo_resources, deploy_tempo=False)
 
 
 @pytest.mark.teardown

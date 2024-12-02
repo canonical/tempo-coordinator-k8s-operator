@@ -249,6 +249,15 @@ class Juju:
 
         return Status(json.loads(result.stdout))
 
+    def status_log(self, quiet: bool = False) -> Status:
+        """Fetch the juju status."""
+        args = ["status", "--format", "json"]
+        result = self.cli(*args, quiet=quiet)
+        if not result:
+            raise StatusError(f"cannot get status for {self.model}")
+
+        return Status(json.loads(result.stdout))
+
     def application_config_get(self, app) -> Config:
         """Fetch the current configuration of an application."""
         args = ["config", app, "--format", "json"]
@@ -439,8 +448,8 @@ class Juju:
 
         Examples:
         >>> Juju("mymodel").wait(
-        ...   stop=lambda s:s.all("foo", WorkloadStatus.active),
-        ...   fail=lambda s:s.any("foo", WorkloadStatus.blocked),
+        ...   stop=lambda s:s.all_workloads("foo", WorkloadStatus.active),
+        ...   fail=lambda s:s.any_workload("foo", WorkloadStatus.blocked),
         ...   timeout=2000)
 
         This will block until all "foo" units go to "active" status, and raise if any goes
