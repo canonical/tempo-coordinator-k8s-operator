@@ -19,8 +19,7 @@ from charm import TempoCoordinatorCharm
 
 @pytest.fixture
 def interface_tester():
-    # FIXME: remove this once https://github.com/canonical/charm-relation-interfaces/pull/199 merges
-    return InterfaceTester(branch="tracing-tests-fix")
+    return InterfaceTester()
 
 
 nginx_container = Container(
