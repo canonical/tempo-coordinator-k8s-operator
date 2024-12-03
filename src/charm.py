@@ -129,6 +129,20 @@ class TempoCoordinatorCharm(CharmBase):
                 # or when ingress changes
                 self.ingress.on.ready,
             ],
+            extra_fields={
+                # https://grafana.com/docs/tempo/latest/metrics-generator/service_graphs/enable-service-graphs/
+                "httpMethod": "GET",
+                "serviceMap": {
+                    "datasourceUid": "juju_svcgraph_61e32e2f-50ac-40e7-8ee8-1b7297a3e47f_prometheus_0"
+                },
+                # https://community.grafana.com/t/how-to-jump-from-traces-to-logs/72477/3
+                "tracesToLogs": {
+                    "datasourceUid": "juju_svcgraph_61e32e2f-50ac-40e7-8ee8-1b7297a3e47f_loki_0"
+                },
+                "lokiSearch": {
+                    "datasourceUid": "juju_svcgraph_61e32e2f-50ac-40e7-8ee8-1b7297a3e47f_loki_0"
+                },
+            },
         )
 
         # peer
