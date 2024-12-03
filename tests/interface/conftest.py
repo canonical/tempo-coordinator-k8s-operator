@@ -17,6 +17,12 @@ from scenario.state import Container, PeerRelation, State
 
 from charm import TempoCoordinatorCharm
 
+
+@pytest.fixture
+def interface_tester():
+    return InterfaceTester()
+
+
 nginx_container = Container(
     name="nginx",
     can_connect=True,
@@ -58,7 +64,11 @@ cluster_relation = Relation(
     remote_units_data={
         0: ClusterRequirerUnitData(
             address="http://example.com",
-            juju_topology={"application": "app", "unit": "unit", "charm_name": "charmname"},
+            juju_topology={
+                "application": "app",
+                "unit": "unit",
+                "charm_name": "charmname",
+            },
         ).dump()
     },
 )

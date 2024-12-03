@@ -64,7 +64,9 @@ def test_nginx_config_is_parsed_by_crossplane(context, nginx_container, coordina
         },
     ),
 )
-def test_nginx_config_is_parsed_with_workers(context, nginx_container, coordinator, addresses):
+def test_nginx_config_is_parsed_with_workers(
+    context, nginx_container, coordinator, addresses
+):
     coordinator.cluster.gather_addresses_by_role.return_value = addresses
 
     nginx = NginxConfig("localhost")
@@ -109,9 +111,13 @@ def test_nginx_config_contains_upstreams_and_proxy_pass(
     for role, addresses in addresses.items():
         for address in addresses:
             if role == "distributor":
-                _assert_config_per_role(Tempo.receiver_ports, address, prepared_config, tls)
+                _assert_config_per_role(
+                    Tempo.receiver_ports, address, prepared_config, tls
+                )
             if role == "query-frontend":
-                _assert_config_per_role(Tempo.server_ports, address, prepared_config, tls)
+                _assert_config_per_role(
+                    Tempo.server_ports, address, prepared_config, tls
+                )
 
 
 def _assert_config_per_role(source_dict, address, prepared_config, tls):
@@ -130,9 +136,15 @@ def _assert_config_per_role(source_dict, address, prepared_config, tls):
         assert f"resolver {sample_dns_ip};" in prepared_config
 
         if "grpc" in protocol:
-            assert f"grpc_pass grpc{'s' if tls else ''}://{sanitised_protocol}" in prepared_config
+            assert (
+                f"grpc_pass grpc{'s' if tls else ''}://{sanitised_protocol}"
+                in prepared_config
+            )
         else:
-            assert f"proxy_pass http{'s' if tls else ''}://{sanitised_protocol}" in prepared_config
+            assert (
+                f"proxy_pass http{'s' if tls else ''}://{sanitised_protocol}"
+                in prepared_config
+            )
 
 
 @contextmanager
@@ -148,7 +160,10 @@ def mock_resolv_conf(contents: str):
     (
         (f"foo bar\nnameserver {sample_dns_ip}", sample_dns_ip),
         (f"nameserver {sample_dns_ip}\n foo bar baz", sample_dns_ip),
-        (f"foo bar\nfoo bar\nnameserver {sample_dns_ip}\nnameserver 198.18.0.1", sample_dns_ip),
+        (
+            f"foo bar\nfoo bar\nnameserver {sample_dns_ip}\nnameserver 198.18.0.1",
+            sample_dns_ip,
+        ),
     ),
 )
 def test_dns_ip_addr_getter(mock_contents, expected_dns_ip):

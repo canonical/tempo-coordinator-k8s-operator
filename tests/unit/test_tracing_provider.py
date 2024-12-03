@@ -38,7 +38,10 @@ def test_receivers_removed_on_relation_broken(
     r_out = [r for r in state_out.relations if r.id == tracing_http.id][0]
     # "otlp_grpc" is gone from the databag
     assert sorted(
-        [r.protocol.name for r in TracingProviderAppData.load(r_out.local_app_data).receivers]
+        [
+            r.protocol.name
+            for r in TracingProviderAppData.load(r_out.local_app_data).receivers
+        ]
     ) == [
         "jaeger_thrift_http",
         "otlp_http",

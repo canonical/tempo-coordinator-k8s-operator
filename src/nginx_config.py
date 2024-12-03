@@ -55,7 +55,10 @@ class NginxConfig:
                     # upstreams (load balancing)
                     *self._upstreams(addresses_by_role),
                     # temp paths
-                    {"directive": "client_body_temp_path", "args": ["/tmp/client_temp"]},
+                    {
+                        "directive": "client_body_temp_path",
+                        "args": ["/tmp/client_temp"],
+                    },
                     {"directive": "proxy_temp_path", "args": ["/tmp/proxy_temp_path"]},
                     {"directive": "fastcgi_temp_path", "args": ["/tmp/fastcgi_temp"]},
                     {"directive": "uwsgi_temp_path", "args": ["/tmp/uwsgi_temp"]},
@@ -86,7 +89,8 @@ class NginxConfig:
                     {"directive": "proxy_read_timeout", "args": ["300"]},
                     # server block
                     *self._build_servers_config(
-                        addresses_by_role, coordinator.nginx.are_certificates_on_disk
+                        addresses_by_role,
+                        coordinator.nginx.are_certificates_on_disk,
                     ),
                 ],
             },
@@ -108,19 +112,24 @@ class NginxConfig:
             {"directive": "access_log", "args": ["/dev/stderr"]},
         ]
 
-    def _upstreams(self, addresses_by_role: Dict[str, Set[str]]) -> List[Dict[str, Any]]:
+    def _upstreams(
+        self,
+        addresses_by_role: Dict[str, Set[str]],
+    ) -> List[Dict[str, Any]]:
         addresses_mapped_to_upstreams = {}
         nginx_upstreams = []
         addresses_mapped_to_upstreams = addresses_by_role.copy()
         if TempoRole.distributor in addresses_mapped_to_upstreams.keys():
             nginx_upstreams.extend(
-                self._distributor_upstreams(addresses_mapped_to_upstreams[TempoRole.distributor])
+                self._distributor_upstreams(
+                    addresses_mapped_to_upstreams[TempoRole.distributor],
+                ),
             )
         if TempoRole.query_frontend in addresses_mapped_to_upstreams.keys():
             nginx_upstreams.extend(
                 self._query_frontend_upstreams(
-                    addresses_mapped_to_upstreams[TempoRole.query_frontend]
-                )
+                    addresses_mapped_to_upstreams[TempoRole.query_frontend],
+                ),
             )
 
         return nginx_upstreams
@@ -128,20 +137,27 @@ class NginxConfig:
     def _distributor_upstreams(self, address_set: Set[str]) -> List[Dict[str, Any]]:
         upstreams = []
         for protocol, port in Tempo.receiver_ports.items():
-            upstreams.append(self._upstream(protocol.replace("_", "-"), address_set, port))
+            upstreams.append(
+                self._upstream(protocol.replace("_", "-"), address_set, port),
+            )
         return upstreams
 
     def _query_frontend_upstreams(self, address_set: Set[str]) -> List[Dict[str, Any]]:
         upstreams = []
         for protocol, port in Tempo.server_ports.items():
-            upstreams.append(self._upstream(protocol.replace("_", "-"), address_set, port))
+            upstreams.append(
+                self._upstream(protocol.replace("_", "-"), address_set, port),
+            )
         return upstreams
 
     def _upstream(self, role: str, address_set: Set[str], port: int) -> Dict[str, Any]:
         return {
             "directive": "upstream",
             "args": [role],
-            "block": [{"directive": "server", "args": [f"{addr}:{port}"]} for addr in address_set],
+            "block": [
+                {"directive": "server", "args": [f"{addr}:{port}"]}
+                for addr in address_set
+            ],
         }
 
     def _locations(self, upstream: str, grpc: bool, tls: bool) -> List[Dict[str, Any]]:
@@ -162,7 +178,7 @@ class NginxConfig:
                         "args": ["5s"],
                     },
                 ],
-            }
+            },
         ]
         return nginx_locations
 
@@ -172,7 +188,12 @@ class NginxConfig:
     ) -> List[Dict[str, Any]]:
         if custom_resolver:
             return [{"directive": "resolver", "args": [custom_resolver]}]
-        return [{"directive": "resolver", "args": ["kube-dns.kube-system.svc.cluster.local."]}]
+        return [
+            {
+                "directive": "resolver",
+                "args": ["kube-dns.kube-system.svc.cluster.local."],
+            },
+        ]
 
     def _basic_auth(self, enabled: bool) -> List[Optional[Dict[str, Any]]]:
         if enabled:
@@ -188,10 +209,10 @@ class NginxConfig:
     def _listen(self, port: int, ssl: bool, http2: bool) -> List[Dict[str, Any]]:
         directives = []
         directives.append(
-            {"directive": "listen", "args": self._listen_args(port, False, ssl, http2)}
+            {"directive": "listen", "args": self._listen_args(port, False, ssl, http2)},
         )
         directives.append(
-            {"directive": "listen", "args": self._listen_args(port, True, ssl, http2)}
+            {"directive": "listen", "args": self._listen_args(port, True, ssl, http2)},
         )
         return directives
 
@@ -208,7 +229,9 @@ class NginxConfig:
         return args
 
     def _build_servers_config(
-        self, addresses_by_role: Dict[str, Set[str]], tls: bool = False
+        self,
+        addresses_by_role: Dict[str, Set[str]],
+        tls: bool = False,
     ) -> List[Dict[str, Any]]:
         servers = []
         roles = addresses_by_role.keys()
@@ -217,21 +240,31 @@ class NginxConfig:
             for protocol, port in Tempo.receiver_ports.items():
                 servers.append(
                     self._build_server_config(
-                        port, protocol.replace("_", "-"), self._is_protocol_grpc(protocol), tls
-                    )
+                        port,
+                        protocol.replace("_", "-"),
+                        self._is_protocol_grpc(protocol),
+                        tls,
+                    ),
                 )
         # generate a server config for the Tempo server protocols (3200, 9096)
         if TempoRole.query_frontend.value in roles:
             for protocol, port in Tempo.server_ports.items():
                 servers.append(
                     self._build_server_config(
-                        port, protocol.replace("_", "-"), self._is_protocol_grpc(protocol), tls
-                    )
+                        port,
+                        protocol.replace("_", "-"),
+                        self._is_protocol_grpc(protocol),
+                        tls,
+                    ),
                 )
         return servers
 
     def _build_server_config(
-        self, port: int, upstream: str, grpc: bool = False, tls: bool = False
+        self,
+        port: int,
+        upstream: str,
+        grpc: bool = False,
+        tls: bool = False,
     ) -> Dict[str, Any]:
         auth_enabled = False
 
@@ -250,8 +283,14 @@ class NginxConfig:
                     {"directive": "server_name", "args": [self.server_name]},
                     {"directive": "ssl_certificate", "args": [CERT_PATH]},
                     {"directive": "ssl_certificate_key", "args": [KEY_PATH]},
-                    {"directive": "ssl_protocols", "args": ["TLSv1", "TLSv1.1", "TLSv1.2"]},
-                    {"directive": "ssl_ciphers", "args": ["HIGH:!aNULL:!MD5"]},  # codespell:ignore
+                    {
+                        "directive": "ssl_protocols",
+                        "args": ["TLSv1", "TLSv1.1", "TLSv1.2"],
+                    },
+                    {
+                        "directive": "ssl_ciphers",
+                        "args": ["HIGH:!aNULL:!MD5"],
+                    },  # codespell:ignore
                     *self._resolver(custom_resolver=self.dns_IP_address),
                     *self._locations(upstream, grpc, tls),
                 ],
@@ -274,12 +313,12 @@ class NginxConfig:
         }
 
     def _is_protocol_grpc(self, protocol: str) -> bool:
-        """
-        Return True if the given protocol is gRPC
-        """
+        """Return True if the given protocol is gRPC."""
         if (
             protocol == "tempo_grpc"
-            or receiver_protocol_to_transport_protocol.get(cast(ReceiverProtocol, protocol))
+            or receiver_protocol_to_transport_protocol.get(
+                cast(ReceiverProtocol, protocol),
+            )
             == TransportProtocolType.grpc
         ):
             return True

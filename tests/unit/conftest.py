@@ -35,7 +35,8 @@ def tempo_charm(tmp_path):
         with patch("charm.TempoCoordinatorCharm.are_certificates_on_disk", False):
             with patch("tempo.Tempo.tls_ca_path", str(tmp_path / "cert.tmp")):
                 with patch(
-                    "cosl.coordinated_workers.nginx.CA_CERT_PATH", str(tmp_path / "ca.tmp")
+                    "cosl.coordinated_workers.nginx.CA_CERT_PATH",
+                    str(tmp_path / "ca.tmp"),
                 ):
                     with patch.multiple(
                         "cosl.coordinated_workers.coordinator.KubernetesComputeResourcesPatch",
@@ -100,7 +101,8 @@ def remote_write():
 @pytest.fixture(scope="function")
 def peer():
     return PeerRelation(
-        endpoint=PEERS_RELATION_ENDPOINT_NAME, peers_data={1: {"fqdn": json.dumps("1.2.3.4")}}
+        endpoint=PEERS_RELATION_ENDPOINT_NAME,
+        peers_data={1: {"fqdn": json.dumps("1.2.3.4")}},
     )
 
 

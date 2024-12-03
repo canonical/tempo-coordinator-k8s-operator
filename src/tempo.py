@@ -3,9 +3,10 @@
 # See LICENSE file for licensing details.
 
 """Tempo workload configuration and client."""
+
 import logging
 import re
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, Optional, Sequence, Set, Tuple
 
 import yaml
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol
@@ -77,15 +78,25 @@ class Tempo:
             auth_enabled=False,
             server=self._build_server_config(coordinator.tls_available),
             distributor=self._build_distributor_config(
-                self._receivers_getter(), coordinator.tls_available
+                self._receivers_getter(),
+                coordinator.tls_available,
             ),
-            ingester=self._build_ingester_config(coordinator.cluster.gather_addresses_by_role()),
-            memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
+            ingester=self._build_ingester_config(
+                coordinator.cluster.gather_addresses_by_role(),
+            ),
+            memberlist=self._build_memberlist_config(
+                coordinator.cluster.gather_addresses(),
+            ),
             compactor=self._build_compactor_config(),
-            querier=self._build_querier_config(coordinator.cluster.gather_addresses_by_role()),
+            querier=self._build_querier_config(
+                coordinator.cluster.gather_addresses_by_role(),
+            ),
             storage=self._build_storage_config(coordinator._s3_config),
             metrics_generator=self._build_metrics_generator_config(
-                coordinator.remote_write_endpoints_getter(), coordinator.tls_available  # type: ignore
+                coordinator.remote_write_endpoints_getter()  # type: ignore
+                if coordinator.remote_write_endpoints_getter
+                else [],
+                coordinator.tls_available,  # type: ignore
             ),
         )
 
@@ -93,14 +104,13 @@ class Tempo:
             config.overrides = self._build_overrides_config()
 
         if coordinator.tls_available:
-
             tls_config = self._build_tls_config(coordinator.cluster.gather_addresses())
 
             config.ingester_client = tempo_config.Client(
-                grpc_client_config=tempo_config.ClientTLS(**tls_config)
+                grpc_client_config=tempo_config.ClientTLS(**tls_config),
             )
             config.metrics_generator_client = tempo_config.Client(
-                grpc_client_config=tempo_config.ClientTLS(**tls_config)
+                grpc_client_config=tempo_config.ClientTLS(**tls_config),
             )
 
             config.querier.frontend_worker.grpc_client_config = tempo_config.ClientTLS(
@@ -109,11 +119,12 @@ class Tempo:
 
             config.memberlist = config.memberlist.model_copy(update=tls_config)
 
-        return yaml.dump(config.model_dump(mode="json", by_alias=True, exclude_none=True))
+        return yaml.dump(
+            config.model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
 
     def _build_tls_config(self, workers_addrs: Tuple[str, ...]):
         """Build TLS config to be used by Tempo's internal clients to communicate with each other."""
-
         # cfr:
         # https://grafana.com/docs/tempo/latest/configuration/network/tls/#client-configuration
         return {
@@ -132,12 +143,14 @@ class Tempo:
             defaults=tempo_config.Defaults(
                 metrics_generator=tempo_config.MetricsGeneratorDefaults(
                     processors=[tempo_config.MetricsGeneratorProcessor.SPAN_METRICS],
-                )
-            )
+                ),
+            ),
         )
 
     def _build_metrics_generator_config(
-        self, remote_write_endpoints: List[Dict[str, Any]], use_tls=False
+        self,
+        remote_write_endpoints: Sequence[Dict[str, Any]],
+        use_tls=False,
     ):
         if len(remote_write_endpoints) == 0:
             return None
@@ -160,7 +173,7 @@ class Tempo:
             storage=tempo_config.MetricsGeneratorStorage(
                 path=self.metrics_generator_wal_path,
                 remote_write=remote_write_instances,
-            )
+            ),
             # Adding juju topology will be done on the worker's side
             # to populate the correct unit label.
         )
@@ -208,7 +221,9 @@ class Tempo:
 
         Use query-frontend workers' service fqdn to loadbalance across query-frontend worker instances if any.
         """
-        query_frontend_addresses = roles_addresses.get(tempo_config.TempoRole.query_frontend)
+        query_frontend_addresses = roles_addresses.get(
+            tempo_config.TempoRole.query_frontend,
+        )
         if not query_frontend_addresses:
             svc_addr = "localhost"
         else:
@@ -219,12 +234,12 @@ class Tempo:
             svc_addr = re.sub(r"^[^.]+\.", "", query_frontend_addr)
         return tempo_config.Querier(
             frontend_worker=tempo_config.FrontendWorker(
-                frontend_address=f"{svc_addr}:{self.tempo_grpc_server_port}"
+                frontend_address=f"{svc_addr}:{self.tempo_grpc_server_port}",
             ),
         )
 
     def _build_compactor_config(self):
-        """Build compactor config"""
+        """Build compactor config."""
         return tempo_config.Compactor(
             compaction=tempo_config.Compaction(
                 # blocks in this time window will be compacted together
@@ -234,21 +249,24 @@ class Tempo:
                 # total trace retention
                 block_retention=f"{self._retention_period_hours}h",
                 compacted_block_retention="1h",
-            )
+            ),
         )
 
     def _build_memberlist_config(
-        self, peers: Optional[Tuple[str, ...]]
+        self,
+        peers: Optional[Tuple[str, ...]],
     ) -> tempo_config.Memberlist:
-        """Build memberlist config"""
+        """Build memberlist config."""
         return tempo_config.Memberlist(
             abort_if_cluster_join_fails=False,
             bind_port=self.memberlist_port,
-            join_members=([f"{peer}:{self.memberlist_port}" for peer in peers] if peers else []),
+            join_members=(
+                [f"{peer}:{self.memberlist_port}" for peer in peers] if peers else []
+            ),
         )
 
     def _build_ingester_config(self, roles_addresses: Dict[str, Set[str]]):
-        """Build ingester config"""
+        """Build ingester config."""
         ingester_addresses = roles_addresses.get(tempo_config.TempoRole.ingester)
         # the length of time after a trace has not received spans to consider it complete and flush it
         # cut the head block when it hits this number of traces or ...
@@ -263,15 +281,17 @@ class Tempo:
                 ring=tempo_config.Ring(
                     replication_factor=(
                         3 if ingester_addresses and len(ingester_addresses) >= 3 else 1
-                    )
+                    ),
                 ),
             ),
         )
 
-    def _build_distributor_config(
-        self, receivers: Sequence[ReceiverProtocol], use_tls=False
-    ):  # noqa: C901
-        """Build distributor config"""
+    def _build_distributor_config(  # noqa: C901
+        self,
+        receivers: Sequence[ReceiverProtocol],
+        use_tls=False,
+    ):
+        """Build distributor config."""
         # receivers: the receivers we have to enable because the requirers we're related to
         # intend to use them. It already includes receivers that are always enabled
         # through config or because *this charm* will use them.
@@ -286,7 +306,7 @@ class Tempo:
                     "ca_file": str(self.tls_ca_path),
                     "cert_file": str(self.tls_cert_path),
                     "key_file": str(self.tls_key_path),
-                }
+                },
             }
         else:
             receiver_config = None

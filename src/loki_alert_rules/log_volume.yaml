@@ -5,6 +5,6 @@ groups:
         expr: |
           count_over_time(({%%juju_topology%%})[30s]) > 100
         labels:
-            severity: high
+          severity: high
         annotations:
-            summary: Log rate is too high!
+          summary: Log rate is too high!

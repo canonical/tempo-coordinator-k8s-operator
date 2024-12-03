@@ -5,12 +5,11 @@
 import json
 import logging
 from pathlib import Path
-from textwrap import dedent
 
-import pytest
 import yaml
-from helpers import deploy_literal_bundle, run_command
-from pytest_operator.plugin import OpsTest
+
+from tests.integration.helpers import deploy_cluster
+from tests.integration.juju import WorkloadStatus
 
 logger = logging.getLogger(__name__)
 
@@ -20,70 +19,38 @@ PROM = "prom"
 apps = [TEMPO, PROM]
 
 
-@pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
+def test_build_and_deploy(tempo_charm: Path, juju, tempo_resources):
     """Build the charm-under-test and deploy it together with related charms."""
+    # Deploy the charms and wait for active/idle status
+    deploy_cluster(juju, tempo_charm, tempo_resources, tempo_app=TEMPO)
+    juju.deploy("prometheus-k8s", channel="edge", alias=PROM, trust=True)
+    juju.integrate(TEMPO + ":metrics-endpoint", PROM + ":metrics-endpoint")
 
-    test_bundle = dedent(
-        f"""
-        ---
-        bundle: kubernetes
-        name: test-charm
-        applications:
-          {TEMPO}:
-            charm: {tempo_charm}
-            trust: true
-            scale: 1
-            resources:
-              nginx-image: {METADATA["resources"]["nginx-image"]["upstream-source"]}
-              nginx-prometheus-exporter-image: {METADATA["resources"]["nginx-prometheus-exporter-image"]["upstream-source"]}
-          {PROM}:
-            charm: prometheus-k8s
-            channel: edge
-            scale: 1
-            trust: true
-        relations:
-        - - {PROM}:metrics-endpoint
-          - {TEMPO}:metrics-endpoint
-        """
-    )
-
-    # Deploy the charm and wait for active/idle status
-    await deploy_literal_bundle(ops_test, test_bundle)  # See appendix below
-    await ops_test.model.wait_for_idle(
-        apps=[PROM],
-        status="active",
-        raise_on_error=False,
+    juju.wait(
+        stop=lambda status: status.all_workloads((PROM, TEMPO), WorkloadStatus.active),
+        fail=lambda status: status.any_workload((TEMPO,), WorkloadStatus.error),
         timeout=600,
-        idle_period=30,
-    )
-
-    await ops_test.model.wait_for_idle(
-        apps=[TEMPO], status="blocked", raise_on_error=False, timeout=600, idle_period=30
     )
 
 
-@pytest.mark.abort_on_fail
-async def test_scrape_jobs(ops_test: OpsTest):
+def test_scrape_jobs(juju):
     # Check scrape jobs
-    cmd = ["curl", "-sS", "http://localhost:9090/api/v1/targets"]
-    result = await run_command(ops_test.model_name, PROM, 0, command=cmd)
+    cmd = "curl -sS http://localhost:9090/api/v1/targets"
+    result = juju.ssh(f"{PROM}/0", cmd)
     logger.info(result)
-    result_json = json.loads(result.decode("utf-8"))
-
+    result_json = json.loads(result.stdout)
     active_targets = result_json["data"]["activeTargets"]
 
     for at in active_targets:
         assert at["labels"]["juju_application"] in apps
 
 
-@pytest.mark.abort_on_fail
-async def test_rules(ops_test: OpsTest):
+def test_rules(juju):
     # Check Rules
-    cmd = ["curl", "-sS", "http://localhost:9090/api/v1/rules"]
-    result = await run_command(ops_test.model_name, PROM, 0, command=cmd)
+    cmd = "curl -sS http://localhost:9090/api/v1/rules"
+    result = juju.ssh(f"{PROM}/0", cmd)
     logger.info(result)
-    result_json = json.loads(result.decode("utf-8"))
+    result_json = json.loads(result.stdout)
     groups = result_json["data"]["groups"]
 
     for group in groups:

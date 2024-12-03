@@ -1,16 +1,196 @@
-name: Pull Requests
+name: Build/Test
 
 on:
+  workflow_call:
+    secrets:
+      CHARMHUB_TOKEN:
+        required: true
   pull_request:
     branches:
       - main
 
 jobs:
-  pull-request:
-    name: PR
-    uses: canonical/observability/.github/workflows/charm-pull-request.yaml@main
-    secrets: inherit
+  lint-qa:
+    name: QA - lint + unit
+    runs-on: ubuntu-24.04
+    # runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - name: Install dependencies
+        run: sudo snap install --classic astral-uv
+      - name: Run linters
+        run: make lint
+      - name: Check libs
+        uses: canonical/charming-actions/check-libraries@934193396735701141a1decc3613818e412da606 # 2.6.3
+        with:
+          charmcraft-channel: 3.x/candidate
+          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: Run tests
+        run: make unit
 
-  terraform-checks:
-    name: Terraform
-    uses: canonical/observability/.github/workflows/terraform-quality-checks.yaml@main
+  prepare-itest-runs:
+    name: Build charm and testers
+    runs-on: ubuntu-24.04
+    # runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
+    needs:
+      - lint-qa
+    outputs:
+      suites: ${{ steps.suites.outputs.suites }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Get branch name
+        shell: bash
+        run: echo "name=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+        id: branch
+
+      - name: Download cache
+        # https://github.com/dawidd6/action-download-artifact
+        uses: dawidd6/action-download-artifact@v6
+        # allow this to fail, as it could be the first run
+        with:
+          # search from most to least recent
+          search_artifacts: true
+          # look for the most recent completed workflow (to avoid matching the current one)
+          workflow_conclusion: completed
+          # THIS branch only
+          branch: ${{ steps.branch.outputs.name }}
+          # download the 'charms' artifact
+          name: charms
+          # why even
+          allow_forks: false
+          # warn on no cache found
+          if_no_artifact_found: warn
+
+      - name: Install dependencies
+        run: sudo snap install --classic astral-uv
+
+      - name: Generate requirements.txt
+        run: make generate-requirements
+
+      - name: Verify cache
+        id: check-cache
+        continue-on-error: true
+        # ./charm-md5sum.txt may not exist if this is the first run, but we're good
+        run: |
+          find ./src ./lib ./requirements.txt ./charmcraft.yaml \( -type d -name .git -prune \) -o -type f -exec md5sum '{}' \; | md5sum >> ./charm-md5sum.txt.new
+          DIFF=$(( diff ./charm-md5sum.txt.new ./charm-md5sum.txt ) && echo "yes" || echo "no")
+          echo "cache_valid=$DIFF" >> "$GITHUB_OUTPUT"
+          echo $([ "$DIFF" = "yes" ] && echo "cache is clean" || echo "cache is dirty")
+
+      # do this unconditionally as the `suites` step below needs charmcraft
+      - name: Install charmcraft
+        run: sudo snap install charmcraft --classic
+
+      # these steps should only run IF hash comparison has failed, which means our cache is dirty
+      - name: Setup LXD
+        if: steps.check-cache.outputs.cache_valid == 'no'
+        uses: canonical/setup-lxd@main
+
+      - name: Generate dependency files
+        if: steps.check-cache.outputs.cache_valid == 'no'
+        run: |
+          sudo snap install --classic astral-uv
+          make generate-requirements
+
+      - name: Pack charm
+        if: steps.check-cache.outputs.cache_valid == 'no'
+        run: charmcraft pack -v
+
+      - name: Pack tester
+        if: steps.check-cache.outputs.cache_valid == 'no'
+        run: |
+          cp -r ./lib/ ./tests/integration/tester/lib
+          charmcraft pack -v -p ./tests/integration/tester/
+
+      - name: Pack tester-grpc
+        if: steps.check-cache.outputs.cache_valid == 'no'
+        run: |
+          cp -r ./lib/ ./tests/integration/tester-grpc/lib
+          charmcraft pack -v -p ./tests/integration/tester-grpc/
+
+      - name: Update cache lockfile
+        if: steps.check-cache.outputs.cache_valid == 'no'
+        run: mv ./charm-md5sum.txt.new ./charm-md5sum.txt
+
+      # regardless of the hash comparison, we do this:
+      # if the cache was good, we're reuploading the charms from the previous run
+      - name: Upload charm artifacts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        with:
+          name: charms
+          if-no-files-found: error
+          path: |
+            ./*.charm
+            ./charm-md5sum.txt
+
+      - name: Generate matrix list and tasks
+        id: suites
+        run: |
+          python3 ./tests/spread/generate_spread_tasks.py
+          list="$(charmcraft test --list github-ci | sed "s|github-ci:ubuntu-24.04:tests/spread/||g" | jq -r -ncR '[inputs | select(length>0)]')"
+          echo "suites=$list"
+          echo "suites=$list" >> $GITHUB_OUTPUT
+
+  integration-test:
+    name: Spread (${{ matrix.suite }})
+    runs-on: ubuntu-24.04
+    #    runs-on: ["self-hosted", "linux", "X64", "large", "jammy"]
+    needs:
+      - prepare-itest-runs
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: ${{ fromJSON(needs.prepare-itest-runs.outputs.suites) }}
+
+    # Allow Juju 3.6 jobs to fail, given that it's in beta
+    continue-on-error: ${{ contains(matrix.suite, 'juju_3_6') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+
+      - name: Download charm artifacts
+        uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
+        with:
+          name: charms
+          path: ./
+          merge-multiple: true
+
+      - name: Generate matrix list and tasks
+        id: suites
+        run: |
+          python3 ./tests/spread/generate_spread_tasks.py
+
+      - name: Setup LXD
+        uses: canonical/setup-lxd@main
+
+      - name: Install charmcraft
+        run: sudo snap install charmcraft --classic
+
+      - name: Run integration tests
+        run: charmcraft test -v "github-ci:ubuntu-24.04:tests/spread/${{ matrix.suite }}"
+
+      - name: Print debug log
+        if: always()
+        continue-on-error: true
+        run: find /var/log/jdl/ -type f -exec cat {} +
+
+      - name: Prepare log artifact upload
+        id: jdl
+        if: always()
+        continue-on-error: true
+        run: |
+          JDL_ARTIFACT_NAME=$( echo "${{ matrix.suite }}" | sed 's/:/-/g')
+          echo "jdl_artifact_name=JDL_ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+          echo $JDL_ARTIFACT_NAME
+
+      - name: Upload logs
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4
+        with:
+          name: ${{ steps.jdl.outputs.jdl_artifact_name }}
+          path: /var/log/jdl/

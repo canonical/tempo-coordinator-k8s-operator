@@ -1,31 +1,34 @@
 import json
 import logging
 import os
-import shlex
 import subprocess
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Literal
+from typing import Dict
 
 import requests
 import yaml
 from cosl.coordinated_workers.nginx import CA_CERT_PATH
-from juju.application import Application
-from juju.unit import Unit
 from minio import Minio
-from pytest_operator.plugin import OpsTest
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+from tests.integration.juju import Juju, WorkloadStatus
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
 ACCESS_KEY = "accesskey"
 SECRET_KEY = "secretkey"
+
+
+TESTER_NAME = "tester"
+TESTER_GRPC_NAME = "tester-grpc"
+TRAEFIK = "traefik"
+SSC = "self-signed-certificates"
+SSC_APP_NAME = "ssc"
 MINIO = "minio"
 BUCKET_NAME = "tempo"
 S3_INTEGRATOR = "s3-integrator"
 WORKER_NAME = "tempo-worker"
-APP_NAME = "tempo"
 protocols_endpoints = {
     "jaeger_thrift_http": "https://{}:14268/api/traces?format=jaeger.thrift",
     "zipkin": "https://{}:9411/v1/traces",
@@ -97,8 +100,14 @@ def get_relation_by_endpoint(relations, local_endpoint, remote_endpoint, remote_
         r
         for r in relations
         if (
-            (r["endpoint"] == local_endpoint and r["related-endpoint"] == remote_endpoint)
-            or (r["endpoint"] == remote_endpoint and r["related-endpoint"] == local_endpoint)
+            (
+                r["endpoint"] == local_endpoint
+                and r["related-endpoint"] == remote_endpoint
+            )
+            or (
+                r["endpoint"] == remote_endpoint
+                and r["related-endpoint"] == local_endpoint
+            )
         )
         and remote_obj in r["related-units"]
     ]
@@ -156,7 +165,9 @@ def get_databags(local_unit, local_endpoint, remote_unit, remote_endpoint, model
     if not relation_info:
         raise RuntimeError(f"{remote_unit} has no relations")
 
-    raw_data = get_relation_by_endpoint(relation_info, local_endpoint, remote_endpoint, local_unit)
+    raw_data = get_relation_by_endpoint(
+        relation_info, local_endpoint, remote_endpoint, local_unit
+    )
     unit_data = raw_data["related-units"][local_unit]["data"]
     app_data = raw_data["application-data"]
     return unit_data, app_data, leader
@@ -188,77 +199,34 @@ def get_relation_data(
     return RelationData(provider=provider_data, requirer=requirer_data)
 
 
-async def deploy_literal_bundle(ops_test: OpsTest, bundle: str):
-    run_args = [
-        "juju",
-        "deploy",
-        "--trust",
-        "-m",
-        ops_test.model_name,
-        str(ops_test.render_bundle(bundle)),
-    ]
-
-    retcode, stdout, stderr = await ops_test.run(*run_args)
-    assert retcode == 0, f"Deploy failed: {(stderr or stdout).strip()}"
-    logger.info(stdout)
-
-
-async def run_command(model_name: str, app_name: str, unit_num: int, command: list) -> bytes:
-    cmd = ["juju", "ssh", "--model", model_name, f"{app_name}/{unit_num}", *command]
-    try:
-        res = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        logger.info(res)
-    except subprocess.CalledProcessError as e:
-        logger.error(e.stdout.decode())
-        raise e
-    return res.stdout
-
-
-def present_facade(
-    interface: str,
-    app_data: Dict = None,
-    unit_data: Dict = None,
-    role: Literal["provide", "require"] = "provide",
-    model: str = None,
-    app: str = "facade",
-):
-    """Set up the facade charm to present this data over the interface ``interface``."""
-    data = {
-        "endpoint": f"{role}-{interface}",
-    }
-    if app_data:
-        data["app_data"] = json.dumps(app_data)
-    if unit_data:
-        data["unit_data"] = json.dumps(unit_data)
-
-    with tempfile.NamedTemporaryFile(dir=os.getcwd()) as f:
-        fpath = Path(f.name)
-        fpath.write_text(yaml.safe_dump(data))
-
-        _model = f" --model {model}" if model else ""
-
-        subprocess.run(shlex.split(f"juju run {app}/0{_model} update --params {fpath.absolute()}"))
-
-
-async def get_unit_address(ops_test: OpsTest, app_name, unit_no):
-    status = await ops_test.model.get_status()
+def get_unit_address(juju, app_name, unit_no):
+    status = juju.status()
     app = status["applications"][app_name]
     if app is None:
         assert False, f"no app exists with name {app_name}"
     unit = app["units"].get(f"{app_name}/{unit_no}")
     if unit is None:
         assert False, f"no unit exists in app {app_name} with index {unit_no}"
-    return unit["address"]
+    try:
+        return unit["address"]
+    except:
+        logger.exception(json.dumps(unit, indent=2))
+        raise
 
 
-async def deploy_and_configure_minio(ops_test: OpsTest):
+def deploy_and_configure_minio(juju: Juju):
     config = {
         "access-key": ACCESS_KEY,
         "secret-key": SECRET_KEY,
     }
-    await ops_test.model.deploy(MINIO, channel="edge", trust=True, config=config)
-    await ops_test.model.wait_for_idle(apps=[MINIO], status="active", timeout=2000)
-    minio_addr = await get_unit_address(ops_test, MINIO, "0")
+    juju.deploy(MINIO, channel="edge", trust=True, config=config)
+    juju.wait(
+        stop=lambda status: status.all_workloads((MINIO,), WorkloadStatus.active),
+        timeout=2000,
+        refresh_rate=5,
+    )
+
+    minio_addr = get_unit_address(juju, MINIO, "0")
 
     mc_client = Minio(
         f"{minio_addr}:9000",
@@ -273,19 +241,16 @@ async def deploy_and_configure_minio(ops_test: OpsTest):
         mc_client.make_bucket(BUCKET_NAME)
 
     # configure s3-integrator
-    s3_integrator_app: Application = ops_test.model.applications[S3_INTEGRATOR]
-    s3_integrator_leader: Unit = s3_integrator_app.units[0]
-
-    await s3_integrator_app.set_config(
+    juju.application_config_set(
+        S3_INTEGRATOR,
         {
-            "endpoint": f"minio-0.minio-endpoints.{ops_test.model.name}.svc.cluster.local:9000",
+            "endpoint": f"minio-0.minio-endpoints.{juju.model_name()}.svc.cluster.local:9000",
             "bucket": BUCKET_NAME,
-        }
+        },
     )
 
-    action = await s3_integrator_leader.run_action("sync-s3-credentials", **config)
-    action_result = await action.wait()
-    assert action_result.status == "completed"
+    action_result = juju.run(S3_INTEGRATOR, "sync-s3-credentials", params=config)
+    assert action_result["status"] == "completed"
 
 
 def tempo_worker_charm_and_channel():
@@ -299,24 +264,48 @@ def tempo_worker_charm_and_channel():
     return "tempo-worker-k8s", "edge"
 
 
-async def deploy_cluster(ops_test: OpsTest, tempo_app=APP_NAME):
-    tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
-    await ops_test.model.deploy(
-        tempo_worker_charm_url, application_name=WORKER_NAME, channel=channel, trust=True
-    )
-    await ops_test.model.deploy(S3_INTEGRATOR, channel="edge")
+APP_NAME = "tempo"
 
-    await ops_test.model.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
-    await ops_test.model.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")
 
-    await deploy_and_configure_minio(ops_test)
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[tempo_app, WORKER_NAME, S3_INTEGRATOR],
-            status="active",
-            timeout=2000,
-            idle_period=30,
+def deploy_cluster(
+    juju,
+    tempo_charm,
+    tempo_resources,
+    # names of deployed applications
+    tempo_app=APP_NAME,
+    worker_app=WORKER_NAME,
+    s3_app=S3_INTEGRATOR,
+    # what to deploy
+    deploy_tempo: bool = True,
+    deploy_worker: bool = True,
+    deploy_s3: bool = True,
+    deploy_minio: bool = True,
+):
+    """Deploys tempo, worker, s3, minio..."""
+    if deploy_tempo:
+        juju.deploy(tempo_charm, resources=tempo_resources, alias=tempo_app, trust=True)
+
+    if deploy_worker:
+        tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
+        juju.deploy(
+            tempo_worker_charm_url, alias=worker_app, channel=channel, trust=True
         )
+
+    if deploy_s3:
+        juju.deploy(s3_app, channel="edge")
+
+    if deploy_minio:
+        deploy_and_configure_minio(juju)
+
+    juju.integrate(tempo_app + ":s3", s3_app + ":s3-credentials")
+    juju.integrate(tempo_app + ":tempo-cluster", worker_app + ":tempo-cluster")
+
+    juju.wait(
+        stop=lambda status: status.all_workloads(
+            (tempo_app, worker_app, s3_app), WorkloadStatus.active
+        ),
+        timeout=2000,
+    )
 
 
 def get_traces(tempo_host: str, service_name="tracegen-otlp_http", tls=True):
@@ -331,18 +320,18 @@ def get_traces(tempo_host: str, service_name="tracegen-otlp_http", tls=True):
 
 
 @retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=10))
-async def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tls=True):
+def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tls=True):
     traces = get_traces(tempo_host, service_name=service_name, tls=tls)
     assert len(traces) > 0
     return traces
 
 
-async def emit_trace(
-    endpoint, ops_test: OpsTest, nonce, proto: str = "otlp_http", verbose=0, use_cert=False
+def emit_trace(
+    endpoint, juju, nonce, proto: str = "otlp_http", verbose=0, use_cert=False
 ):
     """Use juju ssh to run tracegen from the tempo charm; to avoid any DNS issues."""
     cmd = (
-        f"juju ssh -m {ops_test.model_name} {APP_NAME}/0 "
+        f"juju ssh -m {juju.model_name()} {APP_NAME}/0 "
         f"TRACEGEN_ENDPOINT={endpoint} "
         f"TRACEGEN_VERBOSE={verbose} "
         f"TRACEGEN_PROTOCOL={proto} "
@@ -351,9 +340,3 @@ async def emit_trace(
         "python3 tracegen.py"
     )
     return subprocess.getoutput(cmd)
-
-
-async def get_application_ip(ops_test: OpsTest, app_name: str):
-    status = await ops_test.model.get_status()
-    app = status["applications"][app_name]
-    return app.public_address
