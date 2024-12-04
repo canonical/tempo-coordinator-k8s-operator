@@ -65,7 +65,8 @@ cluster_relation = Relation(
 )
 
 grafana_source_relation = Relation(
-    "grafana-source", remote_app_data={"datasources": json.dumps({})}
+    "grafana-source",
+    remote_app_data={"datasources": json.dumps({"tempo/0": {"type": "tempo", "uid": "01234"}})},
 )
 
 peers = PeerRelation("peers", peers_data={1: {}})
@@ -87,7 +88,6 @@ def patch_all():
             )
         )
         stack.enter_context(charm_tracing_disabled())
-
         yield
 
 
