@@ -20,4 +20,4 @@ cryptography
 pydantic>=2
 # lib/charms/prometheus_k8s/v0/prometheus_scrape.py
 cosl @ git+https://github.com/canonical/cos-lib@datasource_exchange
-charm-relation-interfaces @ git+https://github.com/canonical/charm-relation-interfaces@grafana_datasource_exchange
+charm-relation-interfaces @ git+https://github.com/canonical/charm-relation-interfaces

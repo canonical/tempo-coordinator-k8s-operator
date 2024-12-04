@@ -491,7 +491,7 @@ class TempoCoordinatorCharm(CharmBase):
                 raw_datasources.append({"type": "tempo", "uid": ds_uid})
 
         # submit() already sorts the data for us, to prevent databag flapping and ensuing event storms
-        self.coordinator.datasource_exchange.submit(raw_datasources=raw_datasources)
+        self.coordinator.datasource_exchange.publish(datasources=raw_datasources)
 
     def _reconcile(self):
         # This method contains unconditional update logic, i.e. logic that should be executed
