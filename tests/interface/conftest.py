@@ -1,5 +1,6 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 from contextlib import ExitStack
 from unittest.mock import MagicMock, patch
 
@@ -61,6 +62,10 @@ cluster_relation = Relation(
             juju_topology={"application": "app", "unit": "unit", "charm_name": "charmname"},
         ).dump()
     },
+)
+
+grafana_source_relation = Relation(
+    "grafana-source", remote_app_data={"datasources": json.dumps({})}
 )
 
 peers = PeerRelation("peers", peers_data={1: {}})
@@ -139,6 +144,19 @@ def grafana_datasource_tester(interface_tester: InterfaceTester):
             leader=True,
             containers=[nginx_container, nginx_prometheus_exporter_container],
             relations=[peers, cluster_relation],
+        ),
+    )
+    yield interface_tester
+
+
+@pytest.fixture
+def grafana_datasource_exchange_tester(interface_tester: InterfaceTester):
+    interface_tester.configure(
+        charm_type=TempoCoordinatorCharm,
+        state_template=State(
+            leader=True,
+            containers=[nginx_container, nginx_prometheus_exporter_container],
+            relations=[peers, cluster_relation, grafana_source_relation],
         ),
     )
     yield interface_tester
