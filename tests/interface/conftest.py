@@ -1,7 +1,9 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
+import pathlib
 from contextlib import ExitStack
+from shutil import rmtree
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -89,6 +91,7 @@ def patch_all():
         )
         stack.enter_context(charm_tracing_disabled())
         yield
+        rmtree(pathlib.Path(__file__).parent / "src")
 
 
 # Interface tests are centrally hosted at https://github.com/canonical/charm-relation-interfaces.
@@ -143,7 +146,7 @@ def grafana_datasource_tester(interface_tester: InterfaceTester):
         state_template=State(
             leader=True,
             containers=[nginx_container, nginx_prometheus_exporter_container],
-            relations=[peers, cluster_relation],
+            relations=[peers, s3_relation, cluster_relation],
         ),
     )
     yield interface_tester
@@ -156,7 +159,7 @@ def grafana_datasource_exchange_tester(interface_tester: InterfaceTester):
         state_template=State(
             leader=True,
             containers=[nginx_container, nginx_prometheus_exporter_container],
-            relations=[peers, cluster_relation, grafana_source_relation],
+            relations=[peers, s3_relation, cluster_relation, grafana_source_relation],
         ),
     )
     yield interface_tester
