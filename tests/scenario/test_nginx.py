@@ -1,13 +1,9 @@
 import logging
-import tempfile
-from contextlib import contextmanager
-from pathlib import Path
 from typing import List
-from unittest.mock import patch
 
 import pytest
 
-from nginx_config import NginxConfig, _get_dns_ip_address
+from nginx_config import NginxConfig
 from tempo import Tempo
 
 logger = logging.getLogger(__name__)
@@ -101,8 +97,7 @@ def test_nginx_config_contains_upstreams_and_proxy_pass(
     coordinator.cluster.gather_addresses_by_role.return_value = addresses
     coordinator.nginx.are_certificates_on_disk = tls
 
-    with mock_resolv_conf(f"nameserver {sample_dns_ip}"):
-        nginx = NginxConfig("localhost")
+    nginx = NginxConfig("localhost")
 
     prepared_config = nginx.config(coordinator)
 
@@ -126,37 +121,9 @@ def _assert_config_per_role(source_dict, address, prepared_config, tls):
         sanitised_protocol = protocol.replace("_", "-")
         assert f"upstream {sanitised_protocol}" in prepared_config
 
-        # kind of a weak test: it should be in all server blocks, we only check it is found at all.
-        assert f"resolver {sample_dns_ip};" in prepared_config
-
         if "grpc" in protocol:
-            assert f"grpc_pass grpc{'s' if tls else ''}://{sanitised_protocol}" in prepared_config
+            assert f"set $backend grpc{'s' if tls else ''}://{sanitised_protocol}"
+            assert "grpc_pass $backend" in prepared_config
         else:
-            assert f"proxy_pass http{'s' if tls else ''}://{sanitised_protocol}" in prepared_config
-
-
-@contextmanager
-def mock_resolv_conf(contents: str):
-    with tempfile.NamedTemporaryFile() as tf:
-        Path(tf.name).write_text(contents)
-        with patch("nginx_config.RESOLV_CONF_PATH", tf.name):
-            yield
-
-
-@pytest.mark.parametrize(
-    "mock_contents, expected_dns_ip",
-    (
-        (f"foo bar\nnameserver {sample_dns_ip}", sample_dns_ip),
-        (f"nameserver {sample_dns_ip}\n foo bar baz", sample_dns_ip),
-        (f"foo bar\nfoo bar\nnameserver {sample_dns_ip}\nnameserver 198.18.0.1", sample_dns_ip),
-    ),
-)
-def test_dns_ip_addr_getter(mock_contents, expected_dns_ip):
-    with mock_resolv_conf(mock_contents):
-        assert _get_dns_ip_address() == expected_dns_ip
-
-
-def test_dns_ip_addr_fail():
-    with pytest.raises(RuntimeError):
-        with mock_resolv_conf("foo bar"):
-            _get_dns_ip_address()
+            assert f"set $backend http{'s' if tls else ''}://{sanitised_protocol}"
+            assert "proxy_pass $backend" in prepared_config

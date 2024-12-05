@@ -3,7 +3,6 @@
 """Nginx workload."""
 
 import logging
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, cast
 
 import crossplane
@@ -19,7 +18,6 @@ from tempo import Tempo
 from tempo_config import TempoRole
 
 logger = logging.getLogger(__name__)
-RESOLV_CONF_PATH = "/etc/resolv.conf"
 
 
 class NginxConfig:
@@ -27,7 +25,6 @@ class NginxConfig:
 
     def __init__(self, server_name: str):
         self.server_name = server_name
-        self.dns_IP_address = _get_dns_ip_address()
 
     def config(self, coordinator: Coordinator) -> str:
         """Build and return the Nginx configuration."""
@@ -73,7 +70,6 @@ class NginxConfig:
                     # tempo-related
                     {"directive": "sendfile", "args": ["on"]},
                     {"directive": "tcp_nopush", "args": ["on"]},
-                    *self._resolver(custom_resolver=None),
                     # TODO: add custom http block for the user to config?
                     {
                         "directive": "map",
@@ -152,9 +148,10 @@ class NginxConfig:
                 "directive": "location",
                 "args": ["/"],
                 "block": [
+                    {"directive": "set", "args": ["$backend", f"{protocol}://{upstream}"]},
                     {
                         "directive": "grpc_pass" if grpc else "proxy_pass",
-                        "args": [f"{protocol}://{upstream}"],
+                        "args": ["$backend"],
                     },
                     # if a server is down, no need to wait for a long time to pass on the request to the next available server
                     {
@@ -165,14 +162,6 @@ class NginxConfig:
             }
         ]
         return nginx_locations
-
-    def _resolver(
-        self,
-        custom_resolver: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        if custom_resolver:
-            return [{"directive": "resolver", "args": [custom_resolver]}]
-        return [{"directive": "resolver", "args": ["kube-dns.kube-system.svc.cluster.local."]}]
 
     def _basic_auth(self, enabled: bool) -> List[Optional[Dict[str, Any]]]:
         if enabled:
@@ -252,7 +241,6 @@ class NginxConfig:
                     {"directive": "ssl_certificate_key", "args": [KEY_PATH]},
                     {"directive": "ssl_protocols", "args": ["TLSv1", "TLSv1.1", "TLSv1.2"]},
                     {"directive": "ssl_ciphers", "args": ["HIGH:!aNULL:!MD5"]},  # codespell:ignore
-                    *self._resolver(custom_resolver=self.dns_IP_address),
                     *self._locations(upstream, grpc, tls),
                 ],
             }
@@ -268,7 +256,6 @@ class NginxConfig:
                     "args": ["X-Scope-OrgID", "$ensured_x_scope_orgid"],
                 },
                 {"directive": "server_name", "args": [self.server_name]},
-                *self._resolver(custom_resolver=self.dns_IP_address),
                 *self._locations(upstream, grpc, tls),
             ],
         }
@@ -284,13 +271,3 @@ class NginxConfig:
         ):
             return True
         return False
-
-
-def _get_dns_ip_address():
-    """Obtain DNS ip address from /etc/resolv.conf."""
-    resolv = Path(RESOLV_CONF_PATH).read_text()
-    for line in resolv.splitlines():
-        if line.startswith("nameserver"):
-            # assume there's only one
-            return line.split()[1].strip()
-    raise RuntimeError("cannot find nameserver in /etc/resolv.conf")
