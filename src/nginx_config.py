@@ -70,7 +70,6 @@ class NginxConfig:
                     # tempo-related
                     {"directive": "sendfile", "args": ["on"]},
                     {"directive": "tcp_nopush", "args": ["on"]},
-                    *self._resolver(custom_resolver=None),
                     # TODO: add custom http block for the user to config?
                     {
                         "directive": "map",
@@ -163,14 +162,6 @@ class NginxConfig:
             }
         ]
         return nginx_locations
-
-    def _resolver(
-        self,
-        custom_resolver: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        if custom_resolver:
-            return [{"directive": "resolver", "args": [custom_resolver]}]
-        return [{"directive": "resolver", "args": ["kube-dns.kube-system.svc.cluster.local."]}]
 
     def _basic_auth(self, enabled: bool) -> List[Optional[Dict[str, Any]]]:
         if enabled:
