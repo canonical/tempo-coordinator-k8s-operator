@@ -1,16 +1,10 @@
 import json
 from unittest.mock import patch
 
-import pytest
 import scenario
 from cosl.interfaces.datasource_exchange import DatasourceExchange, DSExchangeAppData
 from interfaces.grafana_datasource_exchange.v0.schema import GrafanaDatasource
-from scenario import Context, PeerRelation, Relation, State
-
-
-@pytest.fixture(scope="function")
-def context(tempo_charm):
-    return Context(charm_type=tempo_charm)
+from scenario import PeerRelation, Relation, State
 
 
 @patch("charm.TempoCoordinatorCharm.is_workload_ready", return_value=True)
