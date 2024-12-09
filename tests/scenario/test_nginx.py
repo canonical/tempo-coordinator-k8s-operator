@@ -105,6 +105,7 @@ def test_nginx_config_contains_upstreams_and_proxy_pass(
         nginx = NginxConfig("localhost")
 
     prepared_config = nginx.config(coordinator)
+    assert f"resolver {sample_dns_ip};" in prepared_config
 
     for role, addresses in addresses.items():
         for address in addresses:
@@ -118,7 +119,7 @@ def _assert_config_per_role(source_dict, address, prepared_config, tls):
     # as entire config is in a format that's hard to parse (and crossplane returns a string), we look for servers,
     # upstreams and correct proxy/grpc_pass instructions.
     for port in source_dict.values():
-        assert f"server {address}:{port};" in prepared_config
+        assert f"server {address}:{port} resolve;" in prepared_config
         assert f"listen {port}" in prepared_config
         assert f"listen [::]:{port}" in prepared_config
 
@@ -126,13 +127,12 @@ def _assert_config_per_role(source_dict, address, prepared_config, tls):
         sanitised_protocol = protocol.replace("_", "-")
         assert f"upstream {sanitised_protocol}" in prepared_config
 
-        # kind of a weak test: it should be in all server blocks, we only check it is found at all.
-        assert f"resolver {sample_dns_ip};" in prepared_config
-
         if "grpc" in protocol:
-            assert f"grpc_pass grpc{'s' if tls else ''}://{sanitised_protocol}" in prepared_config
+            assert f"set $backend grpc{'s' if tls else ''}://{sanitised_protocol}"
+            assert "grpc_pass $backend" in prepared_config
         else:
-            assert f"proxy_pass http{'s' if tls else ''}://{sanitised_protocol}" in prepared_config
+            assert f"set $backend http{'s' if tls else ''}://{sanitised_protocol}"
+            assert "proxy_pass $backend" in prepared_config
 
 
 @contextmanager
