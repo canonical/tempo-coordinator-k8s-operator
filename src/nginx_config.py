@@ -3,6 +3,7 @@
 """Nginx workload."""
 
 import logging
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, cast
 
 import crossplane
@@ -18,6 +19,7 @@ from tempo import Tempo
 from tempo_config import TempoRole
 
 logger = logging.getLogger(__name__)
+RESOLV_CONF_PATH = "/etc/resolv.conf"
 
 
 class NginxConfig:
@@ -25,6 +27,7 @@ class NginxConfig:
 
     def __init__(self, server_name: str):
         self.server_name = server_name
+        self.dns_IP_address = _get_dns_ip_address()
 
     def config(self, coordinator: Coordinator) -> str:
         """Build and return the Nginx configuration."""
@@ -70,6 +73,7 @@ class NginxConfig:
                     # tempo-related
                     {"directive": "sendfile", "args": ["on"]},
                     {"directive": "tcp_nopush", "args": ["on"]},
+                    *self._resolver(custom_resolver=self.dns_IP_address),
                     # TODO: add custom http block for the user to config?
                     {
                         "directive": "map",
@@ -137,7 +141,19 @@ class NginxConfig:
         return {
             "directive": "upstream",
             "args": [role],
-            "block": [{"directive": "server", "args": [f"{addr}:{port}"]} for addr in address_set],
+            "block": [
+                # monitor changes of IP addresses and automatically modify the upstream config without the need of restarting nginx.
+                # this nginx plus feature has been part of opensource nginx in 1.27.3
+                # ref: https://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream
+                {
+                    "directive": "zone",
+                    "args": [f"{role}_zone", "64k"],
+                },
+                *(
+                    {"directive": "server", "args": [f"{addr}:{port}", "resolve"]}
+                    for addr in address_set
+                ),
+            ],
         }
 
     def _locations(self, upstream: str, grpc: bool, tls: bool) -> List[Dict[str, Any]]:
@@ -162,6 +178,19 @@ class NginxConfig:
             }
         ]
         return nginx_locations
+
+    def _resolver(
+        self,
+        custom_resolver: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        if custom_resolver:
+            return [{"directive": "resolver", "args": [custom_resolver]}]
+        return [
+            {
+                "directive": "resolver",
+                "args": ["kube-dns.kube-system.svc.cluster.local."],
+            }
+        ]
 
     def _basic_auth(self, enabled: bool) -> List[Optional[Dict[str, Any]]]:
         if enabled:
@@ -271,3 +300,13 @@ class NginxConfig:
         ):
             return True
         return False
+
+
+def _get_dns_ip_address():
+    """Obtain DNS ip address from /etc/resolv.conf."""
+    resolv = Path(RESOLV_CONF_PATH).read_text()
+    for line in resolv.splitlines():
+        if line.startswith("nameserver"):
+            # assume there's only one
+            return line.split()[1].strip()
+    raise RuntimeError("cannot find nameserver in /etc/resolv.conf")
