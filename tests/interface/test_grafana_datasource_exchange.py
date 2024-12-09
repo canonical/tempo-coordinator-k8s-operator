@@ -8,7 +8,7 @@ def test_grafana_datasource_exchange_v0_interface(
 ):
     grafana_datasource_exchange_tester.configure(
         interface_name="grafana_datasource_exchange",
-        branch="grafana_datasource_exchange",
+        branch="add-grafana-uid-to-DS",
         interface_version=0,
     )
     grafana_datasource_exchange_tester.run()

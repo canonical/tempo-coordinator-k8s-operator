@@ -91,7 +91,11 @@ def patch_all():
         )
         stack.enter_context(charm_tracing_disabled())
         yield
-        rmtree(pathlib.Path(__file__).parent / "src")
+
+        # cleanup: some tests create a spurious src folder for alert rules in ./
+        src_root = pathlib.Path(__file__).parent / "src"
+        if src_root.exists():
+            rmtree(src_root)
 
 
 # Interface tests are centrally hosted at https://github.com/canonical/charm-relation-interfaces.

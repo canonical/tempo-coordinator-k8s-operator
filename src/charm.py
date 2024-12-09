@@ -109,8 +109,8 @@ class TempoCoordinatorCharm(CharmBase):
                 "s3": "s3",
                 "charm-tracing": "self-charm-tracing",
                 "workload-tracing": "self-workload-tracing",
-                "provide-datasource-exchange": "provide-datasource-exchange",
-                "require-datasource-exchange": "require-datasource-exchange",
+                "send-datasource": None,
+                "receive-datasource": "receive-datasource",
             },
             nginx_config=NginxConfig(server_name=self.hostname).config,
             workers_config=self.tempo.config,
@@ -473,9 +473,9 @@ class TempoCoordinatorCharm(CharmBase):
         #   different UID convention!
 
         # To simplify our lives, we're going to assume that you're only relating each tempo to a single grafana!!!
-        grafanas_to_units_to_uids = self.grafana_source_provider.get_source_uids()
+        grafana_uids_to_units_to_uids = self.grafana_source_provider.get_source_uids()
 
-        if len(grafanas_to_units_to_uids) > 1:
+        if len(grafana_uids_to_units_to_uids) > 1:
             logger.warning(
                 "Multiple grafanas are using this application as datasource. "
                 "Datasource correlation features might misbehave. "
@@ -484,11 +484,13 @@ class TempoCoordinatorCharm(CharmBase):
 
         raw_datasources: List[DatasourceDict] = []
 
-        for _grafana_name, ds_uids in grafanas_to_units_to_uids.items():
+        for grafana_uid, ds_uids in grafana_uids_to_units_to_uids.items():
             # we don't use the grafana name
             for _unit_name, ds_uid in ds_uids.items():
                 # we also don't care about which unit's server we're looking at, since hopefully the data is the same.
-                raw_datasources.append({"type": "tempo", "uid": ds_uid})
+                raw_datasources.append(
+                    {"type": "tempo", "uid": ds_uid, "grafana_uid": grafana_uid}
+                )
 
         # submit() already sorts the data for us, to prevent databag flapping and ensuing event storms
         self.coordinator.datasource_exchange.publish(datasources=raw_datasources)
