@@ -2,8 +2,11 @@ import json
 from unittest.mock import patch
 
 import scenario
-from cosl.interfaces.datasource_exchange import DatasourceExchange, DSExchangeAppData
-from interfaces.grafana_datasource_exchange.v0.schema import GrafanaDatasource
+from cosl.interfaces.datasource_exchange import (
+    DatasourceExchange,
+    DSExchangeAppData,
+    GrafanaDatasource,
+)
 from scenario import PeerRelation, Relation, State
 
 
