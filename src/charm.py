@@ -447,10 +447,13 @@ class TempoCoordinatorCharm(CharmBase):
         return self._remote_write.endpoints
 
     def _update_source_exchange(self) -> None:
-        """Update the grafana-datasource relations."""
+        """Update the grafana-datasource-exchange relations with what we receive from grafana-source."""
 
-        # This degree of multiplexing requires some in-depth explanation.
-        #   each grafana we're sending our data to gives us back a mapping from unit names to datasource UIDs.
+        # leader operation only
+        if not self.unit.is_leader():
+            return
+
+        # Each grafana we're sending our data to gives us back a mapping from unit names to datasource UIDs.
         #   so if we have two tempo units, and we're related to two grafanas, we'll get back:
         # {
         #     "grafana/0": {
@@ -474,14 +477,6 @@ class TempoCoordinatorCharm(CharmBase):
 
         # To simplify our lives, we're going to assume that you're only relating each tempo to a single grafana!!!
         grafana_uids_to_units_to_uids = self.grafana_source_provider.get_source_uids()
-
-        if len(grafana_uids_to_units_to_uids) > 1:
-            logger.warning(
-                "Multiple grafanas are using this application as datasource. "
-                "Datasource correlation features might misbehave. "
-                "File a bug if you experience weirdness."
-            )
-
         raw_datasources: List[DatasourceDict] = []
 
         for grafana_uid, ds_uids in grafana_uids_to_units_to_uids.items():
@@ -492,7 +487,7 @@ class TempoCoordinatorCharm(CharmBase):
                     {"type": "tempo", "uid": ds_uid, "grafana_uid": grafana_uid}
                 )
 
-        # submit() already sorts the data for us, to prevent databag flapping and ensuing event storms
+        # publish() already sorts the data for us, to prevent databag flapping and ensuing event storms
         self.coordinator.datasource_exchange.publish(datasources=raw_datasources)
 
     def _reconcile(self):
