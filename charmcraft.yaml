@@ -128,9 +128,9 @@ bases:
 
 parts:
   charm:
-    #    uncomment this if you add git+ dependencies in requirements.txt
-    build-packages:
-      - "git"
+    # uncomment this if you add git+ dependencies in requirements.txt:
+    #build-packages:
+    #  - "git"
     charm-binary-python-packages:
       - "pydantic>=2"
       - "cryptography"
@@ -146,31 +146,31 @@ config:
       type: int
       default: 720
     always_enable_zipkin:
-      description:
+      description: |
         Force-enable the receiver for the 'zipkin' protocol in Tempo, even if there is no integration currently
         requesting it.
       type: boolean
       default: false
     always_enable_otlp_grpc:
-      description:
+      description: |
         Force-enable the receiver for the 'otlp_grpc' protocol in Tempo, even if there is no integration currently
         requesting it.
       type: boolean
       default: false
     always_enable_otlp_http:
-      description:
+      description: |
         Force-enable the receiver for the 'otlp_http' protocol in Tempo, even if there is no integration currently
         requesting it.
       type: boolean
       default: false
     always_enable_jaeger_thrift_http:
-      description:
+      description: |
         Force-enable the receiver for the 'jaeger_thrift_http' protocol in Tempo, even if there is no integration
         currently requesting it.
       type: boolean
       default: false
     always_enable_jaeger_grpc:
-      description:
+      description: |
         Force-enable the receiver for the 'jaeger_grpc' protocol in Tempo, even if there is no integration currently
         requesting it.
       type: boolean
