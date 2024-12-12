@@ -73,7 +73,7 @@ class NginxConfig:
                     # tempo-related
                     {"directive": "sendfile", "args": ["on"]},
                     {"directive": "tcp_nopush", "args": ["on"]},
-                    *self._resolver(custom_resolver=self.dns_IP_address),
+                    *self._resolver(),
                     # TODO: add custom http block for the user to config?
                     {
                         "directive": "map",
@@ -142,15 +142,23 @@ class NginxConfig:
             "directive": "upstream",
             "args": [role],
             "block": [
+                # TODO: uncomment the below directive when nginx version >= 1.27.3
                 # monitor changes of IP addresses and automatically modify the upstream config without the need of restarting nginx.
                 # this nginx plus feature has been part of opensource nginx in 1.27.3
                 # ref: https://nginx.org/en/docs/http/ngx_http_upstream_module.html#upstream
-                {
-                    "directive": "zone",
-                    "args": [f"{role}_zone", "64k"],
-                },
+                # {
+                #     "directive": "zone",
+                #     "args": [f"{role}_zone", "64k"],
+                # },
                 *(
-                    {"directive": "server", "args": [f"{addr}:{port}", "resolve"]}
+                    {
+                        "directive": "server",
+                        "args": [
+                            f"{addr}:{port}",
+                            # TODO: uncomment the below arg when nginx version >= 1.27.3
+                            #  "resolve"
+                        ],
+                    }
                     for addr in address_set
                 ),
             ],
@@ -183,12 +191,16 @@ class NginxConfig:
         self,
         custom_resolver: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
+
+        # pass a custom resolver, such as kube-dns.kube-system.svc.cluster.local.
         if custom_resolver:
             return [{"directive": "resolver", "args": [custom_resolver]}]
+
+        # by default, fetch the DNS resolver address from /etc/resolv.conf
         return [
             {
                 "directive": "resolver",
-                "args": ["kube-dns.kube-system.svc.cluster.local."],
+                "args": [self.dns_IP_address],
             }
         ]
 
