@@ -134,7 +134,7 @@ class TempoCoordinatorCharm(CharmBase):
                 # or when ingress changes
                 self.ingress.on.ready,
             ],
-            extra_fields=self._grafana_source_extra_fields,
+            extra_fields=self._build_grafana_source_extra_fields(),
         )
 
         # peer
@@ -156,25 +156,6 @@ class TempoCoordinatorCharm(CharmBase):
     ######################
     # UTILITY PROPERTIES #
     ######################
-    @property
-    def _grafana_source_extra_fields(self) -> Dict[str, Any]:
-        """Extra fields needed for the grafana-source relation, like data correlation config."""
-        ## https://grafana.com/docs/tempo/latest/metrics-generator/service_graphs/enable-service-graphs/
-        # "httpMethod": "GET",
-        # "serviceMap": {
-        #     "datasourceUid": "juju_svcgraph_61e32e2f-50ac-40e7-8ee8-1b7297a3e47f_prometheus_0",
-        # },
-        # # https://community.grafana.com/t/how-to-jump-from-traces-to-logs/72477/3
-        # "tracesToLogs": {
-        #     "datasourceUid": "juju_svcgraph_61e32e2f-50ac-40e7-8ee8-1b7297a3e47f_loki_0"
-        # },
-        # "lokiSearch": {
-        #     "datasourceUid": "juju_svcgraph_61e32e2f-50ac-40e7-8ee8-1b7297a3e47f_loki_0"
-        # },
-
-        service_graph_config = self._build_service_graph_config()
-        return service_graph_config
-
     @property
     def peers(self):
         """Fetch the "peers" peer relation."""
@@ -527,6 +508,8 @@ class TempoCoordinatorCharm(CharmBase):
         self._update_ingress_relation()
         self._update_tracing_relations()
         self._update_source_exchange()
+        # reconcile grafana-source databags to update `extra_fields`
+        # if it gets changed by any other influencing relation.
         self._update_grafana_source()
 
     def _get_grafana_source_uids(self) -> Dict[str, Dict[str, str]]:
@@ -630,10 +613,34 @@ class TempoCoordinatorCharm(CharmBase):
         # At this point, we can assume any datasource is a valid datasource to use for service graphs.
         matching_datasource = matching_datasources[0]
         return {
-            "httpMethod": "GET",
             "serviceMap": {
                 "datasourceUid": matching_datasource.uid,
             },
+        }
+
+    def _build_grafana_source_extra_fields(self) -> Dict[str, Any]:
+        """Extra fields needed for the grafana-source relation, like data correlation config."""
+        ## https://grafana.com/docs/tempo/latest/metrics-generator/service_graphs/enable-service-graphs/
+        # "httpMethod": "GET",
+        # "serviceMap": {
+        #     "datasourceUid": "juju_svcgraph_61e32e2f-50ac-40e7-8ee8-1b7297a3e47f_prometheus_0",
+        # },
+        # # https://community.grafana.com/t/how-to-jump-from-traces-to-logs/72477/3
+        # "tracesToLogs": {
+        #     "datasourceUid": "juju_svcgraph_61e32e2f-50ac-40e7-8ee8-1b7297a3e47f_loki_0"
+        # },
+        # "lokiSearch": {
+        #     "datasourceUid": "juju_svcgraph_61e32e2f-50ac-40e7-8ee8-1b7297a3e47f_loki_0"
+        # },
+
+        svc_graph_config = self._build_service_graph_config()
+
+        if not svc_graph_config:
+            return {}
+
+        return {
+            "httpMethod": "GET",
+            **svc_graph_config,
         }
 
 

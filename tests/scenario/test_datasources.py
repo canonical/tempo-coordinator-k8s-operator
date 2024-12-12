@@ -9,6 +9,12 @@ from cosl.interfaces.datasource_exchange import DatasourceExchange, GrafanaDatas
 from scenario import PeerRelation, Relation, State
 
 
+@pytest.fixture(autouse=True, scope="module")
+def disable_charm_tracing():
+    with charm_tracing_disabled():
+        yield
+
+
 def grafana_source_relation(
     remote_name: str = "remote",
     datasource_uids: Dict[str, str] = {"tempo/0": "1234"},
@@ -92,17 +98,16 @@ def test_datasource_receive(
     )
 
     # WHEN we receive any event
-    with charm_tracing_disabled():
-        with context(context.on.update_status(), state_in) as mgr:
-            charm = mgr.charm
-            # THEN we can find all received datasource uids in the coordinator
-            dsx: DatasourceExchange = charm.coordinator.datasource_exchange
-            received = dsx.received_datasources
-            assert received == (
-                GrafanaDatasource(type="loki", uid="3", grafana_uid="4"),
-                GrafanaDatasource(type="prometheus", uid="8", grafana_uid="9"),
-            )
-            state_out = mgr.run()
+    with context(context.on.update_status(), state_in) as mgr:
+        charm = mgr.charm
+        # THEN we can find all received datasource uids in the coordinator
+        dsx: DatasourceExchange = charm.coordinator.datasource_exchange
+        received = dsx.received_datasources
+        assert received == (
+            GrafanaDatasource(type="loki", uid="3", grafana_uid="4"),
+            GrafanaDatasource(type="prometheus", uid="8", grafana_uid="9"),
+        )
+        state_out = mgr.run()
 
     # AND THEN we forward our own datasource information to mimir and loki
     assert state_out.unit_status.name == "active"
@@ -120,7 +125,7 @@ def test_datasource_receive(
 @pytest.mark.parametrize("has_remote_write", (True, False))
 @pytest.mark.parametrize("has_grafana_source", (True, False))
 @patch("charm.TempoCoordinatorCharm.is_workload_ready", return_value=True)
-def test_service_graph(
+def test_service_graph_with_complete_or_missing_rels(
     workload_ready_mock,
     has_grafana_source,
     has_remote_write,
@@ -152,20 +157,19 @@ def test_service_graph(
     )
 
     # WHEN we fire any event
-    with charm_tracing_disabled():
-        with context(context.on.update_status(), state_in) as mgr:
-            mgr.run()
-            charm = mgr.charm
-            service_graph_config = charm._build_service_graph_config()
+    with context(context.on.update_status(), state_in) as mgr:
+        mgr.run()
+        charm = mgr.charm
+        service_graph_config = charm._build_service_graph_config()
 
-            # If all relations are there
-            # THEN assert that prometheus ds UID gets populated in the service graph config
-            if all((has_dsx, has_grafana_source, has_remote_write)):
-                assert service_graph_config
-                assert service_graph_config["serviceMap"]["datasourceUid"] == "prometheus_1"
-            # THEN no service graph config will be generated
-            else:
-                assert not service_graph_config
+        # If all relations are there
+        # THEN assert that prometheus ds UID gets populated in the service graph config
+        if all((has_dsx, has_grafana_source, has_remote_write)):
+            assert service_graph_config
+            assert service_graph_config["serviceMap"]["datasourceUid"] == "prometheus_1"
+        # THEN no service graph config will be generated
+        else:
+            assert not service_graph_config
 
 
 @patch("charm.TempoCoordinatorCharm.is_workload_ready", return_value=True)
@@ -207,13 +211,12 @@ def test_no_service_graph_with_wrong_grafana(
         leader=True,
     )
 
-    with charm_tracing_disabled():
-        with context(context.on.update_status(), state_in) as mgr:
-            mgr.run()
-            charm = mgr.charm
-            service_graph_config = charm._build_service_graph_config()
-            # THEN no service graph config should be generated.
-            assert not service_graph_config
+    with context(context.on.update_status(), state_in) as mgr:
+        mgr.run()
+        charm = mgr.charm
+        service_graph_config = charm._build_service_graph_config()
+        # THEN no service graph config should be generated.
+        assert not service_graph_config
 
 
 @patch("charm.TempoCoordinatorCharm.is_workload_ready", return_value=True)
@@ -250,16 +253,15 @@ def test_service_graph_with_multiple_apps_and_units(
         leader=True,
     )
 
-    with charm_tracing_disabled():
-        with context(context.on.update_status(), state_in) as mgr:
-            mgr.run()
-            charm = mgr.charm
-            service_graph_config = charm._build_service_graph_config()
-            # THEN a service graph config will be generated containing the datasource UID of any of the 2 prometheis units.
-            assert service_graph_config["serviceMap"]["datasourceUid"] in [
-                "prometheus_1",
-                "prometheus_2",
-            ]
+    with context(context.on.update_status(), state_in) as mgr:
+        mgr.run()
+        charm = mgr.charm
+        service_graph_config = charm._build_service_graph_config()
+        # THEN a service graph config will be generated containing the datasource UID of any of the 2 prometheis units.
+        assert service_graph_config["serviceMap"]["datasourceUid"] in [
+            "prometheus_1",
+            "prometheus_2",
+        ]
 
 
 @patch("charm.TempoCoordinatorCharm.is_workload_ready", return_value=True)
@@ -294,10 +296,9 @@ def test_no_service_graph_with_wrong_dsx(
         leader=True,
     )
 
-    with charm_tracing_disabled():
-        with context(context.on.update_status(), state_in) as mgr:
-            mgr.run()
-            charm = mgr.charm
-            service_graph_config = charm._build_service_graph_config()
-            # THEN a service graph config will not be generated.
-            assert not service_graph_config
+    with context(context.on.update_status(), state_in) as mgr:
+        mgr.run()
+        charm = mgr.charm
+        service_graph_config = charm._build_service_graph_config()
+        # THEN a service graph config will not be generated.
+        assert not service_graph_config
