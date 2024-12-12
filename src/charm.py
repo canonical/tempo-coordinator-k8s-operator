@@ -530,7 +530,7 @@ class TempoCoordinatorCharm(CharmBase):
         self._update_grafana_source()
 
     def _get_grafana_source_uids(self) -> Dict[str, Dict[str, str]]:
-        """Helper method to retrieve grafana source UIDs from remote databags using raw relations.
+        """Helper method to retrieve the databags of any grafana-source relations.
 
         Duplicate implementation of GrafanaSourceProvider.get_source_uids() to use in the
         situation where we want to access relation data when the GrafanaSourceProvider object
@@ -555,9 +555,9 @@ class TempoCoordinatorCharm(CharmBase):
     def _build_service_graph_config(self) -> Dict[str, Any]:
         """Build the service graph config based on matching datasource UIDs.
 
-        To enable service graphs, we need the datasource UID of the prometheus/mimir instance where:
-        1- Tempo is connected to over "send-remote-write" relation.
-        2- It is also connected, as a datasource, to the same grafana instance(s) Tempo is connected to.
+        To enable service graphs, we need the datasource UID of any prometheus/mimir instance such that:
+        1- Tempo is connected to it over "send-remote-write".
+        2- It is also connected, over `grafana_datasource`, to at least one of the grafana instance(s) that Tempo is connected to.
 
         If there are multiple datasources that fit this description, we can assume that they are all
         equivalent and we can use any of them.
@@ -601,6 +601,7 @@ class TempoCoordinatorCharm(CharmBase):
         ]
 
         if not matching_datasources:
+            # take good care of logging exactly why this happening, as the logic is quite complex and debugging this will be hell
             msg = "service graph disabled."
             missing_rels = []
             if not remote_write_apps:
