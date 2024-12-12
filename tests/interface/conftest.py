@@ -97,11 +97,6 @@ def patch_all():
         if src_root.exists():
             rmtree(src_root)
 
-        # cleanup: some tests create a spurious src folder for alert rules in ./
-        src_root = pathlib.Path(__file__).parent / "src"
-        if src_root.exists():
-            rmtree(src_root)
-
 
 # Interface tests are centrally hosted at https://github.com/canonical/charm-relation-interfaces.
 # this fixture is used by the test runner of charm-relation-interfaces to test tempo's compliance
