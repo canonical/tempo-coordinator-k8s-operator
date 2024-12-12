@@ -454,8 +454,10 @@ class TempoCoordinatorCharm(CharmBase):
             return
 
         # Each grafana we're sending our data to gives us back a mapping from unit names to datasource UIDs.
-        #   so if we have two tempo units, and we're related to two grafanas, we'll get back:
-        # {
+        #   so if we have two tempo units, and we're related to two grafanas,
+        #   the grafana-source databag will look something like this:
+        # {"grafana_uid": "1234-1234-1234-1234",
+        # "datasource_uids": {
         #     "grafana/0": {
         #         "tempo/0": "0000-0000-0000-0000",
         #         "tempo/1": "0000-0000-0000-0001"
@@ -464,7 +466,7 @@ class TempoCoordinatorCharm(CharmBase):
         #         "tempo/0": "0000-0000-0000-0000",
         #         "tempo/1": "0000-0000-0000-0001"
         #     },
-        # }
+        # }}
         # This is an implementation detail, but the UID is 'unique-per-grafana' and ATM it turns out to be
         #   deterministic given tempo's jujutopology, so if we are related to multiple grafanas,
         #   the UIDs they assign to our units will be the same.
@@ -475,13 +477,14 @@ class TempoCoordinatorCharm(CharmBase):
         #   the unit we are sharing our data to might be talking to 'another grafana' which might be using a
         #   different UID convention!
 
-        # To simplify our lives, we're going to assume that you're only relating each tempo to a single grafana!!!
+        # we might have multiple grafana-source relations, this method collects them all and returns a mapping from
+        # the `grafana_uid` to the contents of the `datasource_uids` field
         grafana_uids_to_units_to_uids = self.grafana_source_provider.get_source_uids()
         raw_datasources: List[DatasourceDict] = []
 
         for grafana_uid, ds_uids in grafana_uids_to_units_to_uids.items():
-            # we don't use the grafana name
-            for _unit_name, ds_uid in ds_uids.items():
+            # we don't need the grafana unit name
+            for _, ds_uid in ds_uids.items():
                 # we also don't care about which unit's server we're looking at, since hopefully the data is the same.
                 raw_datasources.append(
                     {"type": "tempo", "uid": ds_uid, "grafana_uid": grafana_uid}
