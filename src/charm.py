@@ -446,8 +446,8 @@ class TempoCoordinatorCharm(CharmBase):
         return {"cpu": "50m", "memory": "100Mi"}
 
     def remote_write_endpoints(self):
-        """Return remote-write endpoints."""
-        return self._remote_write.endpoints
+        """Return a sorted list of remote-write endpoints."""
+        return sorted(self._remote_write.endpoints, key=lambda x: x["url"])
 
     def _update_source_exchange(self) -> None:
         """Update the grafana-datasource-exchange relations with what we receive from grafana-source."""
