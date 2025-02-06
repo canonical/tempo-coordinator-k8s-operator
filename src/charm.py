@@ -18,6 +18,7 @@ from charms.prometheus_k8s.v1.prometheus_remote_write import (
     PrometheusRemoteWriteConsumer,
 )
 from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
+from charms.tempo_coordinator_k8s.v0.tempo_api import TempoApiProvider
 from charms.tempo_coordinator_k8s.v0.tracing import (
     ReceiverProtocol,
     TracingEndpointProvider,
@@ -33,7 +34,7 @@ from ops import CollectStatusEvent
 from ops.charm import CharmBase
 
 from nginx_config import NginxConfig
-from tempo import Tempo
+from tempo import GRPC_PORT, Tempo
 from tempo_config import TEMPO_ROLES_CONFIG
 
 logger = logging.getLogger(__name__)
@@ -138,6 +139,21 @@ class TempoCoordinatorCharm(CharmBase):
                 self.ingress.on.ready,
             ],
             extra_fields=self._build_grafana_source_extra_fields(),
+        )
+
+        # -- tempo-info relation handling
+        self.tempo_api = TempoApiProvider(
+            charm=self,
+            grpc_port=GRPC_PORT,
+            ingress_url=self._external_url,
+            internal_url=self._internal_url,
+            relation_name="tempo-api",
+            refresh_event=[
+                # Because if the ingress changes, our ingress_url will change
+                self.ingress.on.ready,
+                # Because if the cert handling is updated, the schema for the internal url may change
+                self.coordinator.cert_handler.on.cert_changed,
+            ],
         )
 
         # peer

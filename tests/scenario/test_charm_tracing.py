@@ -8,7 +8,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import scenario
-from charms.tempo_coordinator_k8s.v0.charm_tracing import CHARM_TRACING_ENABLED
+from charms.tempo_coordinator_k8s.v0.charm_tracing import (
+    CHARM_TRACING_ENABLED,
+)
 from charms.tempo_coordinator_k8s.v0.charm_tracing import (
     _autoinstrument as autoinstrument,
 )

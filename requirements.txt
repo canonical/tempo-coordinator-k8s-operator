@@ -20,3 +20,7 @@ cryptography
 
 # pin importlib-metadata version else charmcraft pack will fail to resolve the dependencies for the pydeps-installed otlp library
 importlib-metadata~=6.0.0
+
+# lib/charms/grafana_k8s/v0/grafana_metadata.py
+# TODO: Pin to a real versioned release once available
+charm-relation-building-blocks @ git+https://github.com/canonical/charm-relation-building-blocks@initial-files

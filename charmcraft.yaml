@@ -60,6 +60,10 @@ provides:
     interface: tracing
     description: |
       Integration to offer other charms the possibility to send traces to Tempo.
+  tempo-api:
+    interface: tempo_api
+    description: |
+      Provides connection details about the Tempo instance, such as its Internal URL external URL.
 
 requires:
   self-charm-tracing:
