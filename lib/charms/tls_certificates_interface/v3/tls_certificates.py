@@ -59,17 +59,15 @@ def generate_certificate(ca: str, private_key: str, csr: str) -> str:
 
 
 class ExampleProviderCharm(CharmBase):
-
     def __init__(self, *args):
         super().__init__(*args)
         self.certificates = TLSCertificatesProvidesV3(self, "certificates")
         self.framework.observe(
-            self.certificates.on.certificate_request,
-            self._on_certificate_request
+            self.certificates.on.certificate_request, self._on_certificate_request
         )
         self.framework.observe(
             self.certificates.on.certificate_revocation_request,
-            self._on_certificate_revocation_request
+            self._on_certificate_revocation_request,
         )
         self.framework.observe(self.on.install, self._on_install)
 
@@ -114,7 +112,9 @@ class ExampleProviderCharm(CharmBase):
             recommended_expiry_notification_time=720,
         )
 
-    def _on_certificate_revocation_request(self, event: CertificateRevocationRequestEvent) -> None:
+    def _on_certificate_revocation_request(
+        self, event: CertificateRevocationRequestEvent
+    ) -> None:
         # Do what you want to do with this information
         pass
 
@@ -145,14 +145,14 @@ from typing import Union
 
 
 class ExampleRequirerCharm(CharmBase):
-
     def __init__(self, *args):
         super().__init__(*args)
         self.cert_subject = "whatever"
         self.certificates = TLSCertificatesRequiresV3(self, "certificates")
         self.framework.observe(self.on.install, self._on_install)
         self.framework.observe(
-            self.on.certificates_relation_created, self._on_certificates_relation_created
+            self.on.certificates_relation_created,
+            self._on_certificates_relation_created,
         )
         self.framework.observe(
             self.certificates.on.certificate_available, self._on_certificate_available
@@ -161,11 +161,12 @@ class ExampleRequirerCharm(CharmBase):
             self.certificates.on.certificate_expiring, self._on_certificate_expiring
         )
         self.framework.observe(
-            self.certificates.on.certificate_invalidated, self._on_certificate_invalidated
+            self.certificates.on.certificate_invalidated,
+            self._on_certificate_invalidated,
         )
         self.framework.observe(
             self.certificates.on.all_certificates_invalidated,
-            self._on_all_certificates_invalidated
+            self._on_all_certificates_invalidated,
         )
 
     def _on_install(self, event) -> None:
@@ -186,7 +187,9 @@ class ExampleRequirerCharm(CharmBase):
             self.unit.status = WaitingStatus("Waiting for peer relation to be created")
             event.defer()
             return
-        private_key_password = replicas_relation.data[self.app].get("private_key_password")
+        private_key_password = replicas_relation.data[self.app].get(
+            "private_key_password"
+        )
         private_key = replicas_relation.data[self.app].get("private_key")
         csr = generate_csr(
             private_key=private_key.encode(),
@@ -216,7 +219,9 @@ class ExampleRequirerCharm(CharmBase):
             event.defer()
             return
         old_csr = replicas_relation.data[self.app].get("csr")
-        private_key_password = replicas_relation.data[self.app].get("private_key_password")
+        private_key_password = replicas_relation.data[self.app].get(
+            "private_key_password"
+        )
         private_key = replicas_relation.data[self.app].get("private_key")
         new_csr = generate_csr(
             private_key=private_key.encode(),
@@ -231,7 +236,9 @@ class ExampleRequirerCharm(CharmBase):
 
     def _certificate_revoked(self) -> None:
         old_csr = replicas_relation.data[self.app].get("csr")
-        private_key_password = replicas_relation.data[self.app].get("private_key_password")
+        private_key_password = replicas_relation.data[self.app].get(
+            "private_key_password"
+        )
         private_key = replicas_relation.data[self.app].get("private_key")
         new_csr = generate_csr(
             private_key=private_key.encode(),
@@ -259,7 +266,9 @@ class ExampleRequirerCharm(CharmBase):
         if event.reason == "expired":
             self._on_certificate_expiring(event)
 
-    def _on_all_certificates_invalidated(self, event: AllCertificatesInvalidatedEvent) -> None:
+    def _on_all_certificates_invalidated(
+        self, event: AllCertificatesInvalidatedEvent
+    ) -> None:
         # Do what you want with this information, probably remove all certificates.
         pass
 
@@ -318,7 +327,7 @@ LIBAPI = 3
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 23
+LIBPATCH = 24
 
 PYDEPS = ["cryptography", "jsonschema"]
 
@@ -526,7 +535,7 @@ class CertificateAvailableEvent(EventBase):
 class CertificateExpiringEvent(EventBase):
     """Charm Event triggered when a TLS certificate is almost expired."""
 
-    def __init__(self, handle, certificate: str, expiry: str):
+    def __init__(self, handle: Handle, certificate: str, expiry: str):
         """CertificateExpiringEvent.
 
         Args:

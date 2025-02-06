@@ -21,10 +21,15 @@ def patch_buffer_file_for_charm_tracing(tmp_path):
 
 
 @pytest.fixture(autouse=True, scope="session")
-def cleanup_prometheus_alert_rules(tmp_path):
-    # some tests trigger the charm to generate prometheus alert rules file in ./src; clean it up
+def cleanup_prometheus_alert_rules():
+    # some tests trigger the charm to generate prometheus alert rules file in src/prometheus_alert_rules/consolidated_rules; clean it up
     yield
-    src_path = Path(__file__).parent / "src"
+    src_path = (
+        Path(__file__).parent.parent.parent
+        / "src"
+        / "prometheus_alert_rules"
+        / "consolidated_rules"
+    )
     rmtree(src_path)
 
 

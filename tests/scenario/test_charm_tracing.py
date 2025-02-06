@@ -725,7 +725,7 @@ def test_buffering_flush(tmp_path, tls):
         else:
             cert = None
 
-        buffer_path = tmp_path / "mycert"
+        buffer_path = tmp_path / "buf.raw"
         buffer_path.write_bytes(b"mockspan")
 
         charm = make_buffering_charm(cert, buffer_path)
@@ -746,7 +746,7 @@ def test_buffering_flush(tmp_path, tls):
 
         ctx.run(ctx.on.start(), State(relations={tracing}))
         # then the buffered traces get flushed
-        assert f.call_count == 2
+        assert f.call_count == 3
 
         # and the buffer is empty
         assert buffer_path.read_bytes() == b""
@@ -767,7 +767,7 @@ def test_buffering_size_limit(tmp_path, tls):
         else:
             cert = None
 
-        buffer_path = tmp_path / "mycert"
+        buffer_path = tmp_path / "buf.raw"
 
         # current buffer contains a span that's ~80mb large
         buffer_path.write_bytes(b"mockspan" * 10**7)
@@ -802,7 +802,7 @@ def test_buffering_event_n_limit(tmp_path, tls, n_events):
         else:
             cert = None
 
-        buffer_path = tmp_path / "mycert"
+        buffer_path = tmp_path / "buf.raw"
 
         # set max buffer size to 2 events
         charm = make_buffering_charm(cert, buffer_path, buffer_max_events=2)

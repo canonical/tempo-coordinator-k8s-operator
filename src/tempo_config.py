@@ -9,6 +9,7 @@ from enum import Enum, unique
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import pydantic
 from cosl.coordinated_workers.coordinator import ClusterRolesConfig
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -53,7 +54,7 @@ class TempoRole(str, Enum):
 META_ROLES = {
     "all": set(TempoRole.all_nonmeta()),
 }
-"""Tempo component meta-role names."""
+# Tempo component meta-role names.
 
 MINIMAL_DEPLOYMENT = {
     TempoRole.querier: 1,
@@ -62,8 +63,8 @@ MINIMAL_DEPLOYMENT = {
     TempoRole.distributor: 1,
     TempoRole.compactor: 1,
 }
-"""The minimal set of roles that need to be allocated for the
-deployment to be considered consistent (otherwise we set blocked)."""
+# The minimal set of roles that need to be allocated for the
+# deployment to be considered consistent (otherwise we set blocked).
 
 RECOMMENDED_DEPLOYMENT = {
     TempoRole.querier.value: 1,
@@ -73,13 +74,11 @@ RECOMMENDED_DEPLOYMENT = {
     TempoRole.compactor.value: 1,
     TempoRole.metrics_generator.value: 1,
 }
+# The set of roles that need to be allocated for the
+# deployment to be considered robust according to Grafana Tempo's
+# Helm chart configurations.
+# https://github.com/grafana/helm-charts/blob/main/charts/tempo-distributed/
 
-"""
-The set of roles that need to be allocated for the
-deployment to be considered robust according to Grafana Tempo's
-Helm chart configurations.
-https://github.com/grafana/helm-charts/blob/main/charts/tempo-distributed/
-"""
 
 TEMPO_ROLES_CONFIG = ClusterRolesConfig(
     roles={role for role in TempoRole},
@@ -87,7 +86,7 @@ TEMPO_ROLES_CONFIG = ClusterRolesConfig(
     minimal_deployment=MINIMAL_DEPLOYMENT,
     recommended_deployment=RECOMMENDED_DEPLOYMENT,
 )
-"""Define the configuration for Tempo roles."""
+# Define the configuration for Tempo roles.
 
 
 class ClientAuthTypeEnum(str, enum.Enum):
@@ -101,7 +100,7 @@ class ClientAuthTypeEnum(str, enum.Enum):
     REQUIRE_AND_VERIFY_CLIENT_CERT = "RequireAndVerifyClientCert"
 
 
-class MetricsGeneratorProcessor(str, enum.Enum):
+class MetricsGeneratorProcessorLabel(str, enum.Enum):
     """Metrics generator processors supported values.
 
     Supported values: https://grafana.com/docs/tempo/latest/configuration/#standard-overrides
@@ -301,6 +300,29 @@ class RemoteWrite(BaseModel):
     tls_config: Optional[RemoteWriteTLS] = None
 
 
+class MetricsGeneratorSpanMetricsProcessor(BaseModel):
+    """Metrics Generator span_metrics processor configuration schema."""
+
+    # see https://grafana.com/docs/tempo/v2.6.x/configuration/#metrics-generator
+    # for a full list of config options
+
+
+class MetricsGeneratorServiceGraphsProcessor(BaseModel):
+    """Metrics Generator service_graphs processor configuration schema."""
+
+    # see https://grafana.com/docs/tempo/v2.6.x/configuration/#metrics-generator
+    # for a full list of config options
+
+
+class MetricsGeneratorProcessor(BaseModel):
+    """Metrics Generator processor schema."""
+
+    span_metrics: MetricsGeneratorSpanMetricsProcessor
+    service_graphs: MetricsGeneratorServiceGraphsProcessor
+    # see https://grafana.com/docs/tempo/v2.6.x/configuration/#metrics-generator
+    # for a full list of config options; could add local_blocks here
+
+
 class MetricsGeneratorStorage(BaseModel):
     """Metrics Generator storage schema."""
 
@@ -314,6 +336,9 @@ class MetricsGenerator(BaseModel):
     ring: Optional[Ring] = None
     storage: MetricsGeneratorStorage
 
+    # processor-specific config depends on the processor type
+    processor: MetricsGeneratorProcessor
+
 
 class MetricsGeneratorDefaults(BaseModel):
     """Metrics generator defaults schema."""
@@ -323,7 +348,9 @@ class MetricsGeneratorDefaults(BaseModel):
         use_enum_values=True
     )
     """Pydantic config."""
-    processors: List[MetricsGeneratorProcessor]
+    processors: Optional[List[MetricsGeneratorProcessorLabel]] = pydantic.Field(
+        default_factory=list
+    )
 
 
 class Defaults(BaseModel):
