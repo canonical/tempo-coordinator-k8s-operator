@@ -318,7 +318,10 @@ from opentelemetry.sdk.trace.export import (
     SpanExporter,
     SpanExportResult,
 )
-from opentelemetry.trace import INVALID_SPAN, Tracer
+from opentelemetry.trace import (
+    INVALID_SPAN,
+    Tracer,
+)
 from opentelemetry.trace import get_current_span as otlp_get_current_span
 from opentelemetry.trace import (
     get_tracer,

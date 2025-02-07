@@ -15,6 +15,9 @@ import tempo_config
 
 logger = logging.getLogger(__name__)
 
+HTTP_PORT = 3200
+GRPC_PORT = 9096
+
 
 class Tempo:
     """Class representing the Tempo client workload configuration."""
@@ -30,8 +33,8 @@ class Tempo:
     memberlist_port = 7946
 
     server_ports: Dict[str, int] = {
-        "tempo_http": 3200,
-        "tempo_grpc": 9096,  # default grpc listen port is 9095, but that conflicts with promtail.
+        "tempo_http": HTTP_PORT,
+        "tempo_grpc": GRPC_PORT,  # default grpc listen port is 9095, but that conflicts with promtail.
     }
 
     # ports defined are the default ports specified in
