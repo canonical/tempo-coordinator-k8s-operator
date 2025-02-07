@@ -16,30 +16,32 @@ logger = logging.getLogger(__name__)
 class MetadataTester(CharmBase):
     def __init__(self, framework):
         super().__init__(framework)
-        self.metadata_relation = Requirer(self, "tempo-api")
+        self.tempo_api_rel = Requirer(self, "tempo-api")
 
         self.framework.observe(self.on.collect_unit_status, self.on_collect_unit_status)
-        self.framework.observe(self.on.get_metadata_action, self.on_get_metadata)
+        self.framework.observe(self.on.get_data_action, self.on_get_data)
 
     def on_collect_unit_status(self, event: CollectStatusEvent):
         statuses = []
-        if len(self.metadata_relation) == 0:
-            statuses.append(WaitingStatus("Waiting for metadata relation"))
+        if len(self.tempo_api_rel) == 0:
+            statuses.append(WaitingStatus("Waiting for tempo-api relation"))
         else:
-            relation_data = self.metadata_relation.get_data()
+            relation_data = self.tempo_api_rel.get_data()
             if relation_data is None:
-                statuses.append(WaitingStatus("Metadata relation found but no data available yet"))
+                statuses.append(
+                    WaitingStatus("tempo-api relation found but no data available yet")
+                )
             else:
                 statuses.append(
                     ActiveStatus(
-                        f"Alive with metadata relation data: '{relation_data.model_dump()}'"
+                        f"Alive with tempo-api relation data: '{relation_data.model_dump()}'"
                     )
                 )
         for status in statuses:
             event.add_status(status)
 
-    def on_get_metadata(self, event: ActionEvent):
-        relation_data = self.metadata_relation.get_data()
+    def on_get_data(self, event: ActionEvent):
+        relation_data = self.tempo_api_rel.get_data()
         if relation_data is None:
             relation_data = {}
         else:

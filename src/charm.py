@@ -144,7 +144,7 @@ class TempoCoordinatorCharm(CharmBase):
         # -- tempo-info relation handling
         self.tempo_api = TempoApiProvider(
             charm=self,
-            grpc_port=GRPC_PORT,
+            grpc_port=str(GRPC_PORT),
             ingress_url=self._external_url,
             internal_url=self._internal_url,
             relation_name="tempo-api",

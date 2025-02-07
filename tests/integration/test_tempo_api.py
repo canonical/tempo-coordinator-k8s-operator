@@ -65,7 +65,7 @@ async def test_tempo_api_relation_removal(ops_test: OpsTest):
 async def get_tester_data(tester_application):
     # Check the relation data
     action = await tester_application.units[0].run_action(
-        "get-metadata",
+        "get-data",
     )
     action_result = await action.wait()
     assert action_result.status == "completed"

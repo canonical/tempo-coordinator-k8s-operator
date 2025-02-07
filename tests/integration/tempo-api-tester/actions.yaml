@@ -1,2 +1,2 @@
-get-metadata:
-  description: Return the metadata relation data
+get-data:
+  description: Return the relation data
