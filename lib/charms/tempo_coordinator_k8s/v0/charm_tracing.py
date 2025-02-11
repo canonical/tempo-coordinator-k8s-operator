@@ -420,8 +420,8 @@ class _Buffer:
         overflow = len(queue) - self._max_event_history_length
         if overflow > 0:
             n_dropped_spans += overflow
-            logger.error(
-                f"buffer exceeds max history length ({self._max_event_history_length} events)"
+            logger.warning(
+                f"charm traces buffer exceeds max history length ({self._max_event_history_length} events)"
             )
 
         new_spans = deque(queue[-self._max_event_history_length :])
@@ -435,12 +435,12 @@ class _Buffer:
             n_dropped_spans += 1
             # only log this once
             if logged_drop:
-                logger.error(f"buffer exceeds size limit ({self._max_buffer_size_mib}MiB)")
+                logger.warning(f"charm tracing buffer exceeds size limit ({self._max_buffer_size_mib}MiB). Older traces will be dropped.")
             logged_drop = True
 
         if n_dropped_spans:
             dev_logger.debug(
-                f"buffer overflow: dropped {n_dropped_spans} older spans. "
+                f"charm traces buffer overflow: dropped {n_dropped_spans} older spans. "
                 f"Please increase the buffer size, or ensure the spans can be flushed"
             )
         return new_spans
@@ -454,7 +454,7 @@ class _Buffer:
         if queue and not new_buffer:
             # this means that, given our constraints, we are pruning so much that there are no events left.
             logger.error(
-                "No events could be buffered. Please increase the memory or history size limits."
+                "No charm events could be buffered into charm traces buffer. Please increase the memory or history size limits."
             )
             return
 
@@ -465,7 +465,7 @@ class _Buffer:
 
     def _write(self, spans: Sequence[bytes]):
         """Write the spans to the db file."""
-        # ensure the destination folder exists i
+        # ensure the destination folder exists
         db_file_dir = self._db_file.parent
         if not db_file_dir.exists():
             dev_logger.info(f"creating buffer dir: {db_file_dir}")
@@ -500,7 +500,7 @@ class _Buffer:
         try:
             self._write(new)
         except Exception:
-            logger.exception("error writing buffer")
+            logger.exception("error writing charm traces buffer")
 
     def flush(self) -> Optional[bool]:
         """Export all buffered spans to the given exporter, then clear the buffer.
