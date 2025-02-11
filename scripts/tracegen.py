@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Any, Literal, get_args
 
 import requests
+
+# modern protobuf implementations will whine otherwise
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"]="python"
+
 from opentelemetry import trace
 from opentelemetry.exporter.jaeger.proto.grpc import JaegerExporter as JaegerGRPCExporter
 from opentelemetry.exporter.jaeger.thrift import JaegerExporter as JaegerThriftHttpExporter
