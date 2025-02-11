@@ -435,7 +435,9 @@ class _Buffer:
             n_dropped_spans += 1
             # only log this once
             if logged_drop:
-                logger.warning(f"charm tracing buffer exceeds size limit ({self._max_buffer_size_mib}MiB). Older traces will be dropped.")
+                logger.warning(
+                    f"charm tracing buffer exceeds size limit ({self._max_buffer_size_mib}MiB). Older traces will be dropped."
+                )
             logged_drop = True
 
         if n_dropped_spans:
