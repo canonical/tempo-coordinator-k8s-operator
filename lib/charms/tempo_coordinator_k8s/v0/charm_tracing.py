@@ -413,7 +413,7 @@ class _Buffer:
         # encode because otherwise we can't json-dump them
         return encode_spans(spans).SerializeToString()
 
-    def _prune(self, queue: Sequence[bytes]):
+    def _prune(self, queue: Sequence[bytes]) -> Sequence[bytes]:
         """Prune the queue until it fits in our constraints."""
         n_dropped_spans = 0
         # drop older events if we are past the max history length
@@ -421,29 +421,30 @@ class _Buffer:
         if overflow > 0:
             n_dropped_spans += overflow
             logger.warning(
-                f"charm traces buffer exceeds max history length ({self._max_event_history_length} events)"
+                f"charm tracing buffer exceeds max history length ({self._max_event_history_length} events)"
             )
 
         new_spans = deque(queue[-self._max_event_history_length :])
 
-        # drop older events if the buffer size in megabytes is too large
-        span_sizes = deque(len(span) for span in new_spans)
+        # drop older events if the buffer is too big; all units are bytes
         logged_drop = False
-        while sum(span_sizes) > self._max_buffer_size_mib * _MiB_TO_B:
-            span_sizes.popleft()
-            new_spans.popleft()
+        target_size = self._max_buffer_size_mib * _MiB_TO_B
+        current_size = sum(len(span) for span in new_spans)
+        while current_size > target_size:
+            current_size -= len(new_spans.popleft())
             n_dropped_spans += 1
-            # only log this once
-            if logged_drop:
+
+            # only do this once
+            if not logged_drop:
                 logger.warning(
-                    f"charm tracing buffer exceeds size limit ({self._max_buffer_size_mib}MiB). Older traces will be dropped."
+                    f"charm tracing buffer exceeds size limit ({self._max_buffer_size_mib}MiB)."
                 )
             logged_drop = True
 
-        if n_dropped_spans:
+        if n_dropped_spans > 0:
             dev_logger.debug(
-                f"charm traces buffer overflow: dropped {n_dropped_spans} older spans. "
-                f"Please increase the buffer size, or ensure the spans can be flushed"
+                f"charm tracing buffer overflow: dropped {n_dropped_spans} older spans. "
+                f"Please increase the buffer limits, or ensure the spans can be flushed."
             )
         return new_spans
 

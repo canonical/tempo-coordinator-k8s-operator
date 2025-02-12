@@ -7,7 +7,10 @@ from typing import Optional
 from unittest.mock import MagicMock, patch
 
 import pytest
-from charms.tempo_coordinator_k8s.v0.charm_tracing import CHARM_TRACING_ENABLED
+from charms.tempo_coordinator_k8s.v0.charm_tracing import (
+    BUFFER_DEFAULT_CACHE_FILE_NAME,
+    CHARM_TRACING_ENABLED,
+)
 from charms.tempo_coordinator_k8s.v0.charm_tracing import (
     _autoinstrument as autoinstrument,
 )
@@ -723,7 +726,7 @@ def test_buffering_flush(tmp_path, tls):
         else:
             cert = None
 
-        buffer_path = tmp_path / "buf.raw"
+        buffer_path = tmp_path / BUFFER_DEFAULT_CACHE_FILE_NAME
         buffer_path.write_bytes(b"mockspan")
 
         charm = make_buffering_charm(cert, buffer_path)
@@ -765,7 +768,7 @@ def test_buffering_size_limit(tmp_path, tls):
         else:
             cert = None
 
-        buffer_path = tmp_path / "buf.raw"
+        buffer_path = tmp_path / BUFFER_DEFAULT_CACHE_FILE_NAME
 
         # current buffer contains a span that's ~80mb large
         buffer_path.write_bytes(b"mockspan" * 10**7)
@@ -800,7 +803,7 @@ def test_buffering_event_n_limit(tmp_path, tls, n_events):
         else:
             cert = None
 
-        buffer_path = tmp_path / "buf.raw"
+        buffer_path = tmp_path / BUFFER_DEFAULT_CACHE_FILE_NAME
 
         # set max buffer size to 2 events
         charm = make_buffering_charm(cert, buffer_path, buffer_max_events=2)
