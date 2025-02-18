@@ -302,8 +302,8 @@ class NginxConfig:
                     },
                     {
                         "directive": "ssl_ciphers",
-                        "args": ["HIGH:!aNULL:!MD5"],
-                    },  # codespell:ignore
+                        "args": ["HIGH:!aNULL:!MD5"],  # codespell:ignore
+                    },
                     *self._locations(upstream, grpc, tls),
                 ],
             }
