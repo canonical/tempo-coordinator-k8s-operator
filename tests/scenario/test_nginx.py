@@ -64,7 +64,9 @@ def test_nginx_config_is_parsed_by_crossplane(context, nginx_container, coordina
         },
     ),
 )
-def test_nginx_config_is_parsed_with_workers(context, nginx_container, coordinator, addresses):
+def test_nginx_config_is_parsed_with_workers(
+    context, nginx_container, coordinator, addresses
+):
     coordinator.cluster.gather_addresses_by_role.return_value = addresses
 
     nginx = NginxConfig("localhost")
@@ -112,9 +114,13 @@ def test_nginx_config_contains_upstreams_and_proxy_pass(
     for role, addresses in addresses.items():
         for address in addresses:
             if role == "distributor":
-                _assert_config_per_role(Tempo.receiver_ports, address, prepared_config, tls, ipv6)
+                _assert_config_per_role(
+                    Tempo.receiver_ports, address, prepared_config, tls, ipv6
+                )
             if role == "query-frontend":
-                _assert_config_per_role(Tempo.server_ports, address, prepared_config, tls, ipv6)
+                _assert_config_per_role(
+                    Tempo.server_ports, address, prepared_config, tls, ipv6
+                )
 
 
 def _assert_config_per_role(source_dict, address, prepared_config, tls, ipv6):
@@ -123,8 +129,11 @@ def _assert_config_per_role(source_dict, address, prepared_config, tls, ipv6):
     for port in source_dict.values():
         assert f"server {address}:{port};" in prepared_config
         assert f"listen {port}" in prepared_config
-        if ipv6:
-            assert f"listen [::]:{port}" in prepared_config
+        assert (
+            (f"listen [::]:{port}" in prepared_config)
+            if ipv6
+            else (f"listen [::]:{port}" not in prepared_config)
+        )
 
     for protocol in source_dict.keys():
         sanitised_protocol = protocol.replace("_", "-")
