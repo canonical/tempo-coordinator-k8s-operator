@@ -5,8 +5,8 @@ lightkube>=0.15.4
 lightkube-models>=1.24.1.4
 tenacity==8.2.3
 pydantic>=2
-# TODO update once https://github.com/canonical/cos-lib/pull/128 is merged
-cosl@git+https://github.com/canonical/cos-lib@TAP-296
+cosl>=0.0.55
+
 
 # crossplane is a package from nginxinc to interact with the Nginx config
 crossplane
