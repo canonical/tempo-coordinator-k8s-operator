@@ -252,39 +252,51 @@ class TempoConfigBuilderDefault:
         if not receivers_set:
             logger.warning("No receivers set. Tempo will be up but not functional.")
 
-        if use_tls:
-            receiver_config = {
+        tls_config = (
+            {
                 "tls": {
                     "ca_file": str(self.tempo.tls_ca_path),
                     "cert_file": str(self.tempo.tls_cert_path),
                     "key_file": str(self.tempo.tls_key_path),
                 }
             }
-        else:
-            receiver_config = None
+            if use_tls
+            else {}
+        )
 
         config = {}
 
         if "zipkin" in receivers_set:
-            config["zipkin"] = receiver_config
+            config["zipkin"] = {
+                "endpoint": f"0.0.0.0:{self.receiver_ports['zipkin']}",
+                **tls_config,
+            }
 
         otlp_config = {}
         if "otlp_http" in receivers_set:
-            otlp_config["http"] = receiver_config
+            otlp_config["http"] = {
+                "endpoint": f"0.0.0.0:{self.receiver_ports['otlp_http']}",
+                **tls_config,
+            }
         if "otlp_grpc" in receivers_set:
-            otlp_config["grpc"] = receiver_config
+            otlp_config["grpc"] = {
+                "endpoint": f"0.0.0.0:{self.receiver_ports['otlp_grpc']}",
+                **tls_config,
+            }
         if otlp_config:
             config["otlp"] = {"protocols": otlp_config}
 
         jaeger_config = {}
         if "jaeger_thrift_http" in receivers_set:
-            jaeger_config["thrift_http"] = receiver_config
+            jaeger_config["thrift_http"] = {
+                "endpoint": f"0.0.0.0:{self.receiver_ports['jaeger_thrift_http']}",
+                **tls_config,
+            }
         if "jaeger_grpc" in receivers_set:
-            jaeger_config["grpc"] = receiver_config
-        if "jaeger_thrift_binary" in receivers_set:
-            jaeger_config["thrift_binary"] = receiver_config
-        if "jaeger_thrift_compact" in receivers_set:
-            jaeger_config["thrift_compact"] = receiver_config
+            jaeger_config["grpc"] = {
+                "endpoint": f"0.0.0.0:{self.receiver_ports['jaeger_grpc']}",
+                **tls_config,
+            }
         if jaeger_config:
             config["jaeger"] = {"protocols": jaeger_config}
 

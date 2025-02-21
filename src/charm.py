@@ -90,7 +90,9 @@ class TempoCoordinatorCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.ingress = TraefikRouteRequirer(self, self.model.get_relation("ingress"), "ingress")  # type: ignore
+        self.ingress = TraefikRouteRequirer(
+            self, self.model.get_relation("ingress"), "ingress"
+        )  # type: ignore
         self.tempo = Tempo(
             requested_receivers=self._requested_receivers,
             retention_period_hours=self._trace_retention_period_hours,
@@ -129,8 +131,7 @@ class TempoCoordinatorCharm(CharmBase):
             resources_requests=self.get_resources_requests,
             container_name="charm",
             remote_write_endpoints=self.remote_write_endpoints,  # type: ignore
-            # TODO: future Tempo releases would be using otlp_xx protocols instead.
-            workload_tracing_protocols=["jaeger_thrift_http"],
+            workload_tracing_protocols=["otlp_http"],
             catalogue_item=self._catalogue_item,
         )
 
@@ -150,7 +151,8 @@ class TempoCoordinatorCharm(CharmBase):
 
         # peer
         self.framework.observe(
-            self.on[PEERS_RELATION_ENDPOINT_NAME].relation_created, self._on_peers_relation_created
+            self.on[PEERS_RELATION_ENDPOINT_NAME].relation_created,
+            self._on_peers_relation_created,
         )
 
         # refuse to handle any other event as we can't possibly know what to do.
@@ -234,8 +236,6 @@ class TempoCoordinatorCharm(CharmBase):
         enabled_receivers = set()
         # otlp_http is needed by charm_tracing
         enabled_receivers.add("otlp_http")
-        # jaeger_thrift_http is needed by Tempo's internal workload traces
-        enabled_receivers.add("jaeger_thrift_http")
         enabled_receivers.update(
             [
                 receiver

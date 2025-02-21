@@ -22,12 +22,17 @@ from tempo import Tempo, TempoConfigBuilderDefault
             {
                 "jaeger": {
                     "protocols": {
-                        "grpc": None,
-                        "thrift_http": None,
+                        "grpc": {"endpoint": "0.0.0.0:14250"},
+                        "thrift_http": {"endpoint": "0.0.0.0:14268"},
                     }
                 },
-                "zipkin": None,
-                "otlp": {"protocols": {"http": None, "grpc": None}},
+                "zipkin": {"endpoint": "0.0.0.0:9411"},
+                "otlp": {
+                    "protocols": {
+                        "http": {"endpoint": "0.0.0.0:4318"},
+                        "grpc": {"endpoint": "0.0.0.0:4317"},
+                    }
+                },
             },
         ),
         (
@@ -36,11 +41,11 @@ from tempo import Tempo, TempoConfigBuilderDefault
             {
                 "jaeger": {
                     "protocols": {
-                        "thrift_http": None,
+                        "thrift_http": {"endpoint": "0.0.0.0:14268"},
                     }
                 },
-                "zipkin": None,
-                "otlp": {"protocols": {"http": None}},
+                "zipkin": {"endpoint": "0.0.0.0:9411"},
+                "otlp": {"protocols": {"http": {"endpoint": "0.0.0.0:4318"}}},
             },
         ),
         (
@@ -54,7 +59,8 @@ from tempo import Tempo, TempoConfigBuilderDefault
                                 "ca_file": "/usr/local/share/ca-certificates/ca.crt",
                                 "cert_file": "/etc/worker/server.cert",
                                 "key_file": "/etc/worker/private.key",
-                            }
+                            },
+                            "endpoint": "0.0.0.0:14268",
                         },
                     }
                 },
@@ -63,7 +69,8 @@ from tempo import Tempo, TempoConfigBuilderDefault
                         "ca_file": "/usr/local/share/ca-certificates/ca.crt",
                         "cert_file": "/etc/worker/server.cert",
                         "key_file": "/etc/worker/private.key",
-                    }
+                    },
+                    "endpoint": "0.0.0.0:9411",
                 },
                 "otlp": {
                     "protocols": {
@@ -72,7 +79,8 @@ from tempo import Tempo, TempoConfigBuilderDefault
                                 "ca_file": "/usr/local/share/ca-certificates/ca.crt",
                                 "cert_file": "/etc/worker/server.cert",
                                 "key_file": "/etc/worker/private.key",
-                            }
+                            },
+                            "endpoint": "0.0.0.0:4318",
                         },
                     }
                 },
