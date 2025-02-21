@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 """Charmed Operator for Tempo; a lightweight object storage based tracing backend."""
+
 import json
 import logging
 import re
@@ -33,7 +34,7 @@ from ops import CollectStatusEvent
 from ops.charm import CharmBase
 
 from nginx_config import NginxConfig
-from tempo import Tempo
+from tempo import Tempo, TempoConfigBuilderFactory
 from tempo_config import TEMPO_ROLES_CONFIG
 
 logger = logging.getLogger(__name__)
@@ -73,7 +74,13 @@ class PeerData(DatabagModel):
 @trace_charm(
     tracing_endpoint="tempo_otlp_http_endpoint",
     server_cert="server_ca_cert",
-    extra_types=(Tempo, TracingEndpointProvider, Coordinator, ClusterRolesConfig),
+    extra_types=(
+        Tempo,
+        TracingEndpointProvider,
+        Coordinator,
+        ClusterRolesConfig,
+        TempoConfigBuilderFactory,
+    ),
     # use PVC path for buffer data, so we don't lose it on pod churn
     buffer_path=Path("/tempo-data/.charm_tracing_buffer.raw"),
 )
@@ -88,6 +95,7 @@ class TempoCoordinatorCharm(CharmBase):
             requested_receivers=self._requested_receivers,
             retention_period_hours=self._trace_retention_period_hours,
         )
+        self.tempo_config_factory = TempoConfigBuilderFactory(tempo=self.tempo)
         # set alert_rules_path="", as we don't want to populate alert rules into the relation databag
         # we only need `self._remote_write.endpoints`
         self._remote_write = PrometheusRemoteWriteConsumer(self, alert_rules_path="")
@@ -117,7 +125,7 @@ class TempoCoordinatorCharm(CharmBase):
                 "catalogue": "catalogue",
             },
             nginx_config=NginxConfig(server_name=self.hostname).config,
-            workers_config=self.tempo.config,
+            workers_config=self.tempo_config_factory.config,
             resources_requests=self.get_resources_requests,
             container_name="charm",
             remote_write_endpoints=self.remote_write_endpoints,  # type: ignore

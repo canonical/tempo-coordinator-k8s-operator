@@ -365,11 +365,32 @@ class Overrides(BaseModel):
     defaults: Defaults
 
 
-class TempoConfig(BaseModel):
-    """Tempo config schema."""
+class TempoConfigBase(BaseModel):
+    """Base Tempo config schema."""
+
+
+class TempoConfigDefault(TempoConfigBase):
+    """Default Tempo config schema."""
 
     auth_enabled: bool
     use_otel_tracer: bool = True
+    server: Server
+    distributor: Distributor
+    ingester: Ingester
+    memberlist: Memberlist
+    compactor: Compactor
+    querier: Querier
+    storage: Storage
+    ingester_client: Optional[Client] = None
+    metrics_generator_client: Optional[Client] = None
+    metrics_generator: Optional[MetricsGenerator] = None
+    overrides: Optional[Overrides] = None
+
+
+class TempoConfigV2_7_1(TempoConfigBase):
+    """Config schema for Tempo v2.7.1."""
+
+    auth_enabled: bool
     server: Server
     distributor: Distributor
     ingester: Ingester

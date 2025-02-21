@@ -3,9 +3,10 @@
 # See LICENSE file for licensing details.
 
 """Tempo workload configuration and client."""
+
 import logging
 import re
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import yaml
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol
@@ -52,8 +53,8 @@ class Tempo:
         requested_receivers: Callable[[], "Tuple[ReceiverProtocol, ...]"],
         retention_period_hours: int,
     ):
-        self._receivers_getter = requested_receivers
-        self._retention_period_hours = retention_period_hours
+        self.receivers_getter = requested_receivers
+        self.retention_period_hours = retention_period_hours
 
     @property
     def tempo_http_server_port(self) -> int:
@@ -65,51 +66,13 @@ class Tempo:
         """Return the receiver port for the built-in tempo_http protocol."""
         return self.server_ports["tempo_grpc"]
 
-    def config(
-        self,
-        coordinator: Coordinator,
-    ) -> str:
-        """Generate the Tempo configuration.
 
-        Only activate the provided receivers.
-        """
-        config = tempo_config.TempoConfig(
-            auth_enabled=False,
-            server=self._build_server_config(coordinator.tls_available),
-            distributor=self._build_distributor_config(
-                self._receivers_getter(), coordinator.tls_available
-            ),
-            ingester=self._build_ingester_config(coordinator.cluster.gather_addresses_by_role()),
-            memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
-            compactor=self._build_compactor_config(),
-            querier=self._build_querier_config(coordinator.cluster.gather_addresses_by_role()),
-            storage=self._build_storage_config(coordinator._s3_config),
-            metrics_generator=self._build_metrics_generator_config(
-                coordinator.remote_write_endpoints_getter(), coordinator.tls_available  # type: ignore
-            ),
-        )
+class TempoConfigBuilderDefault:
+    """Builder class for the default Tempo config."""
 
-        if config.metrics_generator:
-            config.overrides = self._build_overrides_config()
-
-        if coordinator.tls_available:
-
-            tls_config = self._build_tls_config(coordinator.cluster.gather_addresses())
-
-            config.ingester_client = tempo_config.Client(
-                grpc_client_config=tempo_config.ClientTLS(**tls_config)
-            )
-            config.metrics_generator_client = tempo_config.Client(
-                grpc_client_config=tempo_config.ClientTLS(**tls_config)
-            )
-
-            config.querier.frontend_worker.grpc_client_config = tempo_config.ClientTLS(
-                **tls_config,
-            )
-
-            config.memberlist = config.memberlist.model_copy(update=tls_config)
-
-        return yaml.dump(config.model_dump(mode="json", by_alias=True, exclude_none=True))
+    def __init__(self, tempo: Tempo, coordinator: Coordinator):
+        self.tempo = tempo
+        self.coordinator = coordinator
 
     def _build_tls_config(self, workers_addrs: Tuple[str, ...]):
         """Build TLS config to be used by Tempo's internal clients to communicate with each other."""
@@ -118,9 +81,9 @@ class Tempo:
         # https://grafana.com/docs/tempo/latest/configuration/network/tls/#client-configuration
         return {
             "tls_enabled": True,
-            "tls_cert_path": self.tls_cert_path,
-            "tls_key_path": self.tls_key_path,
-            "tls_ca_path": self.tls_ca_path,
+            "tls_cert_path": self.tempo.tls_cert_path,
+            "tls_key_path": self.tempo.tls_key_path,
+            "tls_ca_path": self.tempo.tls_ca_path,
             # Tempo's internal components contact each other using their IPs not their DNS names
             # and we don't provide IP sans to Tempo's certificate. So, we need to provide workers' DNS names
             # as tls_server_name to verify the certificate against this name not against the IP.
@@ -154,7 +117,7 @@ class Tempo:
         if use_tls:
             for endpoint in remote_write_endpoints:
                 endpoint["tls_config"] = {
-                    "ca_file": self.tls_ca_path,
+                    "ca_file": self.tempo.tls_ca_path,
                 }
 
         remote_write_instances = [
@@ -163,7 +126,7 @@ class Tempo:
 
         config = tempo_config.MetricsGenerator(
             storage=tempo_config.MetricsGeneratorStorage(
-                path=self.metrics_generator_wal_path,
+                path=self.tempo.metrics_generator_wal_path,
                 remote_write=remote_write_instances,
             ),
             # Adding juju topology will be done on the worker's side
@@ -178,17 +141,17 @@ class Tempo:
 
     def _build_server_config(self, use_tls=False):
         server_config = tempo_config.Server(
-            http_listen_port=self.tempo_http_server_port,
+            http_listen_port=self.tempo.tempo_http_server_port,
             # we need to specify a grpc server port even if we're not using the grpc server,
             # otherwise it will default to 9595 and make promtail bork
-            grpc_listen_port=self.tempo_grpc_server_port,
+            grpc_listen_port=self.tempo.tempo_grpc_server_port,
         )
 
         if use_tls:
             server_tls_config = tempo_config.TLS(
-                cert_file=str(self.tls_cert_path),
-                key_file=str(self.tls_key_path),
-                client_ca_file=str(self.tls_ca_path),
+                cert_file=str(self.tempo.tls_cert_path),
+                key_file=str(self.tempo.tls_key_path),
+                client_ca_file=str(self.tempo.tls_ca_path),
             )
             server_config.http_tls_config = server_tls_config
             server_config.grpc_tls_config = server_tls_config
@@ -198,7 +161,7 @@ class Tempo:
     def _build_storage_config(self, s3_config: dict):
         storage_config = tempo_config.TraceStorage(
             # where to store the wal locally
-            wal=tempo_config.Wal(path=self.wal_path),  # type: ignore
+            wal=tempo_config.Wal(path=self.tempo.wal_path),  # type: ignore
             pool=tempo_config.Pool(
                 # number of traces per index record
                 max_workers=400,
@@ -228,7 +191,7 @@ class Tempo:
             svc_addr = re.sub(r"^[^.]+\.", "", query_frontend_addr)
         return tempo_config.Querier(
             frontend_worker=tempo_config.FrontendWorker(
-                frontend_address=f"{svc_addr}:{self.tempo_grpc_server_port}"
+                frontend_address=f"{svc_addr}:{self.tempo.tempo_grpc_server_port}"
             ),
         )
 
@@ -241,7 +204,7 @@ class Tempo:
                 # maximum size of compacted blocks
                 max_compaction_objects=1000000,
                 # total trace retention
-                block_retention=f"{self._retention_period_hours}h",
+                block_retention=f"{self.tempo.retention_period_hours}h",
                 compacted_block_retention="1h",
             )
         )
@@ -252,8 +215,10 @@ class Tempo:
         """Build memberlist config"""
         return tempo_config.Memberlist(
             abort_if_cluster_join_fails=False,
-            bind_port=self.memberlist_port,
-            join_members=([f"{peer}:{self.memberlist_port}" for peer in peers] if peers else []),
+            bind_port=self.tempo.memberlist_port,
+            join_members=(
+                [f"{peer}:{self.tempo.memberlist_port}" for peer in peers] if peers else []
+            ),
         )
 
     def _build_ingester_config(self, roles_addresses: Dict[str, Set[str]]):
@@ -277,14 +242,12 @@ class Tempo:
             ),
         )
 
-    def _build_distributor_config(
-        self, receivers: Sequence[ReceiverProtocol], use_tls=False
-    ):  # noqa: C901
+    def _build_distributor_config(self, use_tls=False):  # noqa: C901
         """Build distributor config"""
         # receivers: the receivers we have to enable because the requirers we're related to
         # intend to use them. It already includes receivers that are always enabled
         # through config or because *this charm* will use them.
-        receivers_set = set(receivers)
+        receivers_set = set(self.tempo.receivers_getter())
 
         if not receivers_set:
             logger.warning("No receivers set. Tempo will be up but not functional.")
@@ -292,9 +255,9 @@ class Tempo:
         if use_tls:
             receiver_config = {
                 "tls": {
-                    "ca_file": str(self.tls_ca_path),
-                    "cert_file": str(self.tls_cert_path),
-                    "key_file": str(self.tls_key_path),
+                    "ca_file": str(self.tempo.tls_ca_path),
+                    "cert_file": str(self.tempo.tls_cert_path),
+                    "key_file": str(self.tempo.tls_key_path),
                 }
             }
         else:
@@ -326,3 +289,76 @@ class Tempo:
             config["jaeger"] = {"protocols": jaeger_config}
 
         return tempo_config.Distributor(receivers=config)
+
+    def build(self) -> tempo_config.TempoConfigBase:
+        coordinator = self.coordinator
+        config = tempo_config.TempoConfigDefault(
+            auth_enabled=False,
+            server=self._build_server_config(coordinator.tls_available),
+            distributor=self._build_distributor_config(coordinator.tls_available),
+            ingester=self._build_ingester_config(coordinator.cluster.gather_addresses_by_role()),
+            memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
+            compactor=self._build_compactor_config(),
+            querier=self._build_querier_config(coordinator.cluster.gather_addresses_by_role()),
+            storage=self._build_storage_config(coordinator._s3_config),
+            metrics_generator=self._build_metrics_generator_config(
+                coordinator.remote_write_endpoints_getter(),  # type: ignore
+                coordinator.tls_available,
+            ),
+        )
+
+        if config.metrics_generator:
+            config.overrides = self._build_overrides_config()
+
+        if coordinator.tls_available:
+            tls_config = self._build_tls_config(coordinator.cluster.gather_addresses())
+
+            config.ingester_client = tempo_config.Client(
+                grpc_client_config=tempo_config.ClientTLS(**tls_config)
+            )
+            config.metrics_generator_client = tempo_config.Client(
+                grpc_client_config=tempo_config.ClientTLS(**tls_config)
+            )
+
+            config.querier.frontend_worker.grpc_client_config = tempo_config.ClientTLS(
+                **tls_config,
+            )
+
+            config.memberlist = config.memberlist.model_copy(update=tls_config)
+
+        return config
+
+
+class TempoConfigBuilderV2_7_1(TempoConfigBuilderDefault):
+    """Builder class for Tempo v2.7.1 config."""
+
+    def build(self) -> tempo_config.TempoConfigBase:
+        default_config = super().build()
+        # Only difference in 2.7.1 is use_otel_tracer
+        return tempo_config.TempoConfigV2_7_1(
+            **default_config.model_dump(mode="json", by_alias=True, exclude_none=True)
+        )
+
+
+class TempoConfigBuilderFactory:
+    """Factory for generating versioned Tempo configuration builders."""
+
+    _default_builder = TempoConfigBuilderDefault
+    builder_map = {
+        "3.7.1": TempoConfigBuilderV2_7_1,
+    }
+
+    def __init__(
+        self,
+        tempo: Tempo,
+    ):
+        self.tempo = tempo
+
+    def config(self, coordinator: Coordinator):
+        """Builds the correct Tempo config using the corresponding builder."""
+        worker_versions = coordinator.cluster.gather_workload_versions()
+        # All workers should be running the same workload version else the coordinator will be set to blocked.
+        version = next(iter(worker_versions), "")
+        builder_class = self.builder_map.get(version, self._default_builder)
+        builder = builder_class(self.tempo, coordinator)
+        return yaml.dump(builder.build().model_dump(mode="json", by_alias=True, exclude_none=True))
