@@ -7,9 +7,11 @@ import json
 import logging
 import re
 import socket
+import urllib.request
 from pathlib import Path
 from subprocess import CalledProcessError, getoutput
 from typing import Any, Dict, List, Optional, Set, Tuple, cast, get_args
+from urllib.error import HTTPError
 
 import ops
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
@@ -277,6 +279,12 @@ class TempoCoordinatorCharm(CharmBase):
                     "metrics-generator disabled. Add a relation over send-remote-write"
                 )
             )
+        if not self._is_accessible:
+            e.add_status(
+                ops.BlockedStatus(
+                    "[reachability] Tempo is not reachable over ingress. Check if Traefik is related to the same CA."
+                )
+            )
 
     ###################
     # UTILITY METHODS #
@@ -331,6 +339,30 @@ class TempoCoordinatorCharm(CharmBase):
         # sorting for stable output to prevent remote units from receiving
         # spurious relation-changed events
         return tuple(sorted(requested_receivers))
+
+    @property
+    def _is_accessible(self) -> bool:
+        """Check whether it's possible to reach the workload.
+
+        The check is done only in the case when the coordinator:
+        - is ready
+        - has a certificate
+        - is behind an ingress
+        - ingress reports a http route.
+        """
+        if (
+            self.is_workload_ready()
+            and self.are_certificates_on_disk
+            and self.ingress.is_ready
+            and self.ingress.scheme == "http"
+        ):
+            try:
+                res = urllib.request.urlopen(self._external_http_server_url + "/ready")
+            except HTTPError:
+                # If server responds with a 500, urlopen throws a HTTPError
+                return False
+            return res.code == 200
+        return True
 
     @property
     def _trace_retention_period_hours(self) -> int:
