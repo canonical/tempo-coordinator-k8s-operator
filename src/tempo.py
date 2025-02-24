@@ -95,7 +95,9 @@ class Tempo:
         config = object_model(
             auth_enabled=False,
             server=self._build_server_config(coordinator.tls_available),
-            distributor=self._build_distributor_config(coordinator.tls_available),
+            distributor=self._build_distributor_config(
+                self._receivers_getter(), coordinator.tls_available
+            ),
             ingester=self._build_ingester_config(coordinator.cluster.gather_addresses_by_role()),
             memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
             compactor=self._build_compactor_config(),
