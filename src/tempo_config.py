@@ -368,6 +368,7 @@ class Overrides(BaseModel):
 class TempoConfigDefault(BaseModel):
     """Default Tempo config schema."""
 
+    use_otel_tracer: bool = True
     auth_enabled: bool
     server: Server
     distributor: Distributor
@@ -386,7 +387,6 @@ class TempoConfigV2_7_1(BaseModel):
     """Config schema for Tempo v2.7.1."""
 
     auth_enabled: bool
-    use_otel_tracer: bool = True
     server: Server
     distributor: Distributor
     ingester: Ingester
