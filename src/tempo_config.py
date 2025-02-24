@@ -365,11 +365,7 @@ class Overrides(BaseModel):
     defaults: Defaults
 
 
-class TempoConfigBase(BaseModel):
-    """Base Tempo config schema."""
-
-
-class TempoConfigDefault(TempoConfigBase):
+class TempoConfigDefault(BaseModel):
     """Default Tempo config schema."""
 
     auth_enabled: bool
@@ -386,7 +382,7 @@ class TempoConfigDefault(TempoConfigBase):
     overrides: Optional[Overrides] = None
 
 
-class TempoConfigV2_7_1(TempoConfigBase):
+class TempoConfigV2_7_1(BaseModel):
     """Config schema for Tempo v2.7.1."""
 
     auth_enabled: bool

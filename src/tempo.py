@@ -10,7 +10,8 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import yaml
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol
-from cosl.coordinated_workers.coordinator import Coordinator
+from cosl.coordinated_workers.coordinator import Coordinator, VersionRange
+from pydantic import BaseModel
 
 import tempo_config
 
@@ -53,8 +54,8 @@ class Tempo:
         requested_receivers: Callable[[], "Tuple[ReceiverProtocol, ...]"],
         retention_period_hours: int,
     ):
-        self.receivers_getter = requested_receivers
-        self.retention_period_hours = retention_period_hours
+        self._receivers_getter = requested_receivers
+        self._retention_period_hours = retention_period_hours
 
     @property
     def tempo_http_server_port(self) -> int:
@@ -66,14 +67,6 @@ class Tempo:
         """Return the receiver port for the built-in tempo_http protocol."""
         return self.server_ports["tempo_grpc"]
 
-
-class TempoConfigBuilderDefault:
-    """Builder class for the default Tempo config."""
-
-    def __init__(self, tempo: Tempo, coordinator: Coordinator):
-        self.tempo = tempo
-        self.coordinator = coordinator
-
     def _build_tls_config(self, workers_addrs: Tuple[str, ...]):
         """Build TLS config to be used by Tempo's internal clients to communicate with each other."""
 
@@ -81,9 +74,9 @@ class TempoConfigBuilderDefault:
         # https://grafana.com/docs/tempo/latest/configuration/network/tls/#client-configuration
         return {
             "tls_enabled": True,
-            "tls_cert_path": self.tempo.tls_cert_path,
-            "tls_key_path": self.tempo.tls_key_path,
-            "tls_ca_path": self.tempo.tls_ca_path,
+            "tls_cert_path": self.tls_cert_path,
+            "tls_key_path": self.tls_key_path,
+            "tls_ca_path": self.tls_ca_path,
             # Tempo's internal components contact each other using their IPs not their DNS names
             # and we don't provide IP sans to Tempo's certificate. So, we need to provide workers' DNS names
             # as tls_server_name to verify the certificate against this name not against the IP.
@@ -126,7 +119,7 @@ class TempoConfigBuilderDefault:
 
         config = tempo_config.MetricsGenerator(
             storage=tempo_config.MetricsGeneratorStorage(
-                path=self.tempo.metrics_generator_wal_path,
+                path=self.metrics_generator_wal_path,
                 remote_write=remote_write_instances,
             ),
             # Adding juju topology will be done on the worker's side
@@ -141,17 +134,17 @@ class TempoConfigBuilderDefault:
 
     def _build_server_config(self, use_tls=False):
         server_config = tempo_config.Server(
-            http_listen_port=self.tempo.tempo_http_server_port,
+            http_listen_port=self.tempo_http_server_port,
             # we need to specify a grpc server port even if we're not using the grpc server,
             # otherwise it will default to 9595 and make promtail bork
-            grpc_listen_port=self.tempo.tempo_grpc_server_port,
+            grpc_listen_port=self.tempo_grpc_server_port,
         )
 
         if use_tls:
             server_tls_config = tempo_config.TLS(
-                cert_file=str(self.tempo.tls_cert_path),
-                key_file=str(self.tempo.tls_key_path),
-                client_ca_file=str(self.tempo.tls_ca_path),
+                cert_file=str(self.tls_cert_path),
+                key_file=str(self.tls_key_path),
+                client_ca_file=str(self.tls_ca_path),
             )
             server_config.http_tls_config = server_tls_config
             server_config.grpc_tls_config = server_tls_config
@@ -161,7 +154,7 @@ class TempoConfigBuilderDefault:
     def _build_storage_config(self, s3_config: dict):
         storage_config = tempo_config.TraceStorage(
             # where to store the wal locally
-            wal=tempo_config.Wal(path=self.tempo.wal_path),  # type: ignore
+            wal=tempo_config.Wal(path=self.wal_path),  # type: ignore
             pool=tempo_config.Pool(
                 # number of traces per index record
                 max_workers=400,
@@ -191,7 +184,7 @@ class TempoConfigBuilderDefault:
             svc_addr = re.sub(r"^[^.]+\.", "", query_frontend_addr)
         return tempo_config.Querier(
             frontend_worker=tempo_config.FrontendWorker(
-                frontend_address=f"{svc_addr}:{self.tempo.tempo_grpc_server_port}"
+                frontend_address=f"{svc_addr}:{self.tempo_grpc_server_port}"
             ),
         )
 
@@ -204,7 +197,7 @@ class TempoConfigBuilderDefault:
                 # maximum size of compacted blocks
                 max_compaction_objects=1000000,
                 # total trace retention
-                block_retention=f"{self.tempo.retention_period_hours}h",
+                block_retention=f"{self._retention_period_hours}h",
                 compacted_block_retention="1h",
             )
         )
@@ -247,7 +240,7 @@ class TempoConfigBuilderDefault:
         # receivers: the receivers we have to enable because the requirers we're related to
         # intend to use them. It already includes receivers that are always enabled
         # through config or because *this charm* will use them.
-        receivers_set = set(self.tempo.receivers_getter())
+        receivers_set = set(self._receivers_getter())
 
         if not receivers_set:
             logger.warning("No receivers set. Tempo will be up but not functional.")
@@ -255,9 +248,9 @@ class TempoConfigBuilderDefault:
         tls_config = (
             {
                 "tls": {
-                    "ca_file": str(self.tempo.tls_ca_path),
-                    "cert_file": str(self.tempo.tls_cert_path),
-                    "key_file": str(self.tempo.tls_key_path),
+                    "ca_file": str(self.tls_ca_path),
+                    "cert_file": str(self.tls_cert_path),
+                    "key_file": str(self.tls_key_path),
                 }
             }
             if use_tls
@@ -302,9 +295,17 @@ class TempoConfigBuilderDefault:
 
         return tempo_config.Distributor(receivers=config)
 
-    def build(self) -> tempo_config.TempoConfigBase:
-        coordinator = self.coordinator
-        config = tempo_config.TempoConfigDefault(
+    def config(
+        self,
+        coordinator: Coordinator,
+        object_model: Optional[BaseModel] = None,
+    ) -> str:
+        """Generate the Tempo configuration.
+
+        Only activate the provided receivers.
+        """
+        object_model = object_model or tempo_config.TempoConfigDefault
+        config = object_model(
             auth_enabled=False,
             server=self._build_server_config(coordinator.tls_available),
             distributor=self._build_distributor_config(coordinator.tls_available),
@@ -338,39 +339,49 @@ class TempoConfigBuilderDefault:
 
             config.memberlist = config.memberlist.model_copy(update=tls_config)
 
-        return config
+        return yaml.dump(config.model_dump(mode="json", by_alias=True, exclude_none=True))
 
 
-class TempoConfigBuilderV2_7_1(TempoConfigBuilderDefault):
-    """Builder class for Tempo v2.7.1 config."""
+class TempoConfigBuilderDefault:
+    """Builder class for the default Tempo config."""
 
-    def build(self) -> tempo_config.TempoConfigBase:
-        default_config = super().build()
-        # Only difference in 2.7.1 is use_otel_tracer
-        return tempo_config.TempoConfigV2_7_1(
-            **default_config.model_dump(mode="json", by_alias=True, exclude_none=True)
+    def __init__(self, tempo: Tempo):
+        self.tempo = tempo
+
+    @property
+    def version_range(self):
+        return (
+            VersionRange(
+                lower=(2, 4, 0),
+                lower_inclusive=True,
+                upper=(2, 7, 1),
+                upper_inclusive=False,
+            ),
+        )
+
+    def build(self, coordinator: Coordinator) -> str:
+        return self.tempo.config(
+            coordinator=coordinator, object_model=tempo_config.TempoConfigDefault
         )
 
 
-class TempoConfigBuilderFactory:
-    """Factory for generating versioned Tempo configuration builders."""
+class TempoConfigBuilderV2_7_1:
+    """Builder class for Tempo v2.7.1 config."""
 
-    _default_builder = TempoConfigBuilderDefault
-    builder_map = {
-        "3.7.1": TempoConfigBuilderV2_7_1,
-    }
-
-    def __init__(
-        self,
-        tempo: Tempo,
-    ):
+    def __init__(self, tempo: Tempo):
         self.tempo = tempo
 
-    def config(self, coordinator: Coordinator):
-        """Builds the correct Tempo config using the corresponding builder."""
-        worker_versions = coordinator.cluster.gather_workload_versions()
-        # All workers should be running the same workload version else the coordinator will be set to blocked.
-        version = next(iter(worker_versions), "")
-        builder_class = self.builder_map.get(version, self._default_builder)
-        builder = builder_class(self.tempo, coordinator)
-        return yaml.dump(builder.build().model_dump(mode="json", by_alias=True, exclude_none=True))
+    @property
+    def version_range(self):
+        return VersionRange(
+            lower=(2, 7, 1),
+            lower_inclusive=True,
+            upper=(2, 8, 0),
+            upper_inclusive=False,
+        )
+
+    def build(self, coordinator: Coordinator) -> str:
+        # Only difference in 2.7.1 is a top-level key in the model (i.e use_otel_tracer)
+        return self.tempo.config(
+            coordinator=coordinator, object_model=tempo_config.TempoConfigV2_7_1
+        )
