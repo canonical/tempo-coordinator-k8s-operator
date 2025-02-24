@@ -24,6 +24,7 @@ from charms.prometheus_k8s.v1.prometheus_remote_write import (
     PrometheusRemoteWriteConsumer,
 )
 from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
+from charms.tempo_coordinator_k8s.v0.tempo_api import TempoApiProvider
 from charms.tempo_coordinator_k8s.v0.tracing import (
     ReceiverProtocol,
     TracingEndpointProvider,
@@ -45,6 +46,7 @@ from tempo_config import TEMPO_ROLES_CONFIG, TempoRole
 logger = logging.getLogger(__name__)
 PEERS_RELATION_ENDPOINT_NAME = "peers"
 PROMETHEUS_DS_TYPE = "prometheus"
+TEMPO_API_RELATION_ENDPOINT_NAME = "tempo-api"
 
 
 class TempoCoordinator(Coordinator):
@@ -333,6 +335,27 @@ class TempoCoordinatorCharm(CharmBase):
                 self._ingress_config, static=self._static_ingress_config
             )
 
+    def _update_tempo_api_relations(self) -> None:
+        """Update all applications related to us via the tempo-api relation."""
+        if not self.unit.is_leader():
+            return
+
+        # tempo-api should only send an external URL if it's set, otherwise it leaves that empty
+        internal_url = self._internal_url
+        external_url = self._external_url
+        if external_url == internal_url:
+            # external_url is not set and just defaulted back to internal_url.  Set it to None
+            external_url = None
+
+        tempo_api = TempoApiProvider(
+            relations=self.model.relations,
+            ingress_url=external_url,  # pyright: ignore
+            direct_url=internal_url,  # pyright: ignore
+            relation_name=TEMPO_API_RELATION_ENDPOINT_NAME,
+            app=self.app,
+        )
+        tempo_api.publish()
+
     def _update_tracing_relations(self) -> None:
         tracing_relations = self.model.relations["tracing"]
         if not tracing_relations:
@@ -564,6 +587,7 @@ class TempoCoordinatorCharm(CharmBase):
         self._update_grafana_source()
         # open the necessary ports on this unit
         self.unit.set_ports(*self._nginx_ports)
+        self._update_tempo_api_relations()
 
     def _get_grafana_source_uids(self) -> Dict[str, Dict[str, str]]:
         """Helper method to retrieve the databags of any grafana-source relations.
