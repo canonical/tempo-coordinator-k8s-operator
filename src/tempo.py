@@ -6,12 +6,22 @@
 
 import logging
 import re
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 import yaml
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol
 from cosl.coordinated_workers.coordinator import Coordinator, VersionRange
-from pydantic import BaseModel
 
 import tempo_config
 
@@ -67,6 +77,57 @@ class Tempo:
         """Return the receiver port for the built-in tempo_http protocol."""
         return self.server_ports["tempo_grpc"]
 
+    def config(
+        self,
+        coordinator: Coordinator,
+        object_model: Optional[
+            Union[
+                Type[tempo_config.TempoConfigDefault],
+                Type[tempo_config.TempoConfigV2_7_1],
+            ]
+        ] = None,
+    ) -> str:
+        """Generate the Tempo configuration.
+
+        Only activate the provided receivers.
+        """
+        object_model = object_model or tempo_config.TempoConfigDefault
+        config = object_model(
+            auth_enabled=False,
+            server=self._build_server_config(coordinator.tls_available),
+            distributor=self._build_distributor_config(coordinator.tls_available),
+            ingester=self._build_ingester_config(coordinator.cluster.gather_addresses_by_role()),
+            memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
+            compactor=self._build_compactor_config(),
+            querier=self._build_querier_config(coordinator.cluster.gather_addresses_by_role()),
+            storage=self._build_storage_config(coordinator._s3_config),
+            metrics_generator=self._build_metrics_generator_config(
+                coordinator.remote_write_endpoints_getter(),  # type: ignore
+                coordinator.tls_available,
+            ),
+        )
+
+        if config.metrics_generator:
+            config.overrides = self._build_overrides_config()
+
+        if coordinator.tls_available:
+            tls_config = self._build_tls_config(coordinator.cluster.gather_addresses())
+
+            config.ingester_client = tempo_config.Client(
+                grpc_client_config=tempo_config.ClientTLS(**tls_config)
+            )
+            config.metrics_generator_client = tempo_config.Client(
+                grpc_client_config=tempo_config.ClientTLS(**tls_config)
+            )
+
+            config.querier.frontend_worker.grpc_client_config = tempo_config.ClientTLS(
+                **tls_config,
+            )
+
+            config.memberlist = config.memberlist.model_copy(update=tls_config)
+
+        return yaml.dump(config.model_dump(mode="json", by_alias=True, exclude_none=True))
+
     def _build_tls_config(self, workers_addrs: Tuple[str, ...]):
         """Build TLS config to be used by Tempo's internal clients to communicate with each other."""
 
@@ -110,7 +171,7 @@ class Tempo:
         if use_tls:
             for endpoint in remote_write_endpoints:
                 endpoint["tls_config"] = {
-                    "ca_file": self.tempo.tls_ca_path,
+                    "ca_file": self.tls_ca_path,
                 }
 
         remote_write_instances = [
@@ -208,10 +269,8 @@ class Tempo:
         """Build memberlist config"""
         return tempo_config.Memberlist(
             abort_if_cluster_join_fails=False,
-            bind_port=self.tempo.memberlist_port,
-            join_members=(
-                [f"{peer}:{self.tempo.memberlist_port}" for peer in peers] if peers else []
-            ),
+            bind_port=self.memberlist_port,
+            join_members=([f"{peer}:{self.memberlist_port}" for peer in peers] if peers else []),
         )
 
     def _build_ingester_config(self, roles_addresses: Dict[str, Set[str]]):
@@ -235,12 +294,14 @@ class Tempo:
             ),
         )
 
-    def _build_distributor_config(self, use_tls=False):  # noqa: C901
+    def _build_distributor_config(
+        self, receivers: Sequence[ReceiverProtocol], use_tls=False
+    ):  # noqa: C901
         """Build distributor config"""
         # receivers: the receivers we have to enable because the requirers we're related to
         # intend to use them. It already includes receivers that are always enabled
         # through config or because *this charm* will use them.
-        receivers_set = set(self._receivers_getter())
+        receivers_set = set(receivers)
 
         if not receivers_set:
             logger.warning("No receivers set. Tempo will be up but not functional.")
@@ -295,52 +356,6 @@ class Tempo:
 
         return tempo_config.Distributor(receivers=config)
 
-    def config(
-        self,
-        coordinator: Coordinator,
-        object_model: Optional[BaseModel] = None,
-    ) -> str:
-        """Generate the Tempo configuration.
-
-        Only activate the provided receivers.
-        """
-        object_model = object_model or tempo_config.TempoConfigDefault
-        config = object_model(
-            auth_enabled=False,
-            server=self._build_server_config(coordinator.tls_available),
-            distributor=self._build_distributor_config(coordinator.tls_available),
-            ingester=self._build_ingester_config(coordinator.cluster.gather_addresses_by_role()),
-            memberlist=self._build_memberlist_config(coordinator.cluster.gather_addresses()),
-            compactor=self._build_compactor_config(),
-            querier=self._build_querier_config(coordinator.cluster.gather_addresses_by_role()),
-            storage=self._build_storage_config(coordinator._s3_config),
-            metrics_generator=self._build_metrics_generator_config(
-                coordinator.remote_write_endpoints_getter(),  # type: ignore
-                coordinator.tls_available,
-            ),
-        )
-
-        if config.metrics_generator:
-            config.overrides = self._build_overrides_config()
-
-        if coordinator.tls_available:
-            tls_config = self._build_tls_config(coordinator.cluster.gather_addresses())
-
-            config.ingester_client = tempo_config.Client(
-                grpc_client_config=tempo_config.ClientTLS(**tls_config)
-            )
-            config.metrics_generator_client = tempo_config.Client(
-                grpc_client_config=tempo_config.ClientTLS(**tls_config)
-            )
-
-            config.querier.frontend_worker.grpc_client_config = tempo_config.ClientTLS(
-                **tls_config,
-            )
-
-            config.memberlist = config.memberlist.model_copy(update=tls_config)
-
-        return yaml.dump(config.model_dump(mode="json", by_alias=True, exclude_none=True))
-
 
 class TempoConfigBuilderDefault:
     """Builder class for the default Tempo config."""
@@ -349,14 +364,12 @@ class TempoConfigBuilderDefault:
         self.tempo = tempo
 
     @property
-    def version_range(self):
-        return (
-            VersionRange(
-                lower=(2, 4, 0),
-                lower_inclusive=True,
-                upper=(2, 7, 1),
-                upper_inclusive=False,
-            ),
+    def version_range(self) -> VersionRange:
+        return VersionRange(
+            lower=(2, 4, 0),
+            lower_inclusive=True,
+            upper=(2, 7, 1),
+            upper_inclusive=False,
         )
 
     def build(self, coordinator: Coordinator) -> str:

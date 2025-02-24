@@ -1,7 +1,7 @@
 import pytest
 
 import tempo_config
-from tempo import Tempo, TempoConfigBuilderDefault
+from tempo import Tempo
 
 
 @pytest.mark.parametrize(
@@ -91,10 +91,7 @@ from tempo import Tempo, TempoConfigBuilderDefault
 )
 def test_tempo_distributor_config(protocols, use_tls, expected_config):
     assert (
-        TempoConfigBuilderDefault(Tempo(lambda: protocols, 720), None)
-        ._build_distributor_config(use_tls)
-        .receivers
-        == expected_config
+        Tempo(None, 720)._build_distributor_config(protocols, use_tls).receivers == expected_config
     )
 
 
@@ -118,10 +115,7 @@ def test_tempo_distributor_config(protocols, use_tls, expected_config):
     ),
 )
 def test_tempo_memberlist_config(peers, expected_config):
-    assert (
-        TempoConfigBuilderDefault(Tempo(None, 720), None)._build_memberlist_config(peers)
-        == expected_config
-    )
+    assert Tempo(None, 720)._build_memberlist_config(peers) == expected_config
 
 
 @pytest.mark.parametrize(
@@ -142,9 +136,4 @@ def test_tempo_memberlist_config(peers, expected_config):
     ),
 )
 def test_tempo_ingester_config(addresses, expected_replication):
-    assert (
-        TempoConfigBuilderDefault(Tempo(None, 720), None)
-        ._build_ingester_config(addresses)
-        .lifecycler.ring.replication_factor
-        == expected_replication
-    )
+    assert Tempo(None, 720)._build_ingester_config(addresses).lifecycler.ring.replication_factor
