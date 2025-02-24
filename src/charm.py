@@ -89,7 +89,9 @@ class TempoCoordinatorCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.ingress = TraefikRouteRequirer(self, self.model.get_relation("ingress"), "ingress")  # type: ignore
+        self.ingress = TraefikRouteRequirer(
+            self, self.model.get_relation("ingress"), "ingress"
+        )  # type: ignore
         self.tempo = Tempo(
             requested_receivers=self._requested_receivers,
             retention_period_hours=self._trace_retention_period_hours,
@@ -123,7 +125,7 @@ class TempoCoordinatorCharm(CharmBase):
                 "catalogue": "catalogue",
             },
             nginx_config=NginxConfig(server_name=self.hostname).config,
-            workers_config=self.tempo_config_factory.config,
+            workers_config=self.tempo.config,
             resources_requests=self.get_resources_requests,
             container_name="charm",
             remote_write_endpoints=self.remote_write_endpoints,  # type: ignore
@@ -143,7 +145,9 @@ class TempoCoordinatorCharm(CharmBase):
             source_url=self._external_http_server_url,
             refresh_event=[
                 # refresh the source url when TLS config might be changing
-                self.on[self.coordinator.cert_handler.certificates_relation_name].relation_changed,
+                self.on[
+                    self.coordinator.cert_handler.certificates_relation_name
+                ].relation_changed,
                 # or when ingress changes
                 self.ingress.on.ready,
             ],
@@ -165,7 +169,9 @@ class TempoCoordinatorCharm(CharmBase):
         self._reconcile()
 
         # actions
-        self.framework.observe(self.on.list_receivers_action, self._on_list_receivers_action)
+        self.framework.observe(
+            self.on.list_receivers_action, self._on_list_receivers_action
+        )
 
     ######################
     # UTILITY PROPERTIES #
@@ -193,7 +199,11 @@ class TempoCoordinatorCharm(CharmBase):
     @property
     def _external_url(self) -> str:
         """Return the external url."""
-        if self.ingress.is_ready() and self.ingress.scheme and self.ingress.external_host:
+        if (
+            self.ingress.is_ready()
+            and self.ingress.scheme
+            and self.ingress.external_host
+        ):
             ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}"
             logger.debug("This unit's ingress URL: %s", ingress_url)
             return ingress_url
@@ -338,7 +348,9 @@ class TempoCoordinatorCharm(CharmBase):
         # update with enabled extra receivers
         requested_protocols.update(self.enabled_receivers)
         # and publish only those we support
-        requested_receivers = requested_protocols.intersection(set(self.tempo.receiver_ports))
+        requested_receivers = requested_protocols.intersection(
+            set(self.tempo.receiver_ports)
+        )
         # sorting for stable output to prevent remote units from receiving
         # spurious relation-changed events
         return tuple(sorted(requested_receivers))
@@ -366,7 +378,8 @@ class TempoCoordinatorCharm(CharmBase):
     def requested_receivers_urls(self) -> Dict[str, str]:
         """Endpoints to which the workload (and the worker charm) can push traces to."""
         return {
-            receiver: self.get_receiver_url(receiver) for receiver in self._requested_receivers()
+            receiver: self.get_receiver_url(receiver)
+            for receiver in self._requested_receivers()
         }
 
     @property
@@ -385,7 +398,9 @@ class TempoCoordinatorCharm(CharmBase):
         http_services = {}
         for protocol, port in self.tempo.all_ports.items():
             sanitized_protocol = protocol.replace("_", "-")
-            http_routers[f"juju-{self.model.name}-{self.model.app.name}-{sanitized_protocol}"] = {
+            http_routers[
+                f"juju-{self.model.name}-{self.model.app.name}-{sanitized_protocol}"
+            ] = {
                 "entryPoints": [sanitized_protocol],
                 "service": f"juju-{self.model.name}-{self.model.app.name}-service-{sanitized_protocol}",
                 # TODO better matcher
@@ -393,20 +408,30 @@ class TempoCoordinatorCharm(CharmBase):
             }
             if (
                 protocol == "tempo_grpc"
-                or receiver_protocol_to_transport_protocol.get(cast(ReceiverProtocol, protocol))
+                or receiver_protocol_to_transport_protocol.get(
+                    cast(ReceiverProtocol, protocol)
+                )
                 == TransportProtocolType.grpc
             ) and not self.coordinator.tls_available:
                 # to send traces to unsecured GRPC endpoints, we need h2c
                 # see https://doc.traefik.io/traefik/v2.0/user-guides/grpc/#with-http-h2c
                 http_services[
                     f"juju-{self.model.name}-{self.model.app.name}-service-{sanitized_protocol}"
-                ] = {"loadBalancer": {"servers": self._build_lb_server_config("h2c", port)}}
+                ] = {
+                    "loadBalancer": {
+                        "servers": self._build_lb_server_config("h2c", port)
+                    }
+                }
             else:
                 # anything else, including secured GRPC, can use _internal_url
                 # ref https://doc.traefik.io/traefik/v2.0/user-guides/grpc/#with-https
                 http_services[
                     f"juju-{self.model.name}-{self.model.app.name}-service-{sanitized_protocol}"
-                ] = {"loadBalancer": {"servers": self._build_lb_server_config(self._scheme, port)}}
+                ] = {
+                    "loadBalancer": {
+                        "servers": self._build_lb_server_config(self._scheme, port)
+                    }
+                }
         return {
             "http": {
                 "routers": http_routers,
@@ -437,7 +462,9 @@ class TempoCoordinatorCharm(CharmBase):
         protocol_type = receiver_protocol_to_transport_protocol.get(protocol)
         # ingress.is_ready returns True even when traefik hasn't sent any data yet
         has_ingress = (
-            self.ingress.is_ready() and self.ingress.external_host and self.ingress.scheme
+            self.ingress.is_ready()
+            and self.ingress.external_host
+            and self.ingress.scheme
         )
         receiver_port = self.tempo.receiver_ports[protocol]
 
@@ -529,7 +556,9 @@ class TempoCoordinatorCharm(CharmBase):
 
     def _update_grafana_source(self) -> None:
         """Update grafana-source relations."""
-        self.grafana_source_provider.update_source(source_url=self._external_http_server_url)
+        self.grafana_source_provider.update_source(
+            source_url=self._external_http_server_url
+        )
 
     def _reconcile(self):
         # This method contains unconditional update logic, i.e. logic that should be executed
@@ -611,7 +640,8 @@ class TempoCoordinatorCharm(CharmBase):
             datasource
             for databag in remote_write_dsx_databags
             for datasource in databag.datasources
-            if datasource.grafana_uid in grafana_uids and datasource.type == PROMETHEUS_DS_TYPE
+            if datasource.grafana_uid in grafana_uids
+            and datasource.type == PROMETHEUS_DS_TYPE
         ]
 
         if not matching_datasources:
