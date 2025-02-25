@@ -1,6 +1,6 @@
 """tempo_api.
 
-This library implements data accessors the tempo-api interface.  The tempo-api interface is used to
+This library implements endpoint wrappers for the tempo-api interface.  The tempo-api interface is used to
 transfer information about an instance of Tempo, such as how to access and uniquely identify it.  Typically, this is
 useful for charms that operate a Tempo instance to give other applications access to [Tempo's HTTP API](https://grafana.com/docs/tempo/latest/api_docs/).
 
