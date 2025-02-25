@@ -112,7 +112,7 @@ class TempoApiAppData(BaseModel):
 
 
 class TempoApiRequirer:
-    """The requirer side of the tempo-api relation."""
+    """Endpoint wrapper for the requirer side of the tempo-api relation."""
 
     def __init__(
         self,
