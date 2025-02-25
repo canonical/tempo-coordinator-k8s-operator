@@ -33,6 +33,7 @@ from cosl.interfaces.datasource_exchange import DatasourceDict, DSExchangeAppDat
 from cosl.interfaces.utils import DatabagModel, DataValidationError
 from ops import CollectStatusEvent
 from ops.charm import CharmBase
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from nginx_config import NginxConfig
 from tempo import Tempo
@@ -279,10 +280,13 @@ class TempoCoordinatorCharm(CharmBase):
                     "metrics-generator disabled. Add a relation over send-remote-write"
                 )
             )
-        if not self._is_accessible:
+        if not self._is_reachable_over_ingress:
+            logger.debug(
+                "Tempo is not reachable over ingress. Check Traefik's TLS integration. The issue may be transient and resolve itself in the next event."
+            )
             e.add_status(
                 ops.BlockedStatus(
-                    "[reachability] Tempo is not reachable over ingress. Check if Traefik is related to the same CA."
+                    "[reachability] Tempo is not reachable over ingress. Check Traefik's TLS integration."
                 )
             )
 
@@ -341,7 +345,7 @@ class TempoCoordinatorCharm(CharmBase):
         return tuple(sorted(requested_receivers))
 
     @property
-    def _is_accessible(self) -> bool:
+    def _is_reachable_over_ingress(self) -> bool:
         """Check whether it's possible to reach the workload.
 
         The check is done only in the case when the coordinator:
@@ -351,18 +355,23 @@ class TempoCoordinatorCharm(CharmBase):
         - ingress reports a http route.
         """
         if (
-            self.is_workload_ready()
-            and self.are_certificates_on_disk
+            self.coordinator.tls_available
             and self.ingress.is_ready
             and self.ingress.scheme == "http"
+            and self.is_workload_ready()
         ):
-            try:
-                res = urllib.request.urlopen(self._external_http_server_url + "/ready")
-            except HTTPError:
-                # If server responds with a 500, urlopen throws a HTTPError
-                return False
-            return res.code == 200
+            return self._check_external_readiness()
         return True
+
+    @retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=4, max=10))
+    def _check_external_readiness(self):
+        """Check with retries if Tempo is available over its external url."""
+        try:
+            res = urllib.request.urlopen(self._external_http_server_url + "/ready")
+        except HTTPError:
+            # If server responds with a 500, urlopen throws a HTTPError
+            return False
+        return res.code == 200
 
     @property
     def _trace_retention_period_hours(self) -> int:
@@ -477,6 +486,7 @@ class TempoCoordinatorCharm(CharmBase):
 
         return f"{url}:{receiver_port}"
 
+    @property
     def is_workload_ready(self):
         """Whether the tempo built-in readiness check reports 'ready'."""
         if self.coordinator.tls_available:
