@@ -19,7 +19,7 @@ requires:
     interface: tempo_api
 ```
 
-To implement handling this relation:
+To use this endpoint wrapper:
 
 * observe the relation-changed event for this relation wherever your charm needs to use this data (this relation DOES
   NOT automatically observe any events)
