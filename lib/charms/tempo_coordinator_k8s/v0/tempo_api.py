@@ -50,7 +50,7 @@ provides:
     interface: tempo_api
 ```
 
-To manage sending data to related applications in your charm, use `TempoApiProvider`.  Note that
+To wrap a provider endpoint for the interface, use the `TempoApiProvider` class.  Note that
 `TempoApiProvider` *does not* manage any events, but instead provides a `publish` method for sending data to
 all related applications.  Triggering `publish` appropriately is left to the charm author, although generally you want
 to do this at least during relation_joined and leader_elected events.  An example implementation is:
