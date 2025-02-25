@@ -21,7 +21,7 @@ requires:
 
 To use this endpoint wrapper:
 
-* observe the relation-changed event for this relation wherever your charm needs to use this data (this relation DOES
+* observe the relation-changed event for this relation wherever your charm needs to use this data (this endpoint wrapper DOES
   NOT automatically observe any events)
 * wherever you need access to the data, create a `TempoApiRequirer` instance and use `.get_data()`
 
