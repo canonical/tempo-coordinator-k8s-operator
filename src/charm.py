@@ -46,7 +46,6 @@ from tempo_config import TEMPO_ROLES_CONFIG, TempoRole
 logger = logging.getLogger(__name__)
 PEERS_RELATION_ENDPOINT_NAME = "peers"
 PROMETHEUS_DS_TYPE = "prometheus"
-TEMPO_API_RELATION_ENDPOINT_NAME = "tempo-api"
 
 
 class TempoCoordinator(Coordinator):
@@ -351,7 +350,6 @@ class TempoCoordinatorCharm(CharmBase):
             relations=self.model.relations,
             ingress_url=external_url,  # pyright: ignore
             direct_url=internal_url,  # pyright: ignore
-            relation_name=TEMPO_API_RELATION_ENDPOINT_NAME,
             app=self.app,
         )
         tempo_api.publish()
