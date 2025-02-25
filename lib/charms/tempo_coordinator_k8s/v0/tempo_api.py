@@ -72,8 +72,7 @@ class FooCharm(CharmBase):
         self.framework.observe(self.on.some_event_that_changes_tempos_url, self.do_something_to_publish)
         
     def do_something_to_publish(self, e):
-        e.publish(...)
-        # or self.tempo_api.publish()...
+        self.tempo_api.publish(...)
 ```
 """
 
