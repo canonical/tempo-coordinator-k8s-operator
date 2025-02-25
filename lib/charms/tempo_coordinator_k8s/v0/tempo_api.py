@@ -70,6 +70,10 @@ class FooCharm(CharmBase):
         self.framework.observe(self.on.leader_elected, self.do_something_to_publish)
         self.framework.observe(self._charm.on["tempo-api"].relation_joined, self.do_something_to_publish)
         self.framework.observe(self.on.some_event_that_changes_tempos_url, self.do_something_to_publish)
+        
+    def do_something_to_publish(self, e):
+        e.publish(...)
+        # or self.tempo_api.publish()...
 ```
 """
 
