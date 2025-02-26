@@ -2,27 +2,17 @@
 
 This library implements endpoint wrappers for the tempo-api interface.  The tempo-api interface is used to
 transfer information about an instance of Tempo, such as how to access and uniquely identify it.  Typically, this is
-useful for charms that operate a Tempo instance to give other applications access to [Tempo's HTTP API](https://grafana.com/docs/tempo/latest/api_docs/).
+useful for charms that operate a Tempo instance to give other applications access to
+[Tempo's HTTP API](https://grafana.com/docs/tempo/latest/api_docs/).
 
 ## Usage
 
 ### Requirer
 
-Add the following to your `charmcraft.yaml` or `metadata.yaml`:
+TempoApiRequirer is a wrapper for pulling data from the tempo-api interface.  To use it in your charm:
 
-```yaml
-requires:
-  tempo-api:
-    # The example below uses the API for when limit=1.  If you need to support multiple related applications, remove
-    # this and use the list-based data accessor method.
-    limit: 1
-    interface: tempo_api
-```
-
-To use this endpoint wrapper:
-
-* observe the relation-changed event for this relation wherever your charm needs to use this data (this endpoint wrapper DOES
-  NOT automatically observe any events)
+* observe the relation-changed event for this relation wherever your charm needs to use this data (this endpoint wrapper
+  DOES NOT automatically observe any events)
 * wherever you need access to the data, call `TempoApiRequirer(...).get_data()`
 
 An example implementation is:
@@ -40,17 +30,19 @@ class FooCharm(CharmBase):
         ...
 ```
 
-### Provider
-
-Add the following to your `charmcraft.yaml` or `metadata.yaml`:
+Where you also add relation to your `charmcraft.yaml` or `metadata.yaml` (note that TempoApiRequirer is designed for
+relating to a single application and must be used with limit=1 as shown below):
 
 ```yaml
-provides:
+requires:
   tempo-api:
+    limit: 1
     interface: tempo_api
 ```
 
-To wrap a provider endpoint for the interface, use the `TempoApiProvider` class.  Note that
+### Provider
+
+TempoApiProvider is a wrapper for publishing data to charms related using the tempo-api interface.  Note that
 `TempoApiProvider` *does not* manage any events, but instead provides a `publish` method for sending data to
 all related applications.  Triggering `publish` appropriately is left to the charm author, although generally you want
 to do this at least during the `relation_joined` and `leader_elected` events.  An example implementation is:
@@ -74,6 +66,14 @@ class FooCharm(CharmBase):
     def do_something_to_publish(self, e):
         self.tempo_api.publish(...)
 ```
+
+Where you also add the following to your `charmcraft.yaml` or `metadata.yaml`:
+
+```yaml
+provides:
+  tempo-api:
+    interface: tempo_api
+```
 """
 
 import json
@@ -82,6 +82,8 @@ from typing import Optional
 
 from ops import Application, RelationMapping
 from pydantic import AnyHttpUrl, BaseModel, Field
+
+from charms.tempo_coordinator_k8s.v0.tracing import RelationRoleMismatchError
 
 # The unique Charmhub library identifier, never change it
 LIBID = "6d55454c9a104113b2bd01e738dd5f99"
@@ -129,8 +131,7 @@ class TempoApiRequirer:
         observe those events as they see fit.  Typically, that charm should observe this relation's relation-changed
         event.
 
-        This object is for interacting with a relation that has limit=1 set in charmcraft.yaml.  In particular, the
-        get_data method will raise if more than one related application is available.
+        This object is for interacting with a relation that has limit=1 set in charmcraft.yaml.
 
         Args:
             relations: The RelationMapping of a charm (typically `self.model.relations` from within a charm object).
@@ -145,11 +146,11 @@ class TempoApiRequirer:
         return self._charm_relation_mapping.get(self._relation_name, ())
 
     def get_data(self) -> Optional[BaseModel]:
-        """Return data for at most one related application, raising if more than one is available.
+        """Return data from the relation.
 
-        Useful for charms that always expect exactly one related application.  It is recommended that those charms also
-        set limit=1 for that relation in charmcraft.yaml.  Returns None if no data is available (either because no
-        applications are related to us, or because the related application has not sent data).
+        Returns None if no data is available, either because no applications are related to us, or because the related
+        application has not sent data.  To distinguish between these cases, check if
+        len(tempo_api_requirer.relations)==0.
         """
         relations = self.relations
         if len(relations) == 0:
