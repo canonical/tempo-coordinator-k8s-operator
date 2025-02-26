@@ -12,7 +12,7 @@ from subprocess import CalledProcessError, getoutput
 from typing import Any, Dict, List, Optional, Set, Tuple, cast, get_args
 
 import ops
-from charms.blackbox_exporter_k8s.v0.blackbox_probes import BlackboxProbesProvider
+from charms.blackbox_exporter_k8s.v0.blackbox_probes import BlackboxProbesProvider # wokeignore
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.prometheus_k8s.v1.prometheus_remote_write import (
@@ -141,6 +141,7 @@ class TempoCoordinatorCharm(CharmBase):
             extra_fields=self._build_grafana_source_extra_fields(),
         )
 
+        # wokeignore
         self.probes_provider = BlackboxProbesProvider(
             self,
             probes=[
