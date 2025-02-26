@@ -12,8 +12,10 @@ from subprocess import CalledProcessError, getoutput
 from typing import Any, Dict, List, Optional, Set, Tuple, cast, get_args
 
 import ops
+
+# wokeignore:rule=blackbox
 from charms.blackbox_exporter_k8s.v0.blackbox_probes import (
-    BlackboxProbesProvider,  # wokeignore:rule=blackbox
+    BlackboxProbesProvider,
 )
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
