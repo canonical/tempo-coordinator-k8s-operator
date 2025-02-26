@@ -1,21 +1,18 @@
 """Tests that assert TempoCoordinatorCharm is wired up correctly to be a tempo-api provider."""
 
+import json
 from typing import Optional, Tuple
 from unittest.mock import PropertyMock, patch
 
 from ops.testing import Relation, State
 
+from tempo import Tempo
+
 RELATION_NAME = "tempo-api"
 INTERFACE_NAME = "tempo_metadata"
 
-# Note: if this is changed, the TempoApiAppData concrete classes below need to change their constructors to match
-SAMPLE_APP_DATA = {
-    "ingress_url": "http://www.ingress-url.com/",
-    "direct_url": "http://www.internal-url.com/",
-}
-
-TEMPO_COORDINATOR_URL = "http://needs-changing.com/"
-INGRESS_URL = "http://www.ingress-url.com/"
+TEMPO_COORDINATOR_URL = "http://needs-changing.com"
+INGRESS_URL = "http://www.ingress-url.com"
 
 
 def local_app_data_relation_state(
@@ -64,7 +61,16 @@ def test_provider_sender_sends_data_on_relation_joined(
     with context(context.on.relation_joined(tempo_api), state=state) as manager:
         manager.run()
         expected = {
-            "direct_url": TEMPO_COORDINATOR_URL,
+            "http": json.dumps(
+                {
+                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_http']}/",
+                }
+            ),
+            "grpc": json.dumps(
+                {
+                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_grpc']}/",
+                }
+            ),
         }
 
     # Assert
@@ -97,8 +103,18 @@ def test_provider_sender_sends_data_with_ingress_url_on_relation_joined(
     with context(context.on.relation_joined(tempo_api), state=state) as manager:
         manager.run()
         expected = {
-            "direct_url": TEMPO_COORDINATOR_URL,
-            "ingress_url": INGRESS_URL,
+            "http": json.dumps(
+                {
+                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_http']}/",
+                    "ingress_url": INGRESS_URL + f":{Tempo.server_ports['tempo_http']}/",
+                }
+            ),
+            "grpc": json.dumps(
+                {
+                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_grpc']}/",
+                    "ingress_url": INGRESS_URL + f":{Tempo.server_ports['tempo_grpc']}/",
+                }
+            ),
         }
 
     # Assert
@@ -130,7 +146,16 @@ def test_provider_sends_data_on_leader_elected(
     with context(context.on.leader_elected(), state=state) as manager:
         manager.run()
         expected = {
-            "direct_url": TEMPO_COORDINATOR_URL,
+            "http": json.dumps(
+                {
+                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_http']}/",
+                }
+            ),
+            "grpc": json.dumps(
+                {
+                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_grpc']}/",
+                }
+            ),
         }
 
     # Assert

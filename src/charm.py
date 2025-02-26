@@ -24,6 +24,9 @@ from charms.prometheus_k8s.v1.prometheus_remote_write import (
     PrometheusRemoteWriteConsumer,
 )
 from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
+from charms.tempo_coordinator_k8s.v0.tempo_api import (
+    DEFAULT_RELATION_NAME as tempo_api_relation_name,
+)
 from charms.tempo_coordinator_k8s.v0.tempo_api import TempoApiProvider
 from charms.tempo_coordinator_k8s.v0.tracing import (
     ReceiverProtocol,
@@ -162,6 +165,12 @@ class TempoCoordinatorCharm(CharmBase):
         self.framework.observe(
             self.on[PEERS_RELATION_ENDPOINT_NAME].relation_created,
             self._on_peers_relation_created,
+        )
+
+        self.tempo_api = TempoApiProvider(
+            relations=self.model.relations,
+            relation_meta=self.meta.relations[tempo_api_relation_name],
+            app=self.app,
         )
 
         # refuse to handle any other event as we can't possibly know what to do.
@@ -341,18 +350,24 @@ class TempoCoordinatorCharm(CharmBase):
 
         # tempo-api should only send an external URL if it's set, otherwise it leaves that empty
         internal_url = self._internal_url
+        direct_url_http = internal_url + f":{self.tempo.server_ports['tempo_http']}"
+        direct_url_grpc = internal_url + f":{self.tempo.server_ports['tempo_grpc']}"
+
         external_url = self._external_url
         if external_url == internal_url:
             # external_url is not set and just defaulted back to internal_url.  Set it to None
-            external_url = None
+            ingress_url_http = None
+            ingress_url_grpc = None
+        else:
+            ingress_url_http = external_url + f":{self.tempo.server_ports['tempo_http']}"
+            ingress_url_grpc = external_url + f":{self.tempo.server_ports['tempo_grpc']}"
 
-        tempo_api = TempoApiProvider(
-            relations=self.model.relations,
-            ingress_url=external_url,  # pyright: ignore
-            direct_url=internal_url,  # pyright: ignore
-            app=self.app,
+        self.tempo_api.publish(
+            direct_url_http=direct_url_http,  # pyright: ignore
+            direct_url_grpc=direct_url_grpc,  # pyright: ignore
+            ingress_url_http=ingress_url_http,  # pyright: ignore
+            ingress_url_grpc=ingress_url_grpc,  # pyright: ignore
         )
-        tempo_api.publish()
 
     def _update_tracing_relations(self) -> None:
         tracing_relations = self.model.relations["tracing"]

@@ -64,7 +64,7 @@ class FooCharm(CharmBase):
         self.framework.observe(self.on.leader_elected, self.do_something_to_publish)
         self.framework.observe(self._charm.on["tempo-api"].relation_joined, self.do_something_to_publish)
         self.framework.observe(self.on.some_event_that_changes_tempos_url, self.do_something_to_publish)
-        
+
     def do_something_to_publish(self, e):
         self.tempo_api.publish(...)
 ```
@@ -102,17 +102,29 @@ log = logging.getLogger(__name__)
 DEFAULT_RELATION_NAME = "tempo-api"
 
 
+class TempoApiUrls(BaseModel):
+    """Data model for urls Tempo offers for query access, for a given protocol."""
+
+    direct_url: AnyHttpUrl = Field(
+        description="The cluster-internal URL at which this application can be reached for a connection."
+        " Typically, this is a Kubernetes FQDN like name.namespace.svc.cluster.local for"
+        " connecting to the tempo api from inside the cluster, with scheme and maybe port."
+    )
+    ingress_url: Optional[AnyHttpUrl] = Field(
+        default=None,
+        description="The non-internal URL at which this application can be reached for a connection."
+        " Typically, this is an ingress URL.",
+    )
+
+
 class TempoApiAppData(BaseModel):
     """Data model for the tempo-api interface."""
 
-    ingress_url: Optional[AnyHttpUrl] = Field(
-        default=None,
-        description="The non-internal URL at which this application can be reached.  Typically, this is an ingress URL.",
+    http: TempoApiUrls = Field(
+        description="The URLs at which this application can be reached for an http connection to query Tempo."
     )
-    direct_url: AnyHttpUrl = Field(
-        description="The cluster-internal URL at which this application can be reached.  Typically, this is a"
-        " Kubernetes FQDN like name.namespace.svc.cluster.local for connecting to the prometheus api"
-        " from inside the cluster, with scheme."
+    grpc: TempoApiUrls = Field(
+        description="The URLs at which this application can be reached for an http connection to query Tempo."
     )
 
 
@@ -166,9 +178,11 @@ class TempoApiRequirer:
             return None
 
         # Static analysis errors saying the keys may not be strings.  Protect against this by converting them.
-        raw_data_dict = {str(k): v for k, v in raw_data_dict.items()}
+        # The data in the databag is in format [str: json-string-of-dict].  Expand out those nested JSON dicts so we
+        # have the full object
+        raw_data_dict = {str(k): json.loads(v) for k, v in raw_data_dict.items()}
 
-        return TempoApiAppData.model_validate_json(json.dumps(raw_data_dict))  # type: ignore
+        return TempoApiAppData.model_validate(raw_data_dict)  # type: ignore
 
     def _validate_relation_metadata(self):
         """Validate that the provided relation has the correct metadata for this endpoint."""
@@ -186,8 +200,6 @@ class TempoApiProvider:
         relations: RelationMapping,
         relation_meta: RelationMeta,
         app: Application,
-        direct_url: AnyHttpUrl,
-        ingress_url: Optional[AnyHttpUrl] = None,
     ):
         """Initialize the TempoApiProvider object.
 
@@ -201,15 +213,9 @@ class TempoApiProvider:
             app: This application.
             relation_meta: The RelationMeta object for this charm relation (typically
                `self.meta.relations[relation_name]`).
-            direct_url: The cluster-internal URL at which this application can be reached.  Typically, this is a
-                        Kubernetes FQDN like name.namespace.svc.cluster.local for connecting to the prometheus api
-                        from inside the cluster, with scheme.
-            ingress_url: The non-internal URL at which this application can be reached.  Typically, this is an ingress
-                         URL.
         """
         self._charm_relation_mapping = relations
         self._relation_meta = relation_meta
-        self._data = TempoApiAppData(ingress_url=ingress_url, direct_url=direct_url)
         self._app = app
         self._relation_name = self._relation_meta.relation_name
 
@@ -218,17 +224,43 @@ class TempoApiProvider:
         """Return the applications related to us under the monitored relation."""
         return self._charm_relation_mapping.get(self._relation_name, ())
 
-    def publish(self):
+    def publish(
+        self,
+        direct_url_http: AnyHttpUrl,
+        direct_url_grpc: AnyHttpUrl,
+        ingress_url_http: Optional[AnyHttpUrl] = None,
+        ingress_url_grpc: Optional[AnyHttpUrl] = None,
+    ):
         """Post tempo-api to all related applications.
 
         This method writes to the relation's app data bag, and thus should never be called by a unit that is not the
         leader otherwise ops will raise an exception.
+
+        Args:
+            direct_url_http: The cluster-internal URL at which this application can be reached for an http connection.
+                             Typically, this is a Kubernetes FQDN like name.namespace.svc.cluster.local for
+                             connecting to the tempo http api from inside the cluster, with scheme and maybe port.
+            direct_url_grpc: The cluster-internal URL at which this application can be reached for a grpc connection.
+                             Typically, this is a Kubernetes FQDN like name.namespace.svc.cluster.local for
+                             connecting to the tempo grpc api from inside the cluster, with scheme.
+            ingress_url_http: The non-internal URL at which this application can be reached for an http connection.
+                              Typically, this is an ingress URL.
+            ingress_url_grpc: The non-internal URL at which this application can be reached for a grpc connection.
+                              Typically, this is an ingress URL.
         """
-        info_relations = self.relations
-        for relation in info_relations:
+        data = TempoApiAppData(
+            http=TempoApiUrls(
+                direct_url=direct_url_http,
+                ingress_url=ingress_url_http,
+            ),
+            grpc=TempoApiUrls(
+                direct_url=direct_url_grpc,
+                ingress_url=ingress_url_grpc,
+            ),
+        ).model_dump(mode="json", by_alias=True, exclude_defaults=True, round_trip=True)
+        # Flatten any nested objects, since relation databags are str:str mappings
+        data = {k: json.dumps(v) for k, v in data.items()}
+
+        for relation in self.relations:
             databag = relation.data[self._app]
-            databag.update(
-                self._data.model_dump(
-                    mode="json", by_alias=True, exclude_defaults=True, round_trip=True
-                )
-            )
+            databag.update(data)
