@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -6,7 +7,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Literal
+from typing import Dict, Literal, Sequence, Union
 
 import requests
 import yaml
@@ -24,6 +25,8 @@ SECRET_KEY = "secretkey"
 MINIO = "minio"
 BUCKET_NAME = "tempo"
 S3_INTEGRATOR = "s3-integrator"
+PROMETHEUS = "prometheus"
+PROMETHEUS_CHARM = "prometheus-k8s"
 WORKER_NAME = "tempo-worker"
 APP_NAME = "tempo"
 protocols_endpoints = {
@@ -299,7 +302,14 @@ def tempo_worker_charm_and_channel():
     return "tempo-worker-k8s", "edge"
 
 
-async def deploy_cluster(ops_test: OpsTest, tempo_app=APP_NAME):
+def get_resources(path: Union[str, Path]):
+    meta = yaml.safe_load((Path(path) / "charmcraft.yaml").read_text())
+    resources_meta = meta.get("resources", {})
+    return {res_name: res_meta["upstream-source"] for res_name, res_meta in resources_meta.items()}
+
+
+async def deploy_monolithic_cluster(ops_test: OpsTest, tempo_app=APP_NAME):
+    """This assumes tempo-coordinator is already deployed as `param:tempo_app`."""
     tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
     await ops_test.model.deploy(
         tempo_worker_charm_url, application_name=WORKER_NAME, channel=channel, trust=True
@@ -313,6 +323,50 @@ async def deploy_cluster(ops_test: OpsTest, tempo_app=APP_NAME):
     async with ops_test.fast_forward():
         await ops_test.model.wait_for_idle(
             apps=[tempo_app, WORKER_NAME, S3_INTEGRATOR],
+            status="active",
+            timeout=2000,
+            idle_period=30,
+        )
+
+
+async def deploy_distributed_cluster(ops_test: OpsTest, roles: Sequence[str], tempo_app=APP_NAME):
+    """This assumes tempo-coordinator is already deployed as `param:tempo_app`."""
+    # tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
+    tempo_worker_repo_root = "/home/pietro/canonical/tempo-worker-k8s-operator"
+    tempo_worker_charm_url = f"{tempo_worker_repo_root}/tempo-worker-k8s_ubuntu-22.04-amd64.charm"
+    channel = None
+    resources = get_resources(tempo_worker_repo_root)
+
+    await asyncio.gather(
+        *(
+            ops_test.model.deploy(
+                tempo_worker_charm_url,
+                application_name=f"{WORKER_NAME}-{role}",
+                channel=channel,
+                resources=resources,
+                trust=True,
+                config={"role-all": False, f"role-{role}": True},
+            )
+            for role in roles
+        ),
+        ops_test.model.deploy(S3_INTEGRATOR, channel="edge"),
+        ops_test.model.deploy(PROMETHEUS_CHARM, application_name=PROMETHEUS, channel="edge"),
+    )
+
+    all_workers = tuple(f"{WORKER_NAME}-{role}" for role in roles)
+    await asyncio.gather(
+        *(
+            ops_test.model.integrate(tempo_app + ":tempo-cluster", worker_name + ":tempo-cluster")
+            for worker_name in all_workers
+        ),
+        ops_test.model.integrate(tempo_app + ":send-remote-write", PROMETHEUS),
+        ops_test.model.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials"),
+    )
+
+    await deploy_and_configure_minio(ops_test)
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[tempo_app, *all_workers, S3_INTEGRATOR, PROMETHEUS],
             status="active",
             timeout=2000,
             idle_period=30,
@@ -338,7 +392,7 @@ async def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tl
 
 
 async def emit_trace(
-    endpoint, ops_test: OpsTest, nonce, proto: str = "otlp_http", verbose=0, use_cert=False
+    endpoint, ops_test: OpsTest, nonce: str, proto: str = "otlp_http", verbose=0, use_cert=False
 ):
     """Use juju ssh to run tracegen from the tempo charm; to avoid any DNS issues."""
     cmd = (

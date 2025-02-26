@@ -6,7 +6,7 @@ import pytest
 import yaml
 from helpers import (
     WORKER_NAME,
-    deploy_cluster,
+    deploy_monolithic_cluster,
     emit_trace,
     get_application_ip,
     get_traces,
@@ -77,7 +77,7 @@ async def test_build_and_deploy(ops_test: OpsTest, tempo_charm: Path):
         SSC_APP_NAME + ":certificates", TRAEFIK_APP_NAME + ":certificates"
     )
     # deploy cluster
-    await deploy_cluster(ops_test)
+    await deploy_monolithic_cluster(ops_test)
 
     await asyncio.gather(
         ops_test.model.wait_for_idle(

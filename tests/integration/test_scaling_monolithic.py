@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from helpers import deploy_cluster
+from helpers import deploy_monolithic_cluster
 from juju.application import Application
 from pytest_operator.plugin import OpsTest
 
@@ -52,7 +52,7 @@ async def test_scale_tempo_up_without_s3_blocks(ops_test: OpsTest):
 @pytest.mark.setup
 @pytest.mark.abort_on_fail
 async def test_tempo_active_when_deploy_s3_and_workers(ops_test: OpsTest):
-    await deploy_cluster(ops_test)
+    await deploy_monolithic_cluster(ops_test)
 
 
 @pytest.mark.teardown
