@@ -15,7 +15,7 @@ import ops
 
 # wokeignore:rule=blackbox
 from charms.blackbox_exporter_k8s.v0.blackbox_probes import (
-    BlackboxProbesProvider,
+    BlackboxProbesProvider,  # wokeignore:rule=blackbox
 )
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
