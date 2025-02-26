@@ -21,12 +21,14 @@ An example implementation is:
 class FooCharm(CharmBase):
     def __init__(self, framework):
         super().__init__(framework)
+
+        tempo_api = TempoApiRequirer(self.model.relations, self.meta.relations["tempo-api"])
+
         self.framework.observe(self.on["tempo-api"].relation_changed, self._on_tempo_api_changed)
 
     def do_something_with_metadata(self):
         # Get exactly one related application's data, raising if more than one is available
-        tempo_api = TempoApiRequirer(self.model.relations, "tempo-api")
-        metadata = tempo_api.get_data()
+        data = tempo_api.get_data()
         ...
 ```
 
@@ -53,10 +55,10 @@ class FooCharm(CharmBase):
         super().__init__(framework)
         self.tempo_api = TempoApiProvider(
             relations=self.model.relations,
+            relation_meta=self.meta.relations["tempo-api"],
             app=self.app,
             direct_url=self.direct_url,
             ingress_url=self.external_url,
-            relation_name="tempo-api"
         )
 
         self.framework.observe(self.on.leader_elected, self.do_something_to_publish)
@@ -80,10 +82,8 @@ import json
 import logging
 from typing import Optional
 
-from ops import Application, RelationMapping
+from ops import Application, RelationMapping, RelationMeta
 from pydantic import AnyHttpUrl, BaseModel, Field
-
-from charms.tempo_coordinator_k8s.v0.tracing import RelationRoleMismatchError
 
 # The unique Charmhub library identifier, never change it
 LIBID = "6d55454c9a104113b2bd01e738dd5f99"
@@ -122,7 +122,7 @@ class TempoApiRequirer:
     def __init__(
         self,
         relations: RelationMapping,
-        relation_name: str = DEFAULT_RELATION_NAME,
+        relation_meta: RelationMeta,
     ) -> None:
         """Initialize the TempoApiRequirer object.
 
@@ -131,14 +131,19 @@ class TempoApiRequirer:
         observe those events as they see fit.  Typically, that charm should observe this relation's relation-changed
         event.
 
-        This object is for interacting with a relation that has limit=1 set in charmcraft.yaml.
+        This object requires the relation has limit=1 set in charmcraft.yaml, otherwise it will raise a ValueError
+        exception.
 
         Args:
             relations: The RelationMapping of a charm (typically `self.model.relations` from within a charm object).
-            relation_name: The name of the relation.
+            relation_meta: The RelationMeta object for this charm relation (typically
+                           `self.meta.relations[relation_name]`).
         """
         self._charm_relation_mapping = relations
-        self._relation_name = relation_name
+        self._relation_meta = relation_meta
+        self._relation_name = self._relation_meta.relation_name
+
+        self._validate_relation_metadata()
 
     @property
     def relations(self):
@@ -155,9 +160,6 @@ class TempoApiRequirer:
         relations = self.relations
         if len(relations) == 0:
             return None
-        if len(relations) > 1:
-            # TODO: Different exception type?
-            raise ValueError("Cannot get_info when more than one application is related.")
 
         raw_data_dict = relations[0].data.get(relations[0].app)
         if not raw_data_dict:
@@ -168,6 +170,13 @@ class TempoApiRequirer:
 
         return TempoApiAppData.model_validate_json(json.dumps(raw_data_dict))  # type: ignore
 
+    def _validate_relation_metadata(self):
+        """Validate that the provided relation has the correct metadata for this endpoint."""
+        if self._relation_meta.limit != 1:
+            raise ValueError(
+                "TempoApiRequirer is designed for relating to a single application and must be used with limit=1."
+            )
+
 
 class TempoApiProvider:
     """The provider side of the tempo-api relation."""
@@ -175,10 +184,10 @@ class TempoApiProvider:
     def __init__(
         self,
         relations: RelationMapping,
+        relation_meta: RelationMeta,
         app: Application,
         direct_url: AnyHttpUrl,
         ingress_url: Optional[AnyHttpUrl] = None,
-        relation_name: str = DEFAULT_RELATION_NAME,
     ):
         """Initialize the TempoApiProvider object.
 
@@ -190,17 +199,19 @@ class TempoApiProvider:
         Args:
             relations: The RelationMapping of a charm (typically `self.model.relations` from within a charm object).
             app: This application.
+            relation_meta: The RelationMeta object for this charm relation (typically
+               `self.meta.relations[relation_name]`).
             direct_url: The cluster-internal URL at which this application can be reached.  Typically, this is a
                         Kubernetes FQDN like name.namespace.svc.cluster.local for connecting to the prometheus api
                         from inside the cluster, with scheme.
             ingress_url: The non-internal URL at which this application can be reached.  Typically, this is an ingress
                          URL.
-            relation_name: The name of the relation.
         """
         self._charm_relation_mapping = relations
+        self._relation_meta = relation_meta
         self._data = TempoApiAppData(ingress_url=ingress_url, direct_url=direct_url)
         self._app = app
-        self._relation_name = relation_name
+        self._relation_name = self._relation_meta.relation_name
 
     @property
     def relations(self):

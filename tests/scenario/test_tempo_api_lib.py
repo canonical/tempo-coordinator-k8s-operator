@@ -1,6 +1,5 @@
 """Tests for the tempo-api lib requirer and provider classes, excluding their usage in the Tempo Coordinator charm."""
 
-from contextlib import nullcontext as does_not_raise
 from typing import Optional, Tuple, Union
 
 import pytest
@@ -39,9 +38,9 @@ class TempoApiProviderCharm(CharmBase):
         super().__init__(framework)
         self.relation_provider = TempoApiProvider(
             self.model.relations,
+            self.meta.relations[RELATION_NAME],
             **SAMPLE_APP_DATA,
             app=self.app,
-            relation_name=RELATION_NAME,  # pyright: ignore
         )
 
 
@@ -55,9 +54,9 @@ class TempoApiProviderWithoutIngressCharm(CharmBase):
         super().__init__(framework)
         self.relation_provider = TempoApiProvider(
             self.model.relations,
+            self.meta.relations[RELATION_NAME],
             **SAMPLE_APP_DATA_NO_INGRESS_URL,
             app=self.app,
-            relation_name=RELATION_NAME,  # pyright: ignore
         )
 
 
@@ -74,13 +73,13 @@ def tempo_api_provider_without_ingress_context():
 class TempoApiRequirerCharm(CharmBase):
     META = {
         "name": "requirer",
-        "requires": {RELATION_NAME: {"interface": "tempo-api"}},
+        "requires": {RELATION_NAME: {"interface": "tempo-api", "limit": 1}},
     }
 
     def __init__(self, framework):
         super().__init__(framework)
         self.relation_requirer = TempoApiRequirer(
-            self.model.relations, relation_name=RELATION_NAME
+            self.model.relations, relation_meta=self.meta.relations[RELATION_NAME]
         )
 
 
@@ -147,14 +146,16 @@ def test_tempo_api_provider_without_ingress_sends_data_correctly(
 
 
 @pytest.mark.parametrize(
-    "relations, expected_data, context_raised",
+    "relations, expected_data",
     [
-        ([], None, does_not_raise()),  # no relations
+        # no relations
+        ([], None),
+        # one empty relation
         (
             [Relation(RELATION_NAME, INTERFACE_NAME, remote_app_data={})],
             None,
-            does_not_raise(),
-        ),  # one empty relation
+        ),
+        # one populated relation
         (
             [
                 Relation(
@@ -164,8 +165,8 @@ def test_tempo_api_provider_without_ingress_sends_data_correctly(
                 )
             ],
             TempoApiAppData(**SAMPLE_APP_DATA),  # pyright: ignore
-            does_not_raise(),
-        ),  # one populated relation
+        ),
+        # one populated relation without ingress_url
         (
             [
                 Relation(
@@ -175,29 +176,10 @@ def test_tempo_api_provider_without_ingress_sends_data_correctly(
                 )
             ],
             TempoApiAppData(**SAMPLE_APP_DATA_NO_INGRESS_URL),  # pyright: ignore
-            does_not_raise(),
-        ),  # one populated relation without ingress_url
-        (
-            [
-                Relation(
-                    RELATION_NAME,
-                    INTERFACE_NAME,
-                    remote_app_data=SAMPLE_APP_DATA,
-                ),
-                Relation(
-                    RELATION_NAME,
-                    INTERFACE_NAME,
-                    remote_app_data=SAMPLE_APP_DATA,
-                ),
-            ],
-            None,
-            pytest.raises(ValueError),
-        ),  # stale data
+        ),
     ],
 )
-def test_tempo_api_requirer_get_data(
-    relations, expected_data, context_raised, tempo_api_requirer_context
-):
+def test_tempo_api_requirer_get_data(relations, expected_data, tempo_api_requirer_context):
     """Tests that TempoApiRequirer.get_data() returns correctly."""
     state = State(
         relations=relations,
@@ -209,9 +191,8 @@ def test_tempo_api_requirer_get_data(
     ) as manager:
         charm = manager.charm
 
-        with context_raised:
-            data = charm.relation_requirer.get_data()
-            assert are_app_data_equal(data, expected_data)
+        data = charm.relation_requirer.get_data()
+        assert are_app_data_equal(data, expected_data)
 
 
 def are_app_data_equal(data1: Union[TempoApiAppData, None], data2: Union[TempoApiAppData, None]):
