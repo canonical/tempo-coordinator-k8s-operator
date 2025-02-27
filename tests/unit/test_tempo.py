@@ -22,15 +22,17 @@ from tempo import Tempo
             {
                 "jaeger": {
                     "protocols": {
-                        "grpc": {"endpoint": "0.0.0.0:14250"},
-                        "thrift_http": {"endpoint": "0.0.0.0:14268"},
+                        "grpc": {"endpoint": f"0.0.0.0:{Tempo.receiver_ports['jaeger_grpc']}"},
+                        "thrift_http": {
+                            "endpoint": f"0.0.0.0:{Tempo.receiver_ports['jaeger_thrift_http']}"
+                        },
                     }
                 },
-                "zipkin": {"endpoint": "0.0.0.0:9411"},
+                "zipkin": {"endpoint": f"0.0.0.0:{Tempo.receiver_ports['zipkin']}"},
                 "otlp": {
                     "protocols": {
-                        "http": {"endpoint": "0.0.0.0:4318"},
-                        "grpc": {"endpoint": "0.0.0.0:4317"},
+                        "http": {"endpoint": f"0.0.0.0:{Tempo.receiver_ports['otlp_http']}"},
+                        "grpc": {"endpoint": f"0.0.0.0:{Tempo.receiver_ports['otlp_grpc']}"},
                     }
                 },
             },
@@ -41,11 +43,17 @@ from tempo import Tempo
             {
                 "jaeger": {
                     "protocols": {
-                        "thrift_http": {"endpoint": "0.0.0.0:14268"},
+                        "thrift_http": {
+                            "endpoint": f"0.0.0.0:{Tempo.receiver_ports['jaeger_thrift_http']}"
+                        },
                     }
                 },
-                "zipkin": {"endpoint": "0.0.0.0:9411"},
-                "otlp": {"protocols": {"http": {"endpoint": "0.0.0.0:4318"}}},
+                "zipkin": {"endpoint": f"0.0.0.0:{Tempo.receiver_ports['zipkin']}"},
+                "otlp": {
+                    "protocols": {
+                        "http": {"endpoint": f"0.0.0.0:{Tempo.receiver_ports['otlp_http']}"}
+                    }
+                },
             },
         ),
         (
@@ -60,7 +68,7 @@ from tempo import Tempo
                                 "cert_file": "/etc/worker/server.cert",
                                 "key_file": "/etc/worker/private.key",
                             },
-                            "endpoint": "0.0.0.0:14268",
+                            "endpoint": f"0.0.0.0:{Tempo.receiver_ports['jaeger_thrift_http']}",
                         },
                     }
                 },
@@ -70,7 +78,7 @@ from tempo import Tempo
                         "cert_file": "/etc/worker/server.cert",
                         "key_file": "/etc/worker/private.key",
                     },
-                    "endpoint": "0.0.0.0:9411",
+                    "endpoint": f"0.0.0.0:{Tempo.receiver_ports['zipkin']}",
                 },
                 "otlp": {
                     "protocols": {
@@ -80,7 +88,7 @@ from tempo import Tempo
                                 "cert_file": "/etc/worker/server.cert",
                                 "key_file": "/etc/worker/private.key",
                             },
-                            "endpoint": "0.0.0.0:4318",
+                            "endpoint": f"0.0.0.0:{Tempo.receiver_ports['otlp_http']}",
                         },
                     }
                 },

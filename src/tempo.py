@@ -7,16 +7,7 @@
 import logging
 import re
 from collections import defaultdict
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-)
+from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 import yaml
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol
