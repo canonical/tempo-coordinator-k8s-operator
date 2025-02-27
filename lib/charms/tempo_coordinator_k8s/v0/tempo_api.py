@@ -27,7 +27,6 @@ class FooCharm(CharmBase):
         self.framework.observe(self.on["tempo-api"].relation_changed, self._on_tempo_api_changed)
 
     def do_something_with_metadata(self):
-        # Get exactly one related application's data, raising if more than one is available
         data = tempo_api.get_data()
         ...
 ```
