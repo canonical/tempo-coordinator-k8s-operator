@@ -16,10 +16,16 @@ from pytest_operator.plugin import OpsTest
 
 from tempo import Tempo
 from tempo_config import TempoRole
-from tests.integration.helpers import get_resources, get_traces_patiently
-from tests.integration.test_tls import get_tempo_traces_internal_endpoint
+from tests.integration.helpers import (
+    get_resources,
+    get_traces_patiently,
+    protocols_endpoints,
+)
 
-ALL_WORKERS = [f"{WORKER_NAME}-" + role for role in TempoRole.all_nonmeta()]
+# FIXME: metrics-generator  goes to error state
+# https://github.com/canonical/tempo-worker-k8s-operator/issues/61
+ALL_ROLES = [role for role in TempoRole.all_nonmeta() if role != "metrics-generator"]
+ALL_WORKERS = [f"{WORKER_NAME}-" + role for role in ALL_ROLES]
 S3_INTEGRATOR = "s3-integrator"
 TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
 
@@ -32,18 +38,21 @@ async def test_deploy_tempo(ops_test: OpsTest, tempo_charm: Path):
     await ops_test.model.deploy(
         tempo_charm, resources=get_resources("."), application_name=APP_NAME, trust=True
     )
-    await deploy_distributed_cluster(ops_test, TempoRole.all_nonmeta())
+    await deploy_distributed_cluster(ops_test, ALL_ROLES)
 
 
 # TODO: could extend with optional protocols and always-enable them as needed
 @pytest.mark.parametrize("protocol", ("otlp_http",))
 async def test_trace_ingestion(ops_test, protocol, nonce):
+    tempo_address = await get_application_ip(ops_test, APP_NAME)
     # WHEN we emit a trace
-    tempo_endpoint = await get_tempo_traces_internal_endpoint(ops_test, protocol=protocol)
-    await emit_trace(tempo_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol)
+    tempo_ingestion_endpoint = protocols_endpoints.get(protocol).format(tempo_address)
+    await emit_trace(tempo_ingestion_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol)
     # THEN we can verify it's been ingested
     await get_traces_patiently(
-        await get_application_ip(ops_test, APP_NAME), service_name=f"tracegen-{protocol}"
+        tempo_address,
+        service_name=f"tracegen-{protocol}",
+        tls=False,
     )
 
 
@@ -52,8 +61,7 @@ def get_metrics(ip: str, port: int):
     return proc.stdout
 
 
-@pytest.mark.parametrize("protocol", ("otlp_http",))
-async def test_metrics_endpoints(ops_test, protocol, nonce):
+async def test_metrics_endpoints(ops_test):
     # verify that all worker apps and the coordinator can be scraped for metrics on their application IP
     await asyncio.gather(
         *(
@@ -64,7 +72,7 @@ async def test_metrics_endpoints(ops_test, protocol, nonce):
 
 
 @pytest.mark.teardown
-async def test_teardown(ops_test: OpsTest, tempo_charm: Path):
+async def test_teardown(ops_test: OpsTest):
     await asyncio.gather(
         *(ops_test.model.remove_application(worker_name) for worker_name in ALL_WORKERS),
         ops_test.model.remove_application(APP_NAME),

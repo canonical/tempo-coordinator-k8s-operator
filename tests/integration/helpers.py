@@ -312,7 +312,10 @@ async def deploy_monolithic_cluster(ops_test: OpsTest, tempo_app=APP_NAME):
     """This assumes tempo-coordinator is already deployed as `param:tempo_app`."""
     tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
     await ops_test.model.deploy(
-        tempo_worker_charm_url, application_name=WORKER_NAME, channel=channel, trust=True
+        tempo_worker_charm_url,
+        application_name=WORKER_NAME,
+        channel=channel,
+        trust=True,
     )
     await ops_test.model.deploy(S3_INTEGRATOR, channel="edge")
 
@@ -350,7 +353,9 @@ async def deploy_distributed_cluster(ops_test: OpsTest, roles: Sequence[str], te
             for role in roles
         ),
         ops_test.model.deploy(S3_INTEGRATOR, channel="edge"),
-        ops_test.model.deploy(PROMETHEUS_CHARM, application_name=PROMETHEUS, channel="edge"),
+        ops_test.model.deploy(
+            PROMETHEUS_CHARM, application_name=PROMETHEUS, channel="edge", trust=True
+        ),
     )
 
     all_workers = tuple(f"{WORKER_NAME}-{role}" for role in roles)
@@ -392,7 +397,12 @@ async def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tl
 
 
 async def emit_trace(
-    endpoint, ops_test: OpsTest, nonce: str, proto: str = "otlp_http", verbose=0, use_cert=False
+    endpoint,
+    ops_test: OpsTest,
+    nonce: str,
+    proto: str = "otlp_http",
+    verbose=0,
+    use_cert=False,
 ):
     """Use juju ssh to run tracegen from the tempo charm; to avoid any DNS issues."""
     cmd = (
