@@ -136,4 +136,7 @@ def test_tempo_memberlist_config(peers, expected_config):
     ),
 )
 def test_tempo_ingester_config(addresses, expected_replication):
-    assert Tempo(None, 720)._build_ingester_config(addresses).lifecycler.ring.replication_factor
+    assert (
+        Tempo(None, 720)._build_ingester_config(addresses).lifecycler.ring.replication_factor
+        == expected_replication
+    )

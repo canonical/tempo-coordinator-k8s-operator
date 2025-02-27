@@ -34,7 +34,7 @@ from ops import CollectStatusEvent
 from ops.charm import CharmBase
 
 from nginx_config import NginxConfig
-from tempo import Tempo, TempoConfigBuilderDefault, TempoConfigBuilderV2_7_1
+from tempo import Tempo
 from tempo_config import TEMPO_ROLES_CONFIG
 
 logger = logging.getLogger(__name__)
@@ -127,13 +127,8 @@ class TempoCoordinatorCharm(CharmBase):
             resources_requests=self.get_resources_requests,
             container_name="charm",
             remote_write_endpoints=self.remote_write_endpoints,  # type: ignore
-            # keep jaeger_thrift_http for backward compatibility
-            workload_tracing_protocols=["otlp_http", "jaeger_thrift_http"],
+            workload_tracing_protocols=["otlp_http"],
             catalogue_item=self._catalogue_item,
-            config_builders=[
-                TempoConfigBuilderDefault(self.tempo),
-                TempoConfigBuilderV2_7_1(self.tempo),
-            ],
         )
 
         # configure this tempo as a datasource in grafana
@@ -237,8 +232,6 @@ class TempoCoordinatorCharm(CharmBase):
         enabled_receivers = set()
         # otlp_http is needed by charm_tracing
         enabled_receivers.add("otlp_http")
-        # backward compatibility for workload traces
-        enabled_receivers.add("jaeger_thrift_http")
         enabled_receivers.update(
             [
                 receiver

@@ -11,7 +11,7 @@ from cosl.coordinated_workers.interface import ClusterProvider, ClusterProviderA
 from scenario import Relation, State
 
 from charm import TempoCoordinatorCharm
-from tempo import Tempo, TempoConfigBuilderDefault
+from tempo import Tempo
 from tests.scenario.helpers import get_tempo_config
 
 
@@ -38,7 +38,7 @@ def coordinator_with_initial_config():
 
 @pytest.fixture
 def all_worker_with_initial_config(all_worker: Relation, coordinator_with_initial_config):
-    initial_config = TempoConfigBuilderDefault(Tempo(lambda: ("otlp_http",), 720)).build(
+    initial_config = Tempo(lambda: ("otlp_http",), 720).config(
         coordinator_with_initial_config.return_value
     )
 
@@ -156,7 +156,7 @@ def test_tempo_restart_on_ingress_v2_changed(
     # THEN
     # Tempo pushes a new config to the all_worker
     new_config = get_tempo_config(state_out)
-    expected_config = TempoConfigBuilderDefault(
-        Tempo(lambda: ["otlp_http", requested_protocol, "jaeger_thrift_http"], 720)
-    ).build(coordinator_with_initial_config.return_value)
+    expected_config = Tempo(lambda: ["otlp_http", requested_protocol], 720).config(
+        coordinator_with_initial_config.return_value
+    )
     assert new_config == expected_config

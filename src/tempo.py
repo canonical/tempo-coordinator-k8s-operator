@@ -6,6 +6,7 @@
 
 import logging
 import re
+from collections import defaultdict
 from typing import (
     Any,
     Callable,
@@ -15,13 +16,11 @@ from typing import (
     Sequence,
     Set,
     Tuple,
-    Type,
-    Union,
 )
 
 import yaml
 from charms.tempo_coordinator_k8s.v0.tracing import ReceiverProtocol
-from cosl.coordinated_workers.coordinator import Coordinator, VersionRange
+from cosl.coordinated_workers.coordinator import Coordinator
 
 import tempo_config
 
@@ -77,22 +76,12 @@ class Tempo:
         """Return the receiver port for the built-in tempo_http protocol."""
         return self.server_ports["tempo_grpc"]
 
-    def config(
-        self,
-        coordinator: Coordinator,
-        object_model: Optional[
-            Union[
-                Type[tempo_config.TempoConfigDefault],
-                Type[tempo_config.TempoConfigV2_7_1],
-            ]
-        ] = None,
-    ) -> str:
+    def config(self, coordinator: Coordinator) -> str:
         """Generate the Tempo configuration.
 
         Only activate the provided receivers.
         """
-        object_model = object_model or tempo_config.TempoConfigDefault
-        config = object_model(
+        config = tempo_config.TempoConfig(
             auth_enabled=False,
             server=self._build_server_config(coordinator.tls_available),
             distributor=self._build_distributor_config(
@@ -308,95 +297,38 @@ class Tempo:
         if not receivers_set:
             logger.warning("No receivers set. Tempo will be up but not functional.")
 
-        tls_config = (
-            {
-                "tls": {
-                    "ca_file": str(self.tls_ca_path),
-                    "cert_file": str(self.tls_cert_path),
-                    "key_file": str(self.tls_key_path),
-                }
+        def _build_receiver_config(
+            protocol: str,
+        ) -> Dict[str, Any]:
+            return {
+                "endpoint": f"0.0.0.0:{self.receiver_ports[protocol]}",
+                **(
+                    {
+                        "tls": {
+                            "ca_file": str(self.tls_ca_path),
+                            "cert_file": str(self.tls_cert_path),
+                            "key_file": str(self.tls_key_path),
+                        }
+                    }
+                    if use_tls
+                    else {}
+                ),
             }
-            if use_tls
-            else {}
-        )
 
-        config = {}
+        config: Dict[str, Any] = defaultdict(lambda: defaultdict(dict))
 
         if "zipkin" in receivers_set:
-            config["zipkin"] = {
-                "endpoint": f"0.0.0.0:{self.receiver_ports['zipkin']}",
-                **tls_config,
-            }
+            config["zipkin"] = _build_receiver_config("zipkin")
 
-        otlp_config = {}
-        if "otlp_http" in receivers_set:
-            otlp_config["http"] = {
-                "endpoint": f"0.0.0.0:{self.receiver_ports['otlp_http']}",
-                **tls_config,
-            }
-        if "otlp_grpc" in receivers_set:
-            otlp_config["grpc"] = {
-                "endpoint": f"0.0.0.0:{self.receiver_ports['otlp_grpc']}",
-                **tls_config,
-            }
-        if otlp_config:
-            config["otlp"] = {"protocols": otlp_config}
+        for proto, mapping in {("otlp_http", "http"), ("otlp_grpc", "grpc")}:
+            if proto in receivers_set:
+                config["otlp"]["protocols"][mapping] = _build_receiver_config(proto)
 
-        jaeger_config = {}
-        if "jaeger_thrift_http" in receivers_set:
-            jaeger_config["thrift_http"] = {
-                "endpoint": f"0.0.0.0:{self.receiver_ports['jaeger_thrift_http']}",
-                **tls_config,
-            }
-        if "jaeger_grpc" in receivers_set:
-            jaeger_config["grpc"] = {
-                "endpoint": f"0.0.0.0:{self.receiver_ports['jaeger_grpc']}",
-                **tls_config,
-            }
-        if jaeger_config:
-            config["jaeger"] = {"protocols": jaeger_config}
+        for proto, mapping in {
+            ("jaeger_thrift_http", "thrift_http"),
+            ("jaeger_grpc", "grpc"),
+        }:
+            if proto in receivers_set:
+                config["jaeger"]["protocols"][mapping] = _build_receiver_config(proto)
 
         return tempo_config.Distributor(receivers=config)
-
-
-class TempoConfigBuilderDefault:
-    """Builder class for the default Tempo config."""
-
-    def __init__(self, tempo: Tempo):
-        self.tempo = tempo
-
-    @property
-    def version_range(self) -> VersionRange:
-        return VersionRange(
-            lower=(2, 4, 0),
-            lower_inclusive=True,
-            upper=(2, 7, 1),
-            upper_inclusive=False,
-        )
-
-    def build(self, coordinator: Coordinator) -> str:
-        return self.tempo.config(
-            coordinator=coordinator, object_model=tempo_config.TempoConfigDefault
-        )
-
-
-class TempoConfigBuilderV2_7_1:
-    """Builder class for Tempo v2.7.1 config."""
-
-    def __init__(self, tempo: Tempo):
-        self.tempo = tempo
-
-    @property
-    def version_range(self):
-        return VersionRange(
-            lower=(2, 7, 1),
-            lower_inclusive=True,
-            upper=(2, 8, 0),
-            upper_inclusive=False,
-        )
-
-    def build(self, coordinator: Coordinator) -> str:
-        # Only difference in 2.7.1 is a top-level key in the model (i.e use_otel_tracer)
-        return self.tempo.config(
-            coordinator=coordinator, object_model=tempo_config.TempoConfigV2_7_1
-        )
