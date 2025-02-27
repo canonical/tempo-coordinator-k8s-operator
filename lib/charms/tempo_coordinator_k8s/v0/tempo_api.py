@@ -133,7 +133,7 @@ class TempoApiRequirer:
 
     def __init__(
         self,
-        relations: RelationMapping,
+        relation_mapping: RelationMapping,
         relation_meta: RelationMeta,
     ) -> None:
         """Initialize the TempoApiRequirer object.
@@ -147,11 +147,12 @@ class TempoApiRequirer:
         exception.
 
         Args:
-            relations: The RelationMapping of a charm (typically `self.model.relations` from within a charm object).
+            relation_mapping: The RelationMapping of a charm (typically `self.model.relations` from within a charm
+                              object).
             relation_meta: The RelationMeta object for this charm relation (typically
                            `self.meta.relations[relation_name]`).
         """
-        self._charm_relation_mapping = relations
+        self._charm_relation_mapping = relation_mapping
         self._relation_meta = relation_meta
         self._relation_name = self._relation_meta.relation_name
 
@@ -197,7 +198,7 @@ class TempoApiProvider:
 
     def __init__(
         self,
-        relations: RelationMapping,
+        relation_mapping: RelationMapping,
         relation_meta: RelationMeta,
         app: Application,
     ):
@@ -209,12 +210,13 @@ class TempoApiProvider:
         relation_joined event.
 
         Args:
-            relations: The RelationMapping of a charm (typically `self.model.relations` from within a charm object).
+            relation_mapping: The RelationMapping of a charm (typically `self.model.relations` from within a charm
+                              object).
             app: This application.
             relation_meta: The RelationMeta object for this charm relation (typically
                `self.meta.relations[relation_name]`).
         """
-        self._charm_relation_mapping = relations
+        self._charm_relation_mapping = relation_mapping
         self._relation_meta = relation_meta
         self._app = app
         self._relation_name = self._relation_meta.relation_name
