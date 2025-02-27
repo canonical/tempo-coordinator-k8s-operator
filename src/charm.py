@@ -353,14 +353,13 @@ class TempoCoordinatorCharm(CharmBase):
         direct_url_http = internal_url + f":{self.tempo.server_ports['tempo_http']}"
         direct_url_grpc = internal_url + f":{self.tempo.server_ports['tempo_grpc']}"
 
-        external_url = self._most_external_url
-        if external_url == internal_url:
-            # external_url is not set and just defaulted back to internal_url.  Set it to None
-            ingress_url_http = None
-            ingress_url_grpc = None
-        else:
+        external_url = self._external_url
+        if external_url:
             ingress_url_http = external_url + f":{self.tempo.server_ports['tempo_http']}"
             ingress_url_grpc = external_url + f":{self.tempo.server_ports['tempo_grpc']}"
+        else:
+            ingress_url_http = None
+            ingress_url_grpc = None
 
         self.tempo_api.publish(
             direct_url_http=direct_url_http,  # pyright: ignore
