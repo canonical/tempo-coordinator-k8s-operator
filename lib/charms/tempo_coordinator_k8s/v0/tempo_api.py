@@ -173,7 +173,9 @@ class TempoApiRequirer:
         if len(relations) == 0:
             return None
 
-        raw_data_dict = relations[0].data.get(relations[0].app)
+        # Being a little cautious here using getattr and get, since some funny things have happened with relation data
+        # in the past.
+        raw_data_dict = getattr(relations[0], "data", {}).get(relations[0].app)
         if not raw_data_dict:
             return None
 
