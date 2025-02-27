@@ -38,8 +38,7 @@ SAMPLE_APP_DATA_NO_INGRESS_URL = TempoApiAppData(
 
 
 def data_to_relation_databag(data: TempoApiAppData) -> dict:
-    """Convert a TempoApiAppData to the format expected in a Relation's databag.
-    """
+    """Convert a TempoApiAppData to the format expected in a Relation's databag."""
     data_dict = data.model_dump(mode="json", by_alias=True, exclude_defaults=True, round_trip=True)
     # Flatten any nested objects to json, since relation databags are str:str mappings
     return {k: json.dumps(v) for k, v in data_dict.items()}

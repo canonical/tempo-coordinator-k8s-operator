@@ -177,10 +177,9 @@ class TempoApiRequirer:
         if not raw_data_dict:
             return None
 
-        # Static analysis errors saying the keys may not be strings.  Protect against this by converting them.
         # The data in the databag is in format [str: json-string-of-dict].  Expand out those nested JSON dicts so we
         # have the full object
-        raw_data_dict = {str(k): json.loads(v) for k, v in raw_data_dict.items()}
+        raw_data_dict = {k: json.loads(v) for k, v in raw_data_dict.items()}
 
         return TempoApiAppData.model_validate(raw_data_dict)  # type: ignore
 
