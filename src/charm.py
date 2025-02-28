@@ -95,14 +95,16 @@ class TempoCoordinatorCharm(CharmBase):
             retention_period_hours=self._trace_retention_period_hours,
         )
 
+        self.tracing = TracingEndpointProvider(self, external_url=self._most_external_url)
+
         # keep this above the coordinator definition
         self.framework.observe(self.on.collect_unit_status, self._on_collect_status)
 
         self.coordinator = TempoCoordinator(
             charm=self,
             roles_config=TEMPO_ROLES_CONFIG,
-            external_url=self._external_url,
-            worker_metrics_port=Tempo.tempo_http_server_port,
+            external_url=self._most_external_url,
+            worker_metrics_port=self.tempo.tempo_http_server_port,
             endpoints={
                 "certificates": "certificates",
                 "cluster": "tempo-cluster",
@@ -162,7 +164,7 @@ class TempoCoordinatorCharm(CharmBase):
     @property
     def _external_hostname(self) -> str:
         """Return the external hostname."""
-        return re.sub(r"^https?:\/\/", "", self._external_url)
+        return re.sub(r"^https?:\/\/", "", self._most_external_url)
 
     @property
     def hostname(self) -> str:
@@ -172,16 +174,29 @@ class TempoCoordinatorCharm(CharmBase):
     @property
     def _external_http_server_url(self) -> str:
         """External url of the http(s) server."""
-        return f"{self._external_url}:{Tempo.tempo_http_server_port}"
+        return f"{self._most_external_url}:{Tempo.tempo_http_server_port}"
 
     @property
-    def _external_url(self) -> str:
-        """Return the external url."""
+    def _external_url(self) -> Optional[str]:
+        """Return the external URL if the ingress is configured and ready, otherwise None."""
         if self.ingress.is_ready() and self.ingress.scheme and self.ingress.external_host:
             ingress_url = f"{self.ingress.scheme}://{self.ingress.external_host}"
             logger.debug("This unit's ingress URL: %s", ingress_url)
             return ingress_url
 
+        return None
+
+    @property
+    def _most_external_url(self) -> str:
+        """Return the most external url known about by this charm.
+
+        This will return the first of:
+        - the external URL, if the ingress is configured and ready
+        - the internal URL
+        """
+        external_url = self._external_url
+        if external_url:
+            return external_url
         # If we do not have an ingress, then use the pod hostname.
         # The reason to prefer this over the pod name (which is the actual
         # hostname visible from the pod) or a K8s service, is that those
@@ -242,7 +257,7 @@ class TempoCoordinatorCharm(CharmBase):
             # Unlike Prometheus, Tempo doesn't have a sophisticated web UI.
             # Instead, we'll show the current cluster members and their health status.
             # ref: https://grafana.com/docs/tempo/latest/api_docs/
-            url=f"{self._external_url}:3200/memberlist",
+            url=f"{self._most_external_url}:3200/memberlist",
             description=(
                 "Tempo is a distributed tracing backend by Grafana, supporting Jaeger, "
                 "Zipkin, and OpenTelemetry protocols."
@@ -685,7 +700,7 @@ class TempoCoordinatorCharm(CharmBase):
         # distributor nodes should be able to accept spans in all supported formats
         if tempo_role in {TempoRole.all, TempoRole.distributor}:
             for enabled_receiver in self._requested_receivers():
-                ports.add(Tempo.receiver_ports.get(enabled_receiver))
+                ports.add(Tempo.receiver_ports[enabled_receiver])
 
         # open server ports in query_frontend role
         if tempo_role in {TempoRole.all, TempoRole.query_frontend}:
