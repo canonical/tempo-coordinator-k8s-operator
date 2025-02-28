@@ -85,7 +85,7 @@ class TempoCoordinatorCharm(CharmBase):
 
         # INTEGRATIONS
         self.ingress = TraefikRouteRequirer(self, self.model.get_relation("ingress"), "ingress")  # type: ignore
-        self.tracing = TracingEndpointProvider(self, external_url=self._external_url)
+        self.tracing = TracingEndpointProvider(self, external_url=self._most_external_url)
         # set alert_rules_path="", as we don't want to populate alert rules into the relation databag
         # we only need `self._remote_write.endpoints`
         self._remote_write = PrometheusRemoteWriteConsumer(self, alert_rules_path="")
@@ -94,8 +94,6 @@ class TempoCoordinatorCharm(CharmBase):
             requested_receivers=self._requested_receivers,
             retention_period_hours=self._trace_retention_period_hours,
         )
-
-        self.tracing = TracingEndpointProvider(self, external_url=self._most_external_url)
 
         # keep this above the coordinator definition
         self.framework.observe(self.on.collect_unit_status, self._on_collect_status)
