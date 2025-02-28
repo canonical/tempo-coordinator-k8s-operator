@@ -181,7 +181,7 @@ class TempoApiRequirer:
         # have the full object
         raw_data_dict = {k: json.loads(v) for k, v in raw_data_dict.items()}
 
-        return TempoApiAppData.model_validate(raw_data_dict)  # type: ignore
+        return TempoApiAppData.model_validate(raw_data_dict)
 
     def _validate_relation_metadata(self):
         """Validate that the provided relation has the correct metadata for this endpoint."""
