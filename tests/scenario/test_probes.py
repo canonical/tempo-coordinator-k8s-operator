@@ -1,11 +1,11 @@
 from unittest.mock import patch
 
 import pytest
-import scenario
+
 # wokeignore:rule=blackbox
 from charms.blackbox_exporter_k8s.v0.blackbox_probes import ApplicationDataModel
 from charms.tempo_coordinator_k8s.v0.charm_tracing import charm_tracing_disabled
-from scenario import PeerRelation, Relation, State
+from scenario import Relation, State
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -19,9 +19,7 @@ def test_probes_contain_correct_url(
     context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
 ):
 
-    probes = Relation(
-        "probes"
-    )
+    probes = Relation("probes")
 
     state = State(
         leader=True,
@@ -34,7 +32,9 @@ def test_probes_contain_correct_url(
     probes_out = out.get_relations(probes.endpoint)[0]
     local_app_data = ApplicationDataModel.load(probes_out.local_app_data)
 
-    assert local_app_data.scrape_probes[0].static_configs[0].targets[0] == "http://1.2.3.4:3200/ready"
+    assert (
+        local_app_data.scrape_probes[0].static_configs[0].targets[0] == "http://1.2.3.4:3200/ready"
+    )
 
 
 @patch("socket.getfqdn", lambda: "1.2.3.4")
@@ -42,9 +42,7 @@ def test_probes_contain_correct_url_with_ingress(
     context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
 ):
 
-    probes = Relation(
-        "probes"
-    )
+    probes = Relation("probes")
 
     ingress = Relation("ingress", remote_app_data={"external_host": "app.py", "scheme": "http"})
 
@@ -59,7 +57,9 @@ def test_probes_contain_correct_url_with_ingress(
     probes_out = out.get_relations(probes.endpoint)[0]
     local_app_data = ApplicationDataModel.load(probes_out.local_app_data)
 
-    assert local_app_data.scrape_probes[0].static_configs[0].targets[0] == "http://app.py:3200/ready"
+    assert (
+        local_app_data.scrape_probes[0].static_configs[0].targets[0] == "http://app.py:3200/ready"
+    )
 
 
 @patch("socket.getfqdn", lambda: "1.2.3.4")
@@ -67,9 +67,7 @@ def test_probes_contain_correct_url_with_ingress_on_https(
     context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
 ):
 
-    probes = Relation(
-        "probes"
-    )
+    probes = Relation("probes")
 
     ingress = Relation("ingress", remote_app_data={"external_host": "app.py", "scheme": "https"})
 
@@ -84,4 +82,6 @@ def test_probes_contain_correct_url_with_ingress_on_https(
     probes_out = out.get_relations(probes.endpoint)[0]
     local_app_data = ApplicationDataModel.load(probes_out.local_app_data)
 
-    assert local_app_data.scrape_probes[0].static_configs[0].targets[0] == "https://app.py:3200/ready"
+    assert (
+        local_app_data.scrape_probes[0].static_configs[0].targets[0] == "https://app.py:3200/ready"
+    )
