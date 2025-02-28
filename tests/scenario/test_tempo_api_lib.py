@@ -2,6 +2,7 @@
 
 import json
 from typing import Union
+from unittest.mock import patch
 
 import pytest
 from charms.tempo_coordinator_k8s.v0.tempo_api import (
@@ -63,9 +64,7 @@ class TempoApiProviderCharm(CharmBase):
     def __init__(self, framework):
         super().__init__(framework)
         self.relation_provider = TempoApiProvider(
-            self.model.relations,
-            self.meta.relations[RELATION_NAME],
-            app=self.app,
+            self.model.relations, RELATION_NAME, app=self.app
         )
 
 
@@ -82,9 +81,13 @@ class TempoApiRequirerCharm(CharmBase):
 
     def __init__(self, framework):
         super().__init__(framework)
-        self.relation_requirer = TempoApiRequirer(
-            self.model.relations, relation_meta=self.meta.relations[RELATION_NAME]
-        )
+
+        # Skip the validation of relation metadata as it reads a charmcraft.yaml/metadata.yaml file from disk and this
+        # mock requirer doesn't have one
+        with patch.object(TempoApiRequirer, "_validate_relation_metadata", return_value=None):
+            self.relation_requirer = TempoApiRequirer(
+                self.model.relations, relation_name=RELATION_NAME
+            )
 
 
 @pytest.fixture()

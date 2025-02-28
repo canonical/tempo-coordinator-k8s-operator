@@ -22,7 +22,7 @@ class FooCharm(CharmBase):
     def __init__(self, framework):
         super().__init__(framework)
 
-        tempo_api = TempoApiRequirer(self.model.relations, self.meta.relations["tempo-api"])
+        tempo_api = TempoApiRequirer(self.model.relations, "tempo-api")
 
         self.framework.observe(self.on["tempo-api"].relation_changed, self._on_tempo_api_changed)
 
@@ -54,10 +54,8 @@ class FooCharm(CharmBase):
         super().__init__(framework)
         self.tempo_api = TempoApiProvider(
             relations=self.model.relations,
-            relation_meta=self.meta.relations["tempo-api"],
+            relation_name="tempo-api",
             app=self.app,
-            direct_url=self.direct_url,
-            ingress_url=self.external_url,
         )
 
         self.framework.observe(self.on.leader_elected, self.do_something_to_publish)
@@ -79,9 +77,11 @@ provides:
 
 import json
 import logging
+from pathlib import Path
 from typing import Optional
 
-from ops import Application, RelationMapping, RelationMeta
+import yaml
+from ops import Application, RelationMapping
 from pydantic import AnyHttpUrl, BaseModel, Field
 
 # The unique Charmhub library identifier, never change it
@@ -133,7 +133,7 @@ class TempoApiRequirer:
     def __init__(
         self,
         relation_mapping: RelationMapping,
-        relation_meta: RelationMeta,
+        relation_name: str = DEFAULT_RELATION_NAME,
     ) -> None:
         """Initialize the TempoApiRequirer object.
 
@@ -148,12 +148,10 @@ class TempoApiRequirer:
         Args:
             relation_mapping: The RelationMapping of a charm (typically `self.model.relations` from within a charm
                               object).
-            relation_meta: The RelationMeta object for this charm relation (typically
-                           `self.meta.relations[relation_name]`).
+            relation_name: The name of the wrapped relation.
         """
         self._charm_relation_mapping = relation_mapping
-        self._relation_meta = relation_meta
-        self._relation_name = self._relation_meta.relation_name
+        self._relation_name = relation_name
 
         self._validate_relation_metadata()
 
@@ -187,7 +185,19 @@ class TempoApiRequirer:
 
     def _validate_relation_metadata(self):
         """Validate that the provided relation has the correct metadata for this endpoint."""
-        if self._relation_meta.limit != 1:
+        charm_root = Path(__file__).absolute().parents[4]
+        # Do not check charmcraft.yaml, just metadata.yaml.  metadata.yaml is the only file that will be present in a
+        # running charm, and this validation step fails during unit testing anyway so we'll never need to look at
+        # charmcraft.yaml
+        try:
+            yaml_raw = (charm_root / "metadata.yaml").read_text()
+            relation = yaml.safe_load(yaml_raw)["requires"][self._relation_name]
+        except KeyError as e:
+            raise ValueError(
+                f"Relation '{self._relation_name}' not found in metadata.yaml."
+            ) from e
+
+        if relation.get("limit", None) != 1:
             raise ValueError(
                 "TempoApiRequirer is designed for relating to a single application and must be used with limit=1."
             )
@@ -199,7 +209,7 @@ class TempoApiProvider:
     def __init__(
         self,
         relation_mapping: RelationMapping,
-        relation_meta: RelationMeta,
+        relation_name: str,
         app: Application,
     ):
         """Initialize the TempoApiProvider object.
@@ -213,13 +223,11 @@ class TempoApiProvider:
             relation_mapping: The RelationMapping of a charm (typically `self.model.relations` from within a charm
                               object).
             app: This application.
-            relation_meta: The RelationMeta object for this charm relation (typically
-               `self.meta.relations[relation_name]`).
+            relation_name: The name of the wrapped relation.
         """
         self._charm_relation_mapping = relation_mapping
-        self._relation_meta = relation_meta
         self._app = app
-        self._relation_name = self._relation_meta.relation_name
+        self._relation_name = relation_name
 
     @property
     def relations(self):

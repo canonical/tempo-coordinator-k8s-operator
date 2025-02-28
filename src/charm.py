@@ -169,7 +169,7 @@ class TempoCoordinatorCharm(CharmBase):
 
         self.tempo_api = TempoApiProvider(
             relation_mapping=self.model.relations,
-            relation_meta=self.meta.relations[tempo_api_relation_name],
+            relation_name=tempo_api_relation_name,
             app=self.app,
         )
 
