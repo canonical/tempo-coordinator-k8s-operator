@@ -5,8 +5,7 @@ lightkube>=0.15.4
 lightkube-models>=1.24.1.4
 tenacity==8.2.3
 pydantic>=2
-git+https://github.com/canonical/cos-lib@feat/open_specific_worker_ports
-
+cosl>=0.0.56
 # crossplane is a package from nginxinc to interact with the Nginx config
 crossplane
 
