@@ -334,11 +334,7 @@ async def deploy_monolithic_cluster(ops_test: OpsTest, tempo_app=APP_NAME):
 
 async def deploy_distributed_cluster(ops_test: OpsTest, roles: Sequence[str], tempo_app=APP_NAME):
     """This assumes tempo-coordinator is already deployed as `param:tempo_app`."""
-    # tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
-    tempo_worker_repo_root = "/home/pietro/canonical/tempo-worker-k8s-operator"
-    tempo_worker_charm_url = f"{tempo_worker_repo_root}/tempo-worker-k8s_ubuntu-22.04-amd64.charm"
-    channel = None
-    resources = get_resources(tempo_worker_repo_root)
+    tempo_worker_charm_url, channel = tempo_worker_charm_and_channel()
 
     await asyncio.gather(
         *(
@@ -346,7 +342,6 @@ async def deploy_distributed_cluster(ops_test: OpsTest, roles: Sequence[str], te
                 tempo_worker_charm_url,
                 application_name=f"{WORKER_NAME}-{role}",
                 channel=channel,
-                resources=resources,
                 trust=True,
                 config={"role-all": False, f"role-{role}": True},
             )
