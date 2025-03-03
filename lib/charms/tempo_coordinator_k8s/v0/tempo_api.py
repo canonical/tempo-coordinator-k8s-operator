@@ -78,11 +78,12 @@ provides:
 import json
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 import yaml
 from ops import Application, RelationMapping
-from pydantic import AnyHttpUrl, BaseModel, Field
+from pydantic import AfterValidator, AnyHttpUrl, BaseModel, Field
+from typing_extensions import Annotated
 
 # The unique Charmhub library identifier, never change it
 LIBID = "6d55454c9a104113b2bd01e738dd5f99"
@@ -100,16 +101,20 @@ log = logging.getLogger(__name__)
 
 DEFAULT_RELATION_NAME = "tempo-api"
 
+# Define a custom type that accepts AnyHttpUrl and string, but converts to AnyHttpUrl and raises an exception if the
+# string is not a valid URL
+AnyHttpUrlOrStrUrl = Annotated[Union[AnyHttpUrl, str], AfterValidator(lambda v: AnyHttpUrl(v))]
+
 
 class TempoApiUrls(BaseModel):
     """Data model for urls Tempo offers for query access, for a given protocol."""
 
-    direct_url: AnyHttpUrl = Field(
+    direct_url: AnyHttpUrlOrStrUrl = Field(
         description="The cluster-internal URL at which this application can be reached for a connection."
         " Typically, this is a Kubernetes FQDN like name.namespace.svc.cluster.local for"
         " connecting to the tempo api from inside the cluster, with scheme and maybe port."
     )
-    ingress_url: Optional[AnyHttpUrl] = Field(
+    ingress_url: Optional[AnyHttpUrlOrStrUrl] = Field(
         default=None,
         description="The non-internal URL at which this application can be reached for a connection."
         " Typically, this is an ingress URL.",
@@ -236,10 +241,10 @@ class TempoApiProvider:
 
     def publish(
         self,
-        direct_url_http: AnyHttpUrl,
-        direct_url_grpc: AnyHttpUrl,
-        ingress_url_http: Optional[AnyHttpUrl] = None,
-        ingress_url_grpc: Optional[AnyHttpUrl] = None,
+        direct_url_http: Union[AnyHttpUrl, str],
+        direct_url_grpc: Union[AnyHttpUrl, str],
+        ingress_url_http: Optional[Union[AnyHttpUrl, str]] = None,
+        ingress_url_grpc: Optional[Union[AnyHttpUrl, str]] = None,
     ):
         """Post tempo-api to all related applications.
 

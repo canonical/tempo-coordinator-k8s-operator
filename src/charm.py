@@ -362,10 +362,10 @@ class TempoCoordinatorCharm(CharmBase):
             ingress_url_grpc = None
 
         self.tempo_api.publish(
-            direct_url_http=direct_url_http,  # pyright: ignore
-            direct_url_grpc=direct_url_grpc,  # pyright: ignore
-            ingress_url_http=ingress_url_http,  # pyright: ignore
-            ingress_url_grpc=ingress_url_grpc,  # pyright: ignore
+            direct_url_http=direct_url_http,
+            direct_url_grpc=direct_url_grpc,
+            ingress_url_http=ingress_url_http,
+            ingress_url_grpc=ingress_url_grpc,
         )
 
     def _update_tracing_relations(self) -> None:
