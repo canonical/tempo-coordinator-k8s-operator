@@ -311,15 +311,15 @@ class Tempo:
         if "zipkin" in receivers_set:
             config["zipkin"] = _build_receiver_config("zipkin")
 
-        for proto, mapping in {("otlp_http", "http"), ("otlp_grpc", "grpc")}:
+        for proto, config_field_name in {("otlp_http", "http"), ("otlp_grpc", "grpc")}:
             if proto in receivers_set:
-                config["otlp"]["protocols"][mapping] = _build_receiver_config(proto)
+                config["otlp"]["protocols"][config_field_name] = _build_receiver_config(proto)
 
-        for proto, mapping in {
+        for proto, config_field_name in {
             ("jaeger_thrift_http", "thrift_http"),
             ("jaeger_grpc", "grpc"),
         }:
             if proto in receivers_set:
-                config["jaeger"]["protocols"][mapping] = _build_receiver_config(proto)
+                config["jaeger"]["protocols"][config_field_name] = _build_receiver_config(proto)
 
         return tempo_config.Distributor(receivers=config)
