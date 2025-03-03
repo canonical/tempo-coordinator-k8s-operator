@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 """Charmed Operator for Tempo; a lightweight object storage based tracing backend."""
+
 import json
 import logging
 import re
@@ -78,7 +79,12 @@ class PeerData(DatabagModel):
 @trace_charm(
     tracing_endpoint="tempo_otlp_http_endpoint",
     server_cert="server_ca_cert",
-    extra_types=(Tempo, TracingEndpointProvider, Coordinator, ClusterRolesConfig),
+    extra_types=(
+        Tempo,
+        TracingEndpointProvider,
+        Coordinator,
+        ClusterRolesConfig,
+    ),
     # use PVC path for buffer data, so we don't lose it on pod churn
     buffer_path=Path("/tempo-data/.charm_tracing_buffer.raw"),
 )
@@ -126,9 +132,9 @@ class TempoCoordinatorCharm(CharmBase):
             resources_requests=self.get_resources_requests,
             container_name="charm",
             remote_write_endpoints=self.remote_write_endpoints,  # type: ignore
-            # TODO: future Tempo releases would be using otlp_xx protocols instead.
-            workload_tracing_protocols=["jaeger_thrift_http"],
             worker_ports=self._get_worker_ports,
+            workload_tracing_protocols=["otlp_http"],
+            catalogue_item=self._catalogue_item,
         )
 
         # configure this tempo as a datasource in grafana
@@ -153,7 +159,8 @@ class TempoCoordinatorCharm(CharmBase):
         # OBSERVERS
         # peer
         self.framework.observe(
-            self.on[PEERS_RELATION_ENDPOINT_NAME].relation_created, self._on_peers_relation_created
+            self.on[PEERS_RELATION_ENDPOINT_NAME].relation_created,
+            self._on_peers_relation_created,
         )
 
         # refuse to handle any other event as we can't possibly know what to do.
@@ -250,8 +257,6 @@ class TempoCoordinatorCharm(CharmBase):
         enabled_receivers = set()
         # otlp_http is needed by charm_tracing
         enabled_receivers.add("otlp_http")
-        # jaeger_thrift_http is needed by Tempo's internal workload traces
-        enabled_receivers.add("jaeger_thrift_http")
         enabled_receivers.update(
             [
                 receiver
