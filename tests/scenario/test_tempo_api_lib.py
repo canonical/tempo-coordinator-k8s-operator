@@ -140,7 +140,7 @@ def test_tempo_api_provider_sends_data_correctly(data, tempo_api_provider_contex
                     remote_app_data=data_to_relation_databag(SAMPLE_APP_DATA),
                 )
             ],
-            SAMPLE_APP_DATA,  # pyright: ignore
+            SAMPLE_APP_DATA,
         ),
         # one populated relation without ingress_url
         (

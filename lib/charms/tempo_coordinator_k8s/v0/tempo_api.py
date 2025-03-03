@@ -78,10 +78,10 @@ provides:
 import json
 import logging
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 import yaml
-from ops import Application, RelationMapping
+from ops import Application, RelationMapping, Relation
 from pydantic import AfterValidator, AnyHttpUrl, BaseModel, Field
 from typing_extensions import Annotated
 
@@ -161,9 +161,9 @@ class TempoApiRequirer:
         self._validate_relation_metadata()
 
     @property
-    def relations(self):
+    def relations(self) -> List[Relation]:
         """Return the relation instances for applications related to us on the monitored relation."""
-        return self._charm_relation_mapping.get(self._relation_name, ())
+        return self._charm_relation_mapping.get(self._relation_name, [])
 
     def get_data(self) -> Optional[BaseModel]:
         """Return data from the relation.
