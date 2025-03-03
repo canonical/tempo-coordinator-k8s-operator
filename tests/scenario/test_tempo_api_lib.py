@@ -111,13 +111,14 @@ def test_tempo_api_provider_sends_data_correctly(data, tempo_api_provider_contex
     ) as manager:
         manager.charm.relation_provider.publish(**sample_data_to_tempo_api_publish_args(data))
 
-    # Assert
-    # Convert local_app_data to TempoApiAppData for comparison
-    actual = TempoApiAppData.model_validate(
-        {str(k): json.loads(v) for k, v in tempo_api_relation.local_app_data.items()}
-    )
+        # Assert
+        # Convert local_app_data to TempoApiAppData for comparison
+        tempo_api_relation_out = manager.ops.state.get_relation(tempo_api_relation.id)
+        actual = TempoApiAppData.model_validate(
+            {str(k): json.loads(v) for k, v in tempo_api_relation_out.local_app_data.items()}
+        )
 
-    assert actual == data
+        assert actual == data
 
 
 @pytest.mark.parametrize(

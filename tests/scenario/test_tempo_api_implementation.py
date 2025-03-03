@@ -57,24 +57,24 @@ def test_provider_sender_sends_data_on_relation_joined(
         containers=[nginx_container, nginx_prometheus_exporter_container],
     )
 
+    expected = {
+        "http": json.dumps(
+            {
+                "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_http']}/",
+            }
+        ),
+        "grpc": json.dumps(
+            {
+                "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_grpc']}/",
+            }
+        ),
+    }
+
     # Act
-    with context(context.on.relation_joined(tempo_api), state=state) as manager:
-        manager.run()
-        expected = {
-            "http": json.dumps(
-                {
-                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_http']}/",
-                }
-            ),
-            "grpc": json.dumps(
-                {
-                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_grpc']}/",
-                }
-            ),
-        }
+    state_out = context.run(context.on.relation_joined(tempo_api), state=state)
 
     # Assert
-    assert tempo_api.local_app_data == expected
+    assert state_out.get_relation(tempo_api.id).local_app_data == expected
 
 
 @patch("charm.TempoCoordinatorCharm._external_url", PropertyMock(return_value=INGRESS_URL))
@@ -99,26 +99,26 @@ def test_provider_sender_sends_data_with_ingress_url_on_relation_joined(
         containers=[nginx_container, nginx_prometheus_exporter_container],
     )
 
+    expected = {
+        "http": json.dumps(
+            {
+                "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_http']}/",
+                "ingress_url": INGRESS_URL + f":{Tempo.server_ports['tempo_http']}/",
+            }
+        ),
+        "grpc": json.dumps(
+            {
+                "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_grpc']}/",
+                "ingress_url": INGRESS_URL + f":{Tempo.server_ports['tempo_grpc']}/",
+            }
+        ),
+    }
+
     # Act
-    with context(context.on.relation_joined(tempo_api), state=state) as manager:
-        manager.run()
-        expected = {
-            "http": json.dumps(
-                {
-                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_http']}/",
-                    "ingress_url": INGRESS_URL + f":{Tempo.server_ports['tempo_http']}/",
-                }
-            ),
-            "grpc": json.dumps(
-                {
-                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_grpc']}/",
-                    "ingress_url": INGRESS_URL + f":{Tempo.server_ports['tempo_grpc']}/",
-                }
-            ),
-        }
+    state_out = context.run(context.on.relation_joined(tempo_api), state=state)
 
     # Assert
-    assert tempo_api.local_app_data == expected
+    assert state_out.get_relation(tempo_api.id).local_app_data == expected
 
 
 @patch(
@@ -142,21 +142,21 @@ def test_provider_sends_data_on_leader_elected(
         containers=[nginx_container, nginx_prometheus_exporter_container],
     )
 
+    expected = {
+        "http": json.dumps(
+            {
+                "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_http']}/",
+            }
+        ),
+        "grpc": json.dumps(
+            {
+                "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_grpc']}/",
+            }
+        ),
+    }
+
     # Act
-    with context(context.on.leader_elected(), state=state) as manager:
-        manager.run()
-        expected = {
-            "http": json.dumps(
-                {
-                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_http']}/",
-                }
-            ),
-            "grpc": json.dumps(
-                {
-                    "direct_url": TEMPO_COORDINATOR_URL + f":{Tempo.server_ports['tempo_grpc']}/",
-                }
-            ),
-        }
+    state_out = context.run(context.on.leader_elected(), state=state)
 
     # Assert
-    assert tempo_api.local_app_data == expected
+    assert state_out.get_relation(tempo_api.id).local_app_data == expected
