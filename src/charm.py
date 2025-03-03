@@ -689,7 +689,7 @@ class TempoCoordinatorCharm(CharmBase):
             # we need this because the metrics server is on the same port
             # technically we don't need it the way things are set up right now, because prometheus
             # scrapes the worker units over their fqdn, which is an UNIT IP address (not APP), because
-            # juju uses statefulsets and not deployments.
+            # juju uses statefulsets and not deployments. We add it anyway to err on the safe side.
             Tempo.tempo_http_server_port,
         }
 
