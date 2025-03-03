@@ -63,7 +63,7 @@ def get_metrics(ip: str, port: int):
 
 async def test_metrics_endpoints(ops_test):
     # verify that all worker apps and the coordinator can be scraped for metrics on their application IP
-    await asyncio.gather(
+    assert all(
         get_metrics(await get_application_ip(ops_test, app), port=Tempo.tempo_http_server_port)
         for app in (*ALL_WORKERS, APP_NAME)
     )
