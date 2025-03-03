@@ -12,6 +12,11 @@ from subprocess import CalledProcessError, getoutput
 from typing import Any, Dict, List, Optional, Set, Tuple, cast, get_args
 
 import ops
+
+# wokeignore:rule=blackbox
+from charms.blackbox_exporter_k8s.v0.blackbox_probes import (
+    BlackboxProbesProvider,  # wokeignore:rule=blackbox
+)
 from charms.catalogue_k8s.v1.catalogue import CatalogueItem
 from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.prometheus_k8s.v1.prometheus_remote_write import (
@@ -132,6 +137,17 @@ class TempoCoordinatorCharm(CharmBase):
             source_type="tempo",
             source_url=self._external_http_server_url,
             extra_fields=self._build_grafana_source_extra_fields(),
+        )
+
+        # wokeignore:rule=blackbox
+        self.probes_provider = BlackboxProbesProvider(
+            self,
+            probes=[
+                {
+                    "params": {"module": ["http_2xx"]},
+                    "static_configs": [{"targets": [self._external_http_server_url + "/ready"]}],
+                }
+            ],
         )
 
         # OBSERVERS
