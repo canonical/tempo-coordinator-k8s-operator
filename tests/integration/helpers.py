@@ -29,6 +29,8 @@ PROMETHEUS = "prometheus"
 PROMETHEUS_CHARM = "prometheus-k8s"
 WORKER_NAME = "tempo-worker"
 APP_NAME = "tempo"
+TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
+
 protocols_endpoints = {
     "jaeger_thrift_http": "https://{}:14268/api/traces?format=jaeger.thrift",
     "zipkin": "https://{}:9411/v1/traces",
@@ -386,6 +388,7 @@ def get_traces(tempo_host: str, service_name="tracegen-otlp_http", tls=True):
 
 @retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=10))
 async def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tls=True):
+    logger.info(f"polling {tempo_host} for service {service_name!r} traces...")
     traces = get_traces(tempo_host, service_name=service_name, tls=tls)
     assert len(traces) > 0
     return traces
@@ -394,22 +397,35 @@ async def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tl
 async def emit_trace(
     endpoint,
     ops_test: OpsTest,
-    nonce: str,
+    nonce: str = None,
     proto: str = "otlp_http",
     verbose=0,
     use_cert=False,
 ):
     """Use juju ssh to run tracegen from the tempo charm; to avoid any DNS issues."""
+    # SCP tracegen script onto unit and install dependencies
+    logger.info(f"pushing tracegen onto {APP_NAME}/0")
+
+    await ops_test.juju("scp", TRACEGEN_SCRIPT_PATH, f"{APP_NAME}/0:tracegen.py")
+    await ops_test.juju(
+        "ssh",
+        f"{APP_NAME}/0",
+        "python3 -m pip install protobuf==3.20.* opentelemetry-exporter-otlp-proto-grpc opentelemetry-exporter-otlp-proto-http"
+        + " opentelemetry-exporter-zipkin opentelemetry-exporter-jaeger",
+    )
+
+    logger.info("running tracegen")
     cmd = (
         f"juju ssh -m {ops_test.model_name} {APP_NAME}/0 "
         f"TRACEGEN_ENDPOINT={endpoint} "
         f"TRACEGEN_VERBOSE={verbose} "
         f"TRACEGEN_PROTOCOL={proto} "
         f"TRACEGEN_CERT={CA_CERT_PATH if use_cert else ''} "
-        f"TRACEGEN_NONCE={nonce} "
+        f"TRACEGEN_NONCE={nonce or ''} "
         "python3 tracegen.py"
     )
-    return subprocess.getoutput(cmd)
+    out = subprocess.run(shlex.split(cmd), text=True, capture_output=True).stdout
+    logger.info(f"tracegen completed; stdout={out!r}")
 
 
 async def get_application_ip(ops_test: OpsTest, app_name: str):

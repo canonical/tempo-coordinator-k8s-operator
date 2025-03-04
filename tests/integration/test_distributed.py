@@ -27,14 +27,13 @@ from tests.integration.helpers import (
 ALL_ROLES = [role for role in TempoRole.all_nonmeta() if role != "metrics-generator"]
 ALL_WORKERS = [f"{WORKER_NAME}-" + role for role in ALL_ROLES]
 S3_INTEGRATOR = "s3-integrator"
-TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
 
 logger = logging.getLogger(__name__)
 
 
 @pytest.mark.setup
 @pytest.mark.abort_on_fail
-async def test_deploy_tempo(ops_test: OpsTest, tempo_charm: Path):
+async def test_deploy_tempo_distributed(ops_test: OpsTest, tempo_charm: Path):
     await ops_test.model.deploy(
         tempo_charm, resources=get_resources("."), application_name=APP_NAME, trust=True
     )
@@ -42,16 +41,15 @@ async def test_deploy_tempo(ops_test: OpsTest, tempo_charm: Path):
 
 
 # TODO: could extend with optional protocols and always-enable them as needed
-@pytest.mark.parametrize("protocol", ("otlp_http",))
-async def test_trace_ingestion(ops_test, protocol, nonce):
+async def test_trace_ingestion(ops_test):
     tempo_address = await get_application_ip(ops_test, APP_NAME)
     # WHEN we emit a trace
-    tempo_ingestion_endpoint = protocols_endpoints.get(protocol).format(tempo_address)
-    await emit_trace(tempo_ingestion_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol)
+    tempo_ingestion_endpoint = protocols_endpoints.get("otlp_http").format(tempo_address)
+    await emit_trace(tempo_ingestion_endpoint, ops_test)
     # THEN we can verify it's been ingested
     await get_traces_patiently(
         tempo_address,
-        service_name=f"tracegen-{protocol}",
+        service_name="tracegen-otlp_http",
         tls=False,
     )
 

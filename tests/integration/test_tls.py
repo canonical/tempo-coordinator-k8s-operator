@@ -22,7 +22,6 @@ SSC = "self-signed-certificates"
 SSC_APP_NAME = "ssc"
 TRAEFIK = "traefik-k8s"
 TRAEFIK_APP_NAME = "trfk"
-TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
 
 
 logger = logging.getLogger(__name__)
@@ -99,17 +98,6 @@ async def test_relate_ssc(ops_test: OpsTest):
             raise_on_blocked=True,
             timeout=1000,
         ),
-    )
-
-
-@pytest.mark.abort_on_fail
-async def test_push_tracegen_script_and_deps(ops_test: OpsTest):
-    await ops_test.juju("scp", TRACEGEN_SCRIPT_PATH, f"{APP_NAME}/0:tracegen.py")
-    await ops_test.juju(
-        "ssh",
-        f"{APP_NAME}/0",
-        "python3 -m pip install protobuf==3.20.* opentelemetry-exporter-otlp-proto-grpc opentelemetry-exporter-otlp-proto-http"
-        + " opentelemetry-exporter-zipkin opentelemetry-exporter-jaeger",
     )
 
 

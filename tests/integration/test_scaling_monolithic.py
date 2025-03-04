@@ -10,7 +10,6 @@ from pytest_operator.plugin import OpsTest
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = "tempo"
 S3_INTEGRATOR = "s3-integrator"
-TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
 
 logger = logging.getLogger(__name__)
 
