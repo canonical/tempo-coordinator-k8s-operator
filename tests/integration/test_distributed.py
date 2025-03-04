@@ -44,12 +44,13 @@ async def test_deploy_tempo_distributed(ops_test: OpsTest, tempo_charm: Path):
 async def test_trace_ingestion(ops_test):
     tempo_address = await get_application_ip(ops_test, APP_NAME)
     # WHEN we emit a trace
-    tempo_ingestion_endpoint = protocols_endpoints.get("otlp_http").format(tempo_address)
+    tempo_ingestion_endpoint = protocols_endpoints.get("otlp_http").format(
+        scheme="http", hostname=tempo_address
+    )
     await emit_trace(tempo_ingestion_endpoint, ops_test)
     # THEN we can verify it's been ingested
     await get_traces_patiently(
         tempo_address,
-        service_name="tracegen-otlp_http",
         tls=False,
     )
 
@@ -61,10 +62,9 @@ def get_metrics(ip: str, port: int):
 
 async def test_metrics_endpoints(ops_test):
     # verify that all worker apps and the coordinator can be scraped for metrics on their application IP
-    assert all(
-        get_metrics(await get_application_ip(ops_test, app), port=Tempo.tempo_http_server_port)
-        for app in (*ALL_WORKERS, APP_NAME)
-    )
+    for app in (*ALL_WORKERS, APP_NAME):
+        app_ip = await get_application_ip(ops_test, app)
+        assert get_metrics(app_ip, port=Tempo.tempo_http_server_port)
 
 
 @pytest.mark.teardown

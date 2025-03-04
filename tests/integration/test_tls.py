@@ -42,7 +42,12 @@ async def get_tempo_ingressed_endpoint(hostname, protocol):
     protocol_endpoint = protocols_endpoints.get(protocol)
     if protocol_endpoint is None:
         assert False, f"Invalid {protocol}"
-    return protocol_endpoint.format(hostname)
+
+    if "grpc" in protocol:
+        # no scheme in _grpc endpoints
+        return protocol_endpoint.format(hostname=hostname)
+    else:
+        return protocol_endpoint.format(hostname=hostname, scheme="https")
 
 
 async def get_tempo_traces_internal_endpoint(ops_test: OpsTest, protocol):

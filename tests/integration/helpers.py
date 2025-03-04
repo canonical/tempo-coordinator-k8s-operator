@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Literal, Sequence, Union
+from typing import Dict, Literal, Optional, Sequence, Union
 
 import requests
 import yaml
@@ -32,11 +32,11 @@ APP_NAME = "tempo"
 TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
 
 protocols_endpoints = {
-    "jaeger_thrift_http": "https://{}:14268/api/traces?format=jaeger.thrift",
-    "zipkin": "https://{}:9411/v1/traces",
-    "jaeger_grpc": "{}:14250",
-    "otlp_http": "https://{}:4318/v1/traces",
-    "otlp_grpc": "{}:4317",
+    "jaeger_thrift_http": "{scheme}://{hostname}:14268/api/traces?format=jaeger.thrift",
+    "zipkin": "{scheme}://{hostname}:9411/v1/traces",
+    "jaeger_grpc": "{hostname}:14250",
+    "otlp_http": "{scheme}://{hostname}:4318/v1/traces",
+    "otlp_grpc": "{hostname}:4317",
 }
 
 logger = logging.getLogger(__name__)
@@ -375,7 +375,7 @@ async def deploy_distributed_cluster(ops_test: OpsTest, roles: Sequence[str], te
         )
 
 
-def get_traces(tempo_host: str, service_name="tracegen-otlp_http", tls=True):
+def get_traces(tempo_host: str, service_name="tracegen", tls=True):
     url = f"{'https' if tls else 'http'}://{tempo_host}:3200/api/search?tags=service.name={service_name}"
     req = requests.get(
         url,
@@ -387,7 +387,7 @@ def get_traces(tempo_host: str, service_name="tracegen-otlp_http", tls=True):
 
 
 @retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=10))
-async def get_traces_patiently(tempo_host, service_name="tracegen-otlp_http", tls=True):
+async def get_traces_patiently(tempo_host, service_name="tracegen", tls=True):
     logger.info(f"polling {tempo_host} for service {service_name!r} traces...")
     traces = get_traces(tempo_host, service_name=service_name, tls=tls)
     assert len(traces) > 0
@@ -399,6 +399,7 @@ async def emit_trace(
     ops_test: OpsTest,
     nonce: str = None,
     proto: str = "otlp_http",
+    service_name: Optional[str] = "tracegen",
     verbose=0,
     use_cert=False,
 ):
@@ -414,9 +415,9 @@ async def emit_trace(
         + " opentelemetry-exporter-zipkin opentelemetry-exporter-jaeger",
     )
 
-    logger.info("running tracegen")
     cmd = (
         f"juju ssh -m {ops_test.model_name} {APP_NAME}/0 "
+        f"TRACEGEN_SERVICE={service_name or ''} "
         f"TRACEGEN_ENDPOINT={endpoint} "
         f"TRACEGEN_VERBOSE={verbose} "
         f"TRACEGEN_PROTOCOL={proto} "
@@ -424,6 +425,9 @@ async def emit_trace(
         f"TRACEGEN_NONCE={nonce or ''} "
         "python3 tracegen.py"
     )
+
+    logger.info(f"running tracegen with {cmd!r}")
+
     out = subprocess.run(shlex.split(cmd), text=True, capture_output=True).stdout
     logger.info(f"tracegen completed; stdout={out!r}")
 
