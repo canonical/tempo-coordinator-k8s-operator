@@ -436,3 +436,28 @@ async def get_application_ip(ops_test: OpsTest, app_name: str):
     status = await ops_test.model.get_status()
     app = status["applications"][app_name]
     return app.public_address
+
+
+def _get_endpoint(protocol: str, hostname: str, tls: bool):
+    protocol_endpoint = protocols_endpoints.get(protocol)
+    if protocol_endpoint is None:
+        assert False, f"Invalid {protocol}"
+
+    if "grpc" in protocol:
+        # no scheme in _grpc endpoints
+        return protocol_endpoint.format(hostname=hostname)
+    else:
+        return protocol_endpoint.format(hostname=hostname, scheme="https" if tls else "http")
+
+
+def get_tempo_ingressed_endpoint(hostname, protocol: str, tls: bool):
+    return _get_endpoint(protocol, hostname, tls)
+
+
+def get_tempo_internal_endpoint(ops_test: OpsTest, protocol: str, tls: bool):
+    hostname = f"{APP_NAME}-0.{APP_NAME}-endpoints.{ops_test.model.name}.svc.cluster.local"
+    return _get_endpoint(protocol, hostname, tls)
+
+
+async def get_tempo_application_endpoint(tempo_ip: str, protocol: str, tls: bool):
+    return _get_endpoint(protocol, tempo_ip, tls)

@@ -11,6 +11,7 @@ from helpers import (
     deploy_distributed_cluster,
     emit_trace,
     get_application_ip,
+    get_tempo_application_endpoint,
 )
 from pytest_operator.plugin import OpsTest
 
@@ -19,7 +20,6 @@ from tempo_config import TempoRole
 from tests.integration.helpers import (
     get_resources,
     get_traces_patiently,
-    protocols_endpoints,
 )
 
 # FIXME: metrics-generator  goes to error state
@@ -42,12 +42,13 @@ async def test_deploy_tempo_distributed(ops_test: OpsTest, tempo_charm: Path):
 
 # TODO: could extend with optional protocols and always-enable them as needed
 async def test_trace_ingestion(ops_test):
-    tempo_address = await get_application_ip(ops_test, APP_NAME)
     # WHEN we emit a trace
-    tempo_ingestion_endpoint = protocols_endpoints.get("otlp_http").format(
-        scheme="http", hostname=tempo_address
+    tempo_address = await get_application_ip(ops_test, APP_NAME)
+    tempo_ingestion_endpoint = await get_tempo_application_endpoint(
+        tempo_address, protocol="otlp_http", tls=False
     )
     await emit_trace(tempo_ingestion_endpoint, ops_test)
+
     # THEN we can verify it's been ingested
     await get_traces_patiently(
         tempo_address,

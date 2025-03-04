@@ -9,6 +9,8 @@ from helpers import (
     deploy_monolithic_cluster,
     emit_trace,
     get_application_ip,
+    get_tempo_ingressed_endpoint,
+    get_tempo_internal_endpoint,
     get_traces,
     get_traces_patiently,
     protocols_endpoints,
@@ -23,7 +25,6 @@ SSC_APP_NAME = "ssc"
 TRAEFIK = "traefik-k8s"
 TRAEFIK_APP_NAME = "trfk"
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -36,26 +37,6 @@ async def get_ingress_proxied_hostname(ops_test: OpsTest):
     if "Serving at" not in status_msg:
         assert False, f"Ingressed hostname is not present in {TRAEFIK_APP_NAME} status message."
     return status_msg.replace("Serving at", "").strip()
-
-
-async def get_tempo_ingressed_endpoint(hostname, protocol):
-    protocol_endpoint = protocols_endpoints.get(protocol)
-    if protocol_endpoint is None:
-        assert False, f"Invalid {protocol}"
-
-    if "grpc" in protocol:
-        # no scheme in _grpc endpoints
-        return protocol_endpoint.format(hostname=hostname)
-    else:
-        return protocol_endpoint.format(hostname=hostname, scheme="https")
-
-
-async def get_tempo_traces_internal_endpoint(ops_test: OpsTest, protocol):
-    hostname = f"{APP_NAME}-0.{APP_NAME}-endpoints.{ops_test.model.name}.svc.cluster.local"
-    protocol_endpoint = protocols_endpoints.get(protocol)
-    if protocol_endpoint is None:
-        assert False, f"Invalid {protocol}"
-    return protocol_endpoint.format(hostname)
 
 
 @pytest.mark.setup
@@ -109,7 +90,7 @@ async def test_relate_ssc(ops_test: OpsTest):
 async def test_verify_trace_http_no_tls_fails(ops_test: OpsTest, server_cert, nonce):
     # IF tempo is related to SSC
     # WHEN we emit an http trace, **unsecured**
-    tempo_endpoint = await get_tempo_traces_internal_endpoint(ops_test, protocol="otlp_http")
+    tempo_endpoint = get_tempo_internal_endpoint(ops_test, tls=False, protocol="otlp_http")
     await emit_trace(tempo_endpoint, ops_test, nonce=nonce)  # this should fail
     # THEN we can verify it's not been ingested
     traces = get_traces(await get_application_ip(ops_test, APP_NAME))
@@ -119,15 +100,20 @@ async def test_verify_trace_http_no_tls_fails(ops_test: OpsTest, server_cert, no
 @pytest.mark.abort_on_fail
 async def test_verify_traces_otlp_http_tls(ops_test: OpsTest, nonce):
     protocol = "otlp_http"
-    tempo_endpoint = await get_tempo_traces_internal_endpoint(ops_test, protocol=protocol)
+    svc_name = f"tracegen-{protocol}"
+    tempo_endpoint = get_tempo_internal_endpoint(ops_test, protocol=protocol, tls=True)
     # WHEN we emit a trace secured with TLS
     await emit_trace(
-        tempo_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol, use_cert=True
+        tempo_endpoint,
+        ops_test,
+        nonce=nonce,
+        verbose=1,
+        proto=protocol,
+        use_cert=True,
+        service_name=svc_name,
     )
     # THEN we can verify it's been ingested
-    await get_traces_patiently(
-        await get_application_ip(ops_test, APP_NAME), service_name=f"tracegen-{protocol}"
-    )
+    await get_traces_patiently(await get_application_ip(ops_test, APP_NAME), service_name=svc_name)
 
 
 @pytest.mark.abort_on_fail
@@ -159,7 +145,7 @@ async def test_force_enable_protocols(ops_test: OpsTest):
 async def test_verify_traces_force_enabled_protocols_tls(ops_test: OpsTest, nonce, protocol):
     tempo_host = await get_ingress_proxied_hostname(ops_test)
     logger.info(f"emitting & verifying trace using {protocol} protocol.")
-    tempo_endpoint = await get_tempo_ingressed_endpoint(tempo_host, protocol=protocol)
+    tempo_endpoint = get_tempo_ingressed_endpoint(tempo_host, protocol=protocol, tls=True)
     # emit a trace secured with TLS
     await emit_trace(
         tempo_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol, use_cert=True
