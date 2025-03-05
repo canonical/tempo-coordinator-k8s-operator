@@ -154,10 +154,10 @@ async def test_verify_traces_force_enabled_protocols_tls(ops_test: OpsTest, nonc
         verbose=1,
         proto=protocol,
         use_cert=True,
-        service_name=f"tracegen-{protocol}",
+        service_name=f"tracegen-tls-{protocol}",
     )
     # verify it's been ingested
-    await get_traces_patiently(tempo_host, service_name=f"tracegen-{protocol}")
+    await get_traces_patiently(tempo_host, service_name=f"tracegen-tls-{protocol}")
 
 
 @pytest.mark.abort_on_fail
