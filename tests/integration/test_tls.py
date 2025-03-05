@@ -148,7 +148,13 @@ async def test_verify_traces_force_enabled_protocols_tls(ops_test: OpsTest, nonc
     tempo_endpoint = get_tempo_ingressed_endpoint(tempo_host, protocol=protocol, tls=True)
     # emit a trace secured with TLS
     await emit_trace(
-        tempo_endpoint, ops_test, nonce=nonce, verbose=1, proto=protocol, use_cert=True
+        tempo_endpoint,
+        ops_test,
+        nonce=nonce,
+        verbose=1,
+        proto=protocol,
+        use_cert=True,
+        service_name=f"tracegen-{protocol}",
     )
     # verify it's been ingested
     await get_traces_patiently(tempo_host, service_name=f"tracegen-{protocol}")
