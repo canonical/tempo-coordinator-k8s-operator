@@ -183,6 +183,9 @@ async def test_workload_traces_tls(ops_test: OpsTest):
     set(protocols_endpoints.keys()).union(api_endpoints.keys()),
 )
 async def test_plain_request_redirect(ops_test: OpsTest, protocol):
+    if "grpc" in protocol:
+        # there's no simple way to test with a gRPC client
+        return
     tempo_host = await get_ingress_proxied_hostname(ops_test)
     tempo_endpoint = get_tempo_ingressed_endpoint(tempo_host, protocol=protocol, tls=False)
     req = requests.get(
