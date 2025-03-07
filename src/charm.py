@@ -452,6 +452,7 @@ class TempoCoordinatorCharm(CharmBase):
                 if self.ingress.is_ready() and self.ingress.scheme == "https"
                 else {}
             )
+            middlewares.update(redirect_middleware)
 
             http_routers[f"juju-{self.model.name}-{self.model.app.name}-{sanitized_protocol}"] = {
                 "entryPoints": [sanitized_protocol],
@@ -480,8 +481,6 @@ class TempoCoordinatorCharm(CharmBase):
                 http_services[
                     f"juju-{self.model.name}-{self.model.app.name}-service-{sanitized_protocol}"
                 ] = {"loadBalancer": {"servers": self._build_lb_server_config(self._scheme, port)}}
-
-            middlewares.update(redirect_middleware)
 
         return {
             "http": {

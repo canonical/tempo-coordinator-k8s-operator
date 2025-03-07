@@ -7,6 +7,8 @@ import yaml
 from charms.tempo_coordinator_k8s.v0.charm_tracing import charm_tracing_disabled
 from scenario import Relation, State
 
+from tempo import Tempo
+
 
 @pytest.fixture
 def base_state(nginx_container, nginx_prometheus_exporter_container):
@@ -184,55 +186,16 @@ def test_ingress_config_middleware_tls(context, base_state, s3, all_worker):
     ingress_out = out.get_relations(ingress.endpoint)[0]
     assert ingress_out.local_app_data
     config = yaml.safe_load(ingress_out.local_app_data["config"])
-    expected_middleware = {
-        f"juju-{state.model.name}-{charm_name}-middleware-jaeger-thrift-http": {
+    middlewares = config["http"]["middlewares"]
+    for proto_name, port in Tempo.all_ports.items():
+        middleware = (
+            f"juju-{state.model.name}-{charm_name}-middleware-{proto_name.replace('_', '-')}"
+        )
+        assert middleware in middlewares
+        assert middlewares[middleware] == {
             "redirectScheme": {
                 "permanent": True,
-                "port": 14268,
+                "port": port,
                 "scheme": "https",
             }
-        },
-        f"juju-{state.model.name}-{charm_name}-middleware-jaeger-grpc": {
-            "redirectScheme": {
-                "permanent": True,
-                "port": 14250,
-                "scheme": "https",
-            }
-        },
-        f"juju-{state.model.name}-{charm_name}-middleware-tempo-grpc": {
-            "redirectScheme": {
-                "permanent": True,
-                "port": 9096,
-                "scheme": "https",
-            }
-        },
-        f"juju-{state.model.name}-{charm_name}-middleware-otlp-grpc": {
-            "redirectScheme": {
-                "permanent": True,
-                "port": 4317,
-                "scheme": "https",
-            }
-        },
-        f"juju-{state.model.name}-{charm_name}-middleware-zipkin": {
-            "redirectScheme": {
-                "permanent": True,
-                "port": 9411,
-                "scheme": "https",
-            }
-        },
-        f"juju-{state.model.name}-{charm_name}-middleware-tempo-http": {
-            "redirectScheme": {
-                "permanent": True,
-                "port": 3200,
-                "scheme": "https",
-            }
-        },
-        f"juju-{state.model.name}-{charm_name}-middleware-otlp-http": {
-            "redirectScheme": {
-                "permanent": True,
-                "port": 4318,
-                "scheme": "https",
-            }
-        },
-    }
-    assert config["http"]["middlewares"] == expected_middleware
+        }
