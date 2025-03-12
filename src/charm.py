@@ -27,7 +27,9 @@ from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
 from charms.tempo_coordinator_k8s.v0.tempo_api import (
     DEFAULT_RELATION_NAME as tempo_api_relation_name,
 )
-from charms.tempo_coordinator_k8s.v0.tempo_api import TempoApiProvider
+from charms.tempo_coordinator_k8s.v0.tempo_api import (
+    TempoApiProvider,
+)
 from charms.tempo_coordinator_k8s.v0.tracing import (
     ReceiverProtocol,
     TracingEndpointProvider,
@@ -486,7 +488,10 @@ class TempoCoordinatorCharm(CharmBase):
             "http": {
                 "routers": http_routers,
                 "services": http_services,
-                "middlewares": middlewares,
+                # else we get: level=error msg="Error occurred during watcher callback:
+                # ...: middlewares cannot be a standalone element (type map[string]*dynamic.Middleware)"
+                # providerName=file
+                **({"middlewares": middlewares} if middlewares else {}),
             }
         }
 
