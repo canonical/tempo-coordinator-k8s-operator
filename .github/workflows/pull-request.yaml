@@ -4,6 +4,15 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'INTEGRATING.md'
+      - 'CODEOWNERS'
+      - 'LICENSE'
+      - 'icon.svg'
+      - '.gitignore'
+      - '.github/**'
 
 jobs:
   pull-request:
