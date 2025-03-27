@@ -60,7 +60,7 @@ async def test_verify_trace_http_self(ops_test: OpsTest):
     # Verify traces from `tempo` are ingested into self Tempo
     assert await get_traces_patiently(
         await get_application_ip(ops_test, APP_NAME),
-        service_name=f"{APP_NAME}-charm",
+        service_name=APP_NAME,
         tls=False,
     )
 
@@ -86,7 +86,7 @@ async def test_verify_trace_http_remote(ops_test: OpsTest):
     # Verify traces from `tempo-remote` are ingested into tempo instance
     assert await get_traces_patiently(
         await get_application_ip(ops_test, APP_NAME),
-        service_name=f"{APP_REMOTE_NAME}-charm",
+        service_name=APP_REMOTE_NAME,
         tls=False,
     )
 

@@ -97,7 +97,7 @@ async def test_verify_traces_http(ops_test: OpsTest):
     status = await ops_test.model.get_status()
     app = status["applications"][APP_NAME]
     traces = await get_traces_patiently(
-        tempo_host=app.public_address, service_name="TempoTesterCharm", tls=False
+        tempo_host=app.public_address, service_name=TESTER_APP_NAME, tls=False
     )
     assert (
         traces
@@ -113,7 +113,7 @@ async def test_verify_buffered_charm_traces_http(ops_test: OpsTest):
     status = await ops_test.model.get_status()
     app = status["applications"][APP_NAME]
     traces = await get_traces_patiently(
-        tempo_host=app.public_address, service_name="TempoTesterCharm", tls=False
+        tempo_host=app.public_address, service_name=TESTER_APP_NAME, tls=False
     )
 
     # charm-tracing trace names are in the format:
@@ -136,7 +136,7 @@ async def test_verify_traces_grpc(ops_test: OpsTest):
     app = status["applications"][APP_NAME]
     logger.info(app.public_address)
     traces = await get_traces_patiently(
-        tempo_host=app.public_address, service_name="TempoTesterGrpcCharm", tls=False
+        tempo_host=app.public_address, service_name=TESTER_APP_NAME, tls=False
     )
     assert (
         traces
