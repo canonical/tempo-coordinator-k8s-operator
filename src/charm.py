@@ -6,6 +6,7 @@
 
 import json
 import logging
+import pathlib
 import re
 import socket
 from pathlib import Path
@@ -23,7 +24,6 @@ from charms.grafana_k8s.v0.grafana_source import GrafanaSourceProvider
 from charms.prometheus_k8s.v1.prometheus_remote_write import (
     PrometheusRemoteWriteConsumer,
 )
-from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
 from charms.tempo_coordinator_k8s.v0.tempo_api import (
     DEFAULT_RELATION_NAME as tempo_api_relation_name,
 )
@@ -82,18 +82,6 @@ class PeerData(DatabagModel):
     """FQDN hostname of this coordinator unit."""
 
 
-@trace_charm(
-    tracing_endpoint="tempo_otlp_http_endpoint",
-    server_cert="server_ca_cert",
-    extra_types=(
-        Tempo,
-        TracingEndpointProvider,
-        Coordinator,
-        ClusterRolesConfig,
-    ),
-    # use PVC path for buffer data, so we don't lose it on pod churn
-    buffer_path=Path("/tempo-data/.charm_tracing_buffer.raw"),
-)
 class TempoCoordinatorCharm(CharmBase):
     """Charmed Operator for Tempo; a distributed tracing backend."""
 
@@ -101,6 +89,17 @@ class TempoCoordinatorCharm(CharmBase):
         super().__init__(*args)
 
         # INTEGRATIONS
+        # TODO: understand the implications of have two requierers for the same relation
+        # cos-lib instantiates a requirer to stamp the tracing URL on the cluster
+        # - writing the databag happens to be safe, as same ["otlp_http"] is set
+        # - reading twice should be fine
+        # - registering two sets of events, I'm not entirely sure yet
+        self._charm_tracing = ops.tracing.Tracing(
+                self,
+                tracing_relation_name="self-charm-tracing",
+                ca_relation_name=None,
+                ca_data=pathlib.Path(CA_CERT_PATH).read_text(),
+        )
         self.ingress = TraefikRouteRequirer(self, self.model.get_relation("ingress"), "ingress")  # type: ignore
         self.tracing = TracingEndpointProvider(self, external_url=self._most_external_url)
         # set alert_rules_path="", as we don't want to populate alert rules into the relation databag
@@ -404,19 +403,10 @@ class TempoCoordinatorCharm(CharmBase):
         # if unset, defaults to 30 days
         return cast(int, self.config["retention-period"])
 
-    def server_ca_cert(self) -> str:
-        """For charm tracing."""
-        return CA_CERT_PATH
-
-    def tempo_otlp_http_endpoint(self) -> Optional[str]:
-        """Endpoint at which the charm tracing information will be forwarded."""
-        # the charm container and the tempo workload container have apparently the same
-        # IP, so we can talk to tempo at localhost.
-        if hasattr(self, "coordinator") and self.coordinator.charm_tracing.is_ready():
-            return self.coordinator.charm_tracing.get_endpoint("otlp_http")
-        # In absence of another Tempo instance, we don't want to lose this instance's charm traces
-        elif self.is_workload_ready():
-            return f"{self._internal_url}:{self.tempo.receiver_ports['otlp_http']}"
+    # FIXME I can't easily reproduce this kludge:
+    # In absence of another Tempo instance, we don't want to lose this instance's charm traces
+    # elif self.is_workload_ready():
+    #     return f"{self._internal_url}:{self.tempo.receiver_ports['otlp_http']}"
 
     def requested_receivers_urls(self) -> Dict[str, str]:
         """Endpoints to which the workload (and the worker charm) can push traces to."""
