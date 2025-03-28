@@ -1,6 +1,6 @@
 # FIXME temporary, once there's a release, the two below become `ops[tracing]>=2.20.0`
-ops @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc15.zip
-ops-tracing @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc15.zip#subdirectory=tracing&egg=ops-tracing
+ops @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc20.zip
+ops-tracing @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc20.zip#subdirectory=tracing&egg=ops-tracing
 crossplane
 jsonschema==4.17.0
 lightkube>=0.15.4
@@ -13,7 +13,7 @@ crossplane
 
 # PYDEPS
 # lib/charms/tempo_coordinator_k8s/v1/charm_tracing.py
-opentelemetry-exporter-otlp-proto-http==1.21.0
+opentelemetry-exporter-otlp-proto-http
 
 # lib/charms/tls_certificates_interface/v2/tls_certificates.py
 jsonschema

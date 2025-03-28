@@ -350,7 +350,8 @@ LIBAPI = 0
 
 LIBPATCH = 7
 
-PYDEPS = ["opentelemetry-exporter-otlp-proto-http==1.21.0"]
+# FIXME must remove this charm lib to avoid pydep conflict
+PYDEPS = ["opentelemetry-exporter-otlp-proto-http"]
 
 logger = logging.getLogger("tracing")
 dev_logger = logging.getLogger("tracing-dev")
