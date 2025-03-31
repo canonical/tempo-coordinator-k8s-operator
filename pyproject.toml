@@ -6,10 +6,6 @@ version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.10"
 
 dependencies = [
-    # FIXME temporary, once there's a release, the two below become `ops[tracing]>=2.20.0`
-    "ops @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc20.zip",
-    "ops-tracing @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc20.zip#subdirectory=tracing&egg=ops-tracing",
-    "ops-scenario @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc20.zip#subdirectory=testing&egg=ops-scenario",
     "cosl>=0.0.56",
     "pydantic<3",
 ]
@@ -19,9 +15,9 @@ dev = [
     "pytest",
     "pytest-cov",
     "coverage[toml]",
-    "ops[tracing,testing] @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc20.zip",
     "pyright",
-    "ruff"
+    "ruff",
+    "ops>=2.19.4",
 ]
 
 

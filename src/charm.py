@@ -94,12 +94,12 @@ class TempoCoordinatorCharm(CharmBase):
         # - writing the databag happens to be safe, as same ["otlp_http"] is set
         # - reading twice should be fine
         # - registering two sets of events, I'm not entirely sure yet
-        self._charm_tracing = ops.tracing.Tracing(
-                self,
-                tracing_relation_name="self-charm-tracing",
-                ca_relation_name=None,
-                ca_data=pathlib.Path(CA_CERT_PATH).read_text(),
-        )
+        try:
+            ca_data=pathlib.Path(CA_CERT_PATH).read_text()
+        except FileNotFoundError:
+            ca_data = ""
+
+        self._charm_tracing = ops.tracing.Tracing(self, "self-charm-tracing", None, ca_data=ca_data)
         self.ingress = TraefikRouteRequirer(self, self.model.get_relation("ingress"), "ingress")  # type: ignore
         self.tracing = TracingEndpointProvider(self, external_url=self._most_external_url)
         # set alert_rules_path="", as we don't want to populate alert rules into the relation databag
