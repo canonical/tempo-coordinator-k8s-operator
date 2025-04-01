@@ -1,6 +1,6 @@
 # FIXME temporary, once there's a release, the two below become `ops[tracing]>=2.20.0`
-ops @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc20.zip
-ops-tracing @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc20.zip#subdirectory=tracing&egg=ops-tracing
+ops @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc21.zip
+ops-tracing @ https://github.com/dimaqq/operator/archive/refs/tags/2.20.0-rc21.zip#subdirectory=tracing&egg=ops-tracing
 crossplane
 jsonschema==4.17.0
 lightkube>=0.15.4

@@ -9,7 +9,6 @@ import logging
 import pathlib
 import re
 import socket
-from pathlib import Path
 from subprocess import CalledProcessError, getoutput
 from typing import Any, Dict, List, Optional, Set, Tuple, cast, get_args
 
@@ -37,7 +36,7 @@ from charms.tempo_coordinator_k8s.v0.tracing import (
     receiver_protocol_to_transport_protocol,
 )
 from charms.traefik_k8s.v0.traefik_route import TraefikRouteRequirer
-from cosl.coordinated_workers.coordinator import ClusterRolesConfig, Coordinator
+from cosl.coordinated_workers.coordinator import Coordinator
 from cosl.coordinated_workers.nginx import CA_CERT_PATH, CERT_PATH, KEY_PATH
 from cosl.interfaces.datasource_exchange import DatasourceDict, DSExchangeAppData
 from cosl.interfaces.utils import DatabagModel, DataValidationError
