@@ -17,19 +17,18 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http==1.21.0",
 ]
 
-
-[dependency-groups]
-unit-test = [
+[project.optional-dependencies]
+dev = [
+#   UNIT TESTS
     "pytest",
     "pytest-cov",
     "coverage[toml]",
     "ops[testing]",
-]
-#catan = [
-#    "catan@git+https://github.com/pietropasotti/catan.git@main"
-#]
-integration-test = [
-    "pytest",
+
+#   CATAN TESTS
+#   "catan@git+https://github.com/pietropasotti/catan.git@main"
+
+#   INTEGRATION TESTS
     "juju<=3.3.0,>=3.0",
     "pytest-operator",
     "requests",
@@ -42,13 +41,12 @@ integration-test = [
     # opentelemetry-exporter-jaeger complains about old generated protos
     "protobuf==3.20.*",
     # https://github.com/juju/python-libjuju/issues/1184
-    "websockets<14.0"
-]
-lint = [
+    "websockets<14.0",
+
+#   LINTING
     "pyright",
-    "ruff"
-]
-interface-test = [
+    "ruff",
+#   INTERFACE TESTS
     "pytest-interface-tester==3.3.1",
 ]
 
