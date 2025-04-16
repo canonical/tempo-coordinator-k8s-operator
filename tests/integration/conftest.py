@@ -28,9 +28,9 @@ def tempo_charm():
     """Tempo charm used for integration testing.
 
     Build once per session and reuse it in all integration tests to save some minutes/hours.
-    You can also set `TEMPO_CHARM` env variable to use an already existing built charm.
+    You can also set `CHARM_PATH` env variable to use an already existing built charm.
     """
-    if tempo_charm := os.getenv("TEMPO_CHARM"):
+    if tempo_charm := os.getenv("CHARM_PATH"):
         return tempo_charm
 
     count = 0

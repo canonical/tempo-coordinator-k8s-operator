@@ -302,9 +302,9 @@ def tempo_worker_charm_and_channel_and_resources():
     """Tempo worker charm used for integration testing.
 
     Build once per session and reuse it in all integration tests to save some minutes/hours.
-    You can also set `TEMPO_WORKER_CHARM` env variable to use an already existing built charm.
+    You can also set `WORKER_CHARM_PATH` env variable to use an already existing built charm.
     """
-    if path_from_env := os.getenv("TEMPO_WORKER_CHARM"):
+    if path_from_env := os.getenv("WORKER_CHARM_PATH"):
         worker_charm_path = Path(path_from_env).absolute()
         logger.info("Using local tempo worker charm: %s", worker_charm_path)
         return (

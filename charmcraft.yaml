@@ -143,11 +143,13 @@ parts:
     # uncomment this if you add git+ dependencies in requirements.txt:
     # build-packages:
     #  - "git"
-    charm-binary-python-packages:
-      - "pydantic<3"
-      - "cryptography"
-      - "jsonschema"
-      - "opentelemetry-exporter-otlp-proto-http==1.21.0"
+    source: .
+    plugin: uv
+    build-packages: [git]
+    build-snaps: [astral-uv]
+    override-build: |
+      craftctl default
+      git describe --always > $CRAFT_PART_INSTALL/version
 
 config:
   options:
