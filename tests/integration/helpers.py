@@ -17,7 +17,7 @@ from minio import Minio
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from tempo_config import TempoRole
-from tests.integration.conftest import _get_tempo_charm
+
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
@@ -314,6 +314,25 @@ def get_resources(path: Union[str, Path]):
     resources_meta = meta.get("resources", {})
     return {res_name: res_meta["upstream-source"] for res_name, res_meta in resources_meta.items()}
 
+def _get_tempo_charm():
+    if tempo_charm := os.getenv("CHARM_PATH"):
+        return tempo_charm
+
+    count = 0
+    # Intermittent issue where charmcraft fails to build the charm for an unknown reason.
+    # Retry building the charm
+    while True:
+        try:
+            subprocess.check_call(["charmcraft", "pack", "-v"])
+            pth = Path("./tempo-coordinator-k8s_ubuntu-22.04-amd64.charm").absolute()
+            os.environ["CHARM_PATH"] = str(pth)
+            return pth
+        except subprocess.CalledProcessError:
+            logger.warning("Failed to build Tempo coordinator. Trying again!")
+            count += 1
+
+            if count == 3:
+                raise
 
 def _deploy_cluster(juju: Juju, workers: Sequence[str], tempo_deployed_as: str = None):
     if tempo_deployed_as:

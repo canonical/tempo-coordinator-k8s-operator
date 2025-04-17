@@ -6,26 +6,26 @@ import os
 import random
 import shlex
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 from subprocess import check_output
 
 import jubilant
 from pytest import fixture
-from pytest_operator.plugin import OpsTest
 
-from tests.integration.helpers import get_relation_data, TEMPO_APP
+from tests.integration.helpers import get_relation_data, TEMPO_APP, _get_tempo_charm
 
 SSC_APP_NAME = "ssc"
 
 logger = logging.getLogger(__name__)
 
 
-@fixture
-async def juju(ops_test: OpsTest):
-    # TODO: when we drop OpsTest, we can use the jubilant.temp_model ctxmgr instead
-    yield jubilant.Juju(model=ops_test.model_name)
+@fixture(scope="module")
+def juju():
+    with jubilant.temp_model(
+            keep=os.getenv("KEEP_MODELS", False)
+    ) as juju:
+        yield juju
 
 
 @fixture(scope="session")
@@ -36,27 +36,6 @@ def tempo_charm():
     You can also set `CHARM_PATH` env variable to use an already existing built charm.
     """
     return _get_tempo_charm()
-
-
-def _get_tempo_charm():
-    if tempo_charm := os.getenv("CHARM_PATH"):
-        return tempo_charm
-
-    count = 0
-    # Intermittent issue where charmcraft fails to build the charm for an unknown reason.
-    # Retry building the charm
-    while True:
-        try:
-            subprocess.check_call(["charmcraft", "pack", "-v"])
-            pth = Path("./tempo-coordinator-k8s_ubuntu-22.04-amd64.charm").absolute()
-            os.environ["CHARM_PATH"] = str(pth)
-            return pth
-        except subprocess.CalledProcessError:
-            logger.warning("Failed to build Tempo coordinator. Trying again!")
-            count += 1
-
-            if count == 3:
-                raise
 
 
 @fixture(scope="module", autouse=True)
