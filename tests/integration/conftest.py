@@ -36,7 +36,7 @@ def tempo_charm():
 
 
 @fixture(scope="module", autouse=True)
-def copy_charm_libs_into_tester_charm(ops_test):
+def copy_charm_libs_into_tester_charm():
     """Ensure the tester charm has the libraries it uses."""
     libraries = [
         "observability_libs/v1/cert_handler.py",
@@ -60,7 +60,7 @@ def copy_charm_libs_into_tester_charm(ops_test):
 
 
 @fixture(scope="module", autouse=True)
-def copy_charm_libs_into_tester_grpc_charm(ops_test):
+def copy_charm_libs_into_tester_grpc_charm():
     """Ensure the tester GRPC charm has the libraries it uses."""
     libraries = [
         "tempo_coordinator_k8s/v0/tracing.py",

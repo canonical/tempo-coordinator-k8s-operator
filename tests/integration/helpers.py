@@ -16,7 +16,6 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from tempo_config import TempoRole
 
-
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
 ACCESS_KEY = "accesskey"
@@ -37,7 +36,6 @@ WORKER_APP = "tempo-worker"
 TEMPO_APP = "tempo"
 SSC_APP = "ssc"
 TRAEFIK_APP = "trfk"
-
 
 ALL_ROLES = [role for role in TempoRole.all_nonmeta()]
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
@@ -135,6 +133,7 @@ def get_resources(path: Union[str, Path]):
     resources_meta = meta.get("resources", {})
     return {res_name: res_meta["upstream-source"] for res_name, res_meta in resources_meta.items()}
 
+
 def _get_tempo_charm():
     if tempo_charm := os.getenv("CHARM_PATH"):
         return tempo_charm
@@ -144,8 +143,15 @@ def _get_tempo_charm():
     # Retry building the charm
     while True:
         try:
-            subprocess.check_call(["charmcraft", "pack", "-v"])
-            pth = Path("./tempo-coordinator-k8s_ubuntu-22.04-amd64.charm").absolute()
+            logger.info("packing...")
+            out = subprocess.run(
+                ["charmcraft", "pack"],
+                check=True, text=True,
+                capture_output=True
+            ).stderr  # why on the actual ...
+
+            charm = out.strip().splitlines()[-1].strip().split()[-1]
+            pth = Path(charm).absolute()
             os.environ["CHARM_PATH"] = str(pth)
             return pth
         except subprocess.CalledProcessError:
@@ -154,6 +160,7 @@ def _get_tempo_charm():
 
             if count == 3:
                 raise
+
 
 def _deploy_cluster(juju: Juju, workers: Sequence[str], tempo_deployed_as: str = None):
     if tempo_deployed_as:

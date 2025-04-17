@@ -41,10 +41,10 @@ def get_metrics(ip: str, port: int):
     return proc.stdout
 
 
-def test_metrics_endpoints(ops_test):
+def test_metrics_endpoints(juju):
     # verify that all worker apps and the coordinator can be scraped for metrics on their application IP
     for app in (*ALL_WORKERS, TEMPO_APP):
-        app_ip = get_app_ip_address(ops_test, app)
+        app_ip = get_app_ip_address(juju, app)
         assert get_metrics(app_ip, port=Tempo.tempo_http_server_port)
 
 
