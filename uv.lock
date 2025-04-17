@@ -773,6 +773,18 @@ wheels = [
 ]
 
 [[package]]
+name = "jubilant"
+version = "0.4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2c/f1/41362d3bfb5c2c44f9bdf9a900e5899f3b9da40fa6e7b88be821dd619e27/jubilant-0.4.1.tar.gz", hash = "sha256:0acec84d6ebe48f305bf3acc484347fb2c25e9aa7451019f7a44893f95c93779", size = 22545 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8e/c1/c2cc03d2c0420353659388f3e646a09ea54c27357d79c6bf528bf71793ff/jubilant-0.4.1-py3-none-any.whl", hash = "sha256:d3fa4bd4bd9de28e41c81010ea0fc1cc3be98be744149a71fd906a613ea177ea", size = 21627 },
+]
+
+[[package]]
 name = "juju"
 version = "3.3.0.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1854,6 +1866,7 @@ dependencies = [
     { name = "crossplane" },
     { name = "cryptography" },
     { name = "jsonschema" },
+    { name = "jubilant" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "ops" },
     { name = "pydantic" },
@@ -1887,6 +1900,7 @@ requires-dist = [
     { name = "crossplane" },
     { name = "cryptography" },
     { name = "jsonschema" },
+    { name = "jubilant", specifier = ">=0.4.1" },
     { name = "juju", marker = "extra == 'dev'", specifier = ">=3.0,<=3.3.0" },
     { name = "minio", marker = "extra == 'dev'" },
     { name = "opentelemetry-exporter-jaeger", marker = "extra == 'dev'" },

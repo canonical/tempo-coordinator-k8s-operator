@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 import os
@@ -9,14 +8,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Literal, Optional, Sequence, Union
 
+import jubilant
 import requests
 import yaml
 from cosl.coordinated_workers.nginx import CA_CERT_PATH
-from juju.application import Application
-from juju.unit import Unit
+from jubilant import Juju
 from minio import Minio
-from pytest_operator.plugin import OpsTest
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+from tests.integration.conftest import _get_tempo_charm
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
@@ -28,8 +28,13 @@ S3_INTEGRATOR = "s3-integrator"
 PROMETHEUS = "prometheus"
 PROMETHEUS_CHARM = "prometheus-k8s"
 WORKER_NAME = "tempo-worker"
-APP_NAME = "tempo"
+TEMPO_APP = "tempo"
 TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
+METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
+
+TEMPO_RESOURCES = {
+    image_name: image_meta["upstream-source"] for image_name, image_meta in METADATA["resources"].items()
+}
 
 protocols_endpoints = {
     "jaeger_thrift_http": "{scheme}://{hostname}:14268/api/traces?format=jaeger.thrift",
@@ -107,10 +112,10 @@ def get_relation_by_endpoint(relations, local_endpoint, remote_endpoint, remote_
         r
         for r in relations
         if (
-            (r["endpoint"] == local_endpoint and r["related-endpoint"] == remote_endpoint)
-            or (r["endpoint"] == remote_endpoint and r["related-endpoint"] == local_endpoint)
-        )
-        and remote_obj in r["related-units"]
+                   (r["endpoint"] == local_endpoint and r["related-endpoint"] == remote_endpoint)
+                   or (r["endpoint"] == remote_endpoint and r["related-endpoint"] == local_endpoint)
+           )
+           and remote_obj in r["related-units"]
     ]
     if not matches:
         raise ValueError(
@@ -137,7 +142,7 @@ class UnitRelationData:
 
 
 def get_content(
-    obj: str, other_obj, include_default_juju_keys: bool = False, model: str = None
+        obj: str, other_obj, include_default_juju_keys: bool = False, model: str = None
 ) -> UnitRelationData:
     """Get the content of the databag of `obj`, as seen from `other_obj`."""
     unit_name, endpoint = obj.split(":")
@@ -179,11 +184,11 @@ class RelationData:
 
 
 def get_relation_data(
-    *,
-    provider_endpoint: str,
-    requirer_endpoint: str,
-    include_default_juju_keys: bool = False,
-    model: str = None,
+        *,
+        provider_endpoint: str,
+        requirer_endpoint: str,
+        include_default_juju_keys: bool = False,
+        model: str = None,
 ):
     """Get relation databags for a juju relation.
 
@@ -198,22 +203,7 @@ def get_relation_data(
     return RelationData(provider=provider_data, requirer=requirer_data)
 
 
-async def deploy_literal_bundle(ops_test: OpsTest, bundle: str):
-    run_args = [
-        "juju",
-        "deploy",
-        "--trust",
-        "-m",
-        ops_test.model_name,
-        str(ops_test.render_bundle(bundle)),
-    ]
-
-    retcode, stdout, stderr = await ops_test.run(*run_args)
-    assert retcode == 0, f"Deploy failed: {(stderr or stdout).strip()}"
-    logger.info(stdout)
-
-
-async def run_command(model_name: str, app_name: str, unit_num: int, command: list) -> bytes:
+def run_command(model_name: str, app_name: str, unit_num: int, command: list) -> bytes:
     cmd = ["juju", "ssh", "--model", model_name, f"{app_name}/{unit_num}", *command]
     try:
         res = subprocess.run(cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -225,12 +215,12 @@ async def run_command(model_name: str, app_name: str, unit_num: int, command: li
 
 
 def present_facade(
-    interface: str,
-    app_data: Dict = None,
-    unit_data: Dict = None,
-    role: Literal["provide", "require"] = "provide",
-    model: str = None,
-    app: str = "facade",
+        interface: str,
+        app_data: Dict = None,
+        unit_data: Dict = None,
+        role: Literal["provide", "require"] = "provide",
+        model: str = None,
+        app: str = "facade",
 ):
     """Set up the facade charm to present this data over the interface ``interface``."""
     data = {
@@ -250,25 +240,27 @@ def present_facade(
         subprocess.run(shlex.split(f"juju run {app}/0{_model} update --params {fpath.absolute()}"))
 
 
-async def get_unit_address(ops_test: OpsTest, app_name, unit_no):
-    status = await ops_test.model.get_status()
-    app = status["applications"][app_name]
-    if app is None:
-        assert False, f"no app exists with name {app_name}"
-    unit = app["units"].get(f"{app_name}/{unit_no}")
-    if unit is None:
-        assert False, f"no unit exists in app {app_name} with index {unit_no}"
-    return unit["address"]
+def get_app_ip_address(juju: Juju, app_name):
+    """Return a juju application's IP address."""
+    return juju.status().apps[app_name].address
 
 
-async def deploy_and_configure_minio(ops_test: OpsTest):
+def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
+    """Return a juju unit's IP address."""
+    return juju.status().apps[app_name].units[f"{app_name}/{unit_no}"].public_address
+
+
+def _deploy_and_configure_minio(juju: Juju):
     config = {
         "access-key": ACCESS_KEY,
         "secret-key": SECRET_KEY,
     }
-    await ops_test.model.deploy(MINIO, channel="edge", trust=True, config=config)
-    await ops_test.model.wait_for_idle(apps=[MINIO], status="active", timeout=2000)
-    minio_addr = await get_unit_address(ops_test, MINIO, "0")
+    juju.deploy(MINIO, channel="edge", trust=True, config=config)
+    juju.wait(
+        lambda status: status.apps[MINIO].is_active,
+        error=jubilant.any_error,
+    )
+    minio_addr = get_unit_ip_address(juju, MINIO, 0)
 
     mc_client = Minio(
         f"{minio_addr}:9000",
@@ -283,19 +275,13 @@ async def deploy_and_configure_minio(ops_test: OpsTest):
         mc_client.make_bucket(BUCKET_NAME)
 
     # configure s3-integrator
-    s3_integrator_app: Application = ops_test.model.applications[S3_INTEGRATOR]
-    s3_integrator_leader: Unit = s3_integrator_app.units[0]
-
-    await s3_integrator_app.set_config(
-        {
-            "endpoint": f"minio-0.minio-endpoints.{ops_test.model.name}.svc.cluster.local:9000",
-            "bucket": BUCKET_NAME,
-        }
-    )
-
-    action = await s3_integrator_leader.run_action("sync-s3-credentials", **config)
-    action_result = await action.wait()
-    assert action_result.status == "completed"
+    config = {
+        "endpoint": f"minio-0.minio-endpoints.{juju.model}.svc.cluster.local:9000",
+        "bucket": BUCKET_NAME,
+    }
+    juju.config(S3_INTEGRATOR, config)
+    task = juju.run(S3_INTEGRATOR + "/0", "sync-s3-credentials", params=config)
+    assert task.status == "completed"
 
 
 def tempo_worker_charm_and_channel_and_resources():
@@ -321,71 +307,65 @@ def get_resources(path: Union[str, Path]):
     return {res_name: res_meta["upstream-source"] for res_name, res_meta in resources_meta.items()}
 
 
-async def deploy_monolithic_cluster(ops_test: OpsTest, tempo_app=APP_NAME):
-    """This assumes tempo-coordinator is already deployed as `param:tempo_app`."""
+def _deploy_cluster(juju: Juju, workers: Sequence[str], tempo_deployed_as: str = None):
+    if tempo_deployed_as:
+        tempo_app = tempo_deployed_as
+    else:
+        juju.deploy(
+            _get_tempo_charm(), TEMPO_APP, resources=TEMPO_RESOURCES, trust=True
+        )
+        tempo_app = TEMPO_APP
+
+    juju.deploy(S3_INTEGRATOR, channel="edge")
+
+    juju.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
+    for worker in workers:
+        juju.integrate(tempo_app + ":tempo-cluster", worker + ":tempo-cluster")
+
+    _deploy_and_configure_minio(juju)
+
+    juju.wait(
+        lambda status: jubilant.all_active(status, [tempo_app, *workers, S3_INTEGRATOR]),
+        timeout=2000,
+    )
+
+
+def deploy_monolithic_cluster(juju: Juju, tempo_deployed_as=None):
+    """Deploy a tempo-monolithic cluster.
+
+    `param:tempo_app`: tempo-coordinator is already deployed as this app.
+    """
     tempo_worker_charm_url, channel, resources = tempo_worker_charm_and_channel_and_resources()
-    await ops_test.model.deploy(
+    juju.deploy(
         tempo_worker_charm_url,
-        application_name=WORKER_NAME,
+        app=WORKER_NAME,
         channel=channel,
         trust=True,
         resources=resources,
     )
-    await ops_test.model.deploy(S3_INTEGRATOR, channel="edge")
-
-    await ops_test.model.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
-    await ops_test.model.integrate(tempo_app + ":tempo-cluster", WORKER_NAME + ":tempo-cluster")
-
-    await deploy_and_configure_minio(ops_test)
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[tempo_app, WORKER_NAME, S3_INTEGRATOR],
-            status="active",
-            timeout=2000,
-            idle_period=30,
-        )
+    _deploy_cluster(juju, [WORKER_NAME], tempo_deployed_as=tempo_deployed_as)
 
 
-async def deploy_distributed_cluster(ops_test: OpsTest, roles: Sequence[str], tempo_app=APP_NAME):
+def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], tempo_deployed_as=None):
     """This assumes tempo-coordinator is already deployed as `param:tempo_app`."""
     tempo_worker_charm_url, channel, resources = tempo_worker_charm_and_channel_and_resources()
 
-    await asyncio.gather(
-        *(
-            ops_test.model.deploy(
-                tempo_worker_charm_url,
-                application_name=f"{WORKER_NAME}-{role}",
-                channel=channel,
-                trust=True,
-                config={"role-all": False, f"role-{role}": True},
-                resources=resources,
-            )
-            for role in roles
-        ),
-        ops_test.model.deploy(S3_INTEGRATOR, channel="edge"),
-        ops_test.model.deploy(
-            PROMETHEUS_CHARM, application_name=PROMETHEUS, channel="edge", trust=True
-        ),
-    )
+    all_workers = []
 
-    all_workers = tuple(f"{WORKER_NAME}-{role}" for role in roles)
-    await asyncio.gather(
-        *(
-            ops_test.model.integrate(tempo_app + ":tempo-cluster", worker_name + ":tempo-cluster")
-            for worker_name in all_workers
-        ),
-        ops_test.model.integrate(tempo_app + ":send-remote-write", PROMETHEUS),
-        ops_test.model.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials"),
-    )
+    for role in roles:
+        worker_name = f"{WORKER_NAME}-{role}"
+        all_workers.append(worker_name)
 
-    await deploy_and_configure_minio(ops_test)
-    async with ops_test.fast_forward():
-        await ops_test.model.wait_for_idle(
-            apps=[tempo_app, *all_workers, S3_INTEGRATOR, PROMETHEUS],
-            status="active",
-            timeout=2000,
-            idle_period=30,
+        juju.deploy(
+            tempo_worker_charm_url,
+            app=worker_name,
+            channel=channel,
+            trust=True,
+            config={"role-all": False, f"role-{role}": True},
+            resources=resources,
         )
+
+    _deploy_cluster(juju, all_workers, tempo_deployed_as=tempo_deployed_as)
 
 
 def get_traces(tempo_host: str, service_name="tracegen", tls=True):
@@ -400,36 +380,36 @@ def get_traces(tempo_host: str, service_name="tracegen", tls=True):
 
 
 @retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=10))
-async def get_traces_patiently(tempo_host, service_name="tracegen", tls=True):
+def get_traces_patiently(tempo_host, service_name="tracegen", tls=True):
     logger.info(f"polling {tempo_host} for service {service_name!r} traces...")
     traces = get_traces(tempo_host, service_name=service_name, tls=tls)
     assert len(traces) > 0
     return traces
 
 
-async def emit_trace(
-    endpoint,
-    ops_test: OpsTest,
-    nonce: str = None,
-    proto: str = "otlp_http",
-    service_name: Optional[str] = "tracegen",
-    verbose=0,
-    use_cert=False,
+def emit_trace(
+        endpoint,
+        juju: Juju,
+        nonce: str = None,
+        proto: str = "otlp_http",
+        service_name: Optional[str] = "tracegen",
+        verbose=0,
+        use_cert=False,
 ):
     """Use juju ssh to run tracegen from the tempo charm; to avoid any DNS issues."""
     # SCP tracegen script onto unit and install dependencies
-    logger.info(f"pushing tracegen onto {APP_NAME}/0")
+    logger.info(f"pushing tracegen onto {TEMPO_APP}/0")
 
-    await ops_test.juju("scp", TRACEGEN_SCRIPT_PATH, f"{APP_NAME}/0:tracegen.py")
-    await ops_test.juju(
+    juju.cli("scp", str(TRACEGEN_SCRIPT_PATH), f"{TEMPO_APP}/0:tracegen.py")
+    juju.cli(
         "ssh",
-        f"{APP_NAME}/0",
+        f"{TEMPO_APP}/0",
         "python3 -m pip install protobuf==3.20.* opentelemetry-exporter-otlp-proto-grpc opentelemetry-exporter-otlp-proto-http"
         + " opentelemetry-exporter-zipkin opentelemetry-exporter-jaeger",
     )
 
     cmd = (
-        f"juju ssh -m {ops_test.model_name} {APP_NAME}/0 "
+        f"juju ssh -m {juju.model} {TEMPO_APP}/0 "
         f"TRACEGEN_SERVICE={service_name or ''} "
         f"TRACEGEN_ENDPOINT={endpoint} "
         f"TRACEGEN_VERBOSE={verbose} "
@@ -443,12 +423,6 @@ async def emit_trace(
 
     out = subprocess.run(shlex.split(cmd), text=True, capture_output=True).stdout
     logger.info(f"tracegen completed; stdout={out!r}")
-
-
-async def get_application_ip(ops_test: OpsTest, app_name: str):
-    status = await ops_test.model.get_status()
-    app = status["applications"][app_name]
-    return app.public_address
 
 
 def _get_endpoint(protocol: str, hostname: str, tls: bool):
@@ -467,10 +441,10 @@ def get_tempo_ingressed_endpoint(hostname, protocol: str, tls: bool):
     return _get_endpoint(protocol, hostname, tls)
 
 
-def get_tempo_internal_endpoint(ops_test: OpsTest, protocol: str, tls: bool):
-    hostname = f"{APP_NAME}-0.{APP_NAME}-endpoints.{ops_test.model.name}.svc.cluster.local"
+def get_tempo_internal_endpoint(juju: Juju, protocol: str, tls: bool):
+    hostname = f"{TEMPO_APP}-0.{TEMPO_APP}-endpoints.{juju.model}.svc.cluster.local"
     return _get_endpoint(protocol, hostname, tls)
 
 
-async def get_tempo_application_endpoint(tempo_ip: str, protocol: str, tls: bool):
+def get_tempo_application_endpoint(tempo_ip: str, protocol: str, tls: bool):
     return _get_endpoint(protocol, tempo_ip, tls)

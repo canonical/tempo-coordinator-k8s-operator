@@ -11,16 +11,21 @@ import tempfile
 from pathlib import Path
 from subprocess import check_output
 
+import jubilant
 from pytest import fixture
 from pytest_operator.plugin import OpsTest
 
-from tests.integration.helpers import get_relation_data
+from tests.integration.helpers import get_relation_data, TEMPO_APP
 
-APP_NAME = "tempo"
-SSC = "self-signed-certificates"
 SSC_APP_NAME = "ssc"
 
 logger = logging.getLogger(__name__)
+
+
+@fixture
+async def juju(ops_test: OpsTest):
+    # TODO: when we drop OpsTest, we can use the jubilant.temp_model ctxmgr instead
+    yield jubilant.Juju(model=ops_test.model_name)
 
 
 @fixture(scope="session")
@@ -30,6 +35,10 @@ def tempo_charm():
     Build once per session and reuse it in all integration tests to save some minutes/hours.
     You can also set `CHARM_PATH` env variable to use an already existing built charm.
     """
+    return _get_tempo_charm()
+
+
+def _get_tempo_charm():
     if tempo_charm := os.getenv("CHARM_PATH"):
         return tempo_charm
 
@@ -39,7 +48,9 @@ def tempo_charm():
     while True:
         try:
             subprocess.check_call(["charmcraft", "pack", "-v"])
-            return Path("./tempo-coordinator-k8s_ubuntu-22.04-amd64.charm").absolute()
+            pth = Path("./tempo-coordinator-k8s_ubuntu-22.04-amd64.charm").absolute()
+            os.environ["CHARM_PATH"] = str(pth)
+            return pth
         except subprocess.CalledProcessError:
             logger.warning("Failed to build Tempo coordinator. Trying again!")
             count += 1
@@ -96,7 +107,7 @@ def copy_charm_libs_into_tester_grpc_charm(ops_test):
 @fixture(scope="function")
 def server_cert(ops_test: OpsTest):
     data = get_relation_data(
-        requirer_endpoint=f"{APP_NAME}/0:certificates",
+        requirer_endpoint=f"{TEMPO_APP}/0:certificates",
         provider_endpoint=f"{SSC_APP_NAME}/0:certificates",
         model=ops_test.model.name,
     )
