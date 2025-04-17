@@ -1,4 +1,3 @@
-import logging
 import shlex
 import subprocess
 from pathlib import Path
@@ -14,8 +13,6 @@ from helpers import (
 )
 from tempo import Tempo
 from tests.integration.helpers import get_traces_patiently
-
-logger = logging.getLogger(__name__)
 
 
 @pytest.mark.setup

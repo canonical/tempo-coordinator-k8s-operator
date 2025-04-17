@@ -1,5 +1,4 @@
 import json
-import logging
 import shlex
 import subprocess
 from pathlib import Path
@@ -19,8 +18,6 @@ TESTER_GRPC_METADATA = yaml.safe_load(
 )
 TESTER_GRPC_APP_NAME = TESTER_GRPC_METADATA["name"]
 
-logger = logging.getLogger(__name__)
-
 
 @pytest.mark.setup
 def test_build_deploy_testers(juju: Juju, tempo_charm: Path):
@@ -28,11 +25,12 @@ def test_build_deploy_testers(juju: Juju, tempo_charm: Path):
     # When deploying it together with testers
     # Then applications should eventually be created
     tester_charm = \
-    subprocess.run(shlex.split("charmcraft pack -p ./tests/integration/tester/"), check=True, capture_output=True,
-                   text=True).stdout.strip().splitlines()[-1]
+        subprocess.run(shlex.split("charmcraft pack -p ./tests/integration/tester/"), check=True, capture_output=True,
+                       text=True).stdout.strip().splitlines()[-1]
     tester_grpc_charm = \
-    subprocess.run(shlex.split("charmcraft pack -p ./tests/integration/tester-grpc/"), check=True, capture_output=True,
-                   text=True).stdout.strip().splitlines()[-1]
+        subprocess.run(shlex.split("charmcraft pack -p ./tests/integration/tester-grpc/"), check=True,
+                       capture_output=True,
+                       text=True).stdout.strip().splitlines()[-1]
 
     resources_tester = {"workload": TESTER_METADATA["resources"]["workload"]["upstream-source"]}
     resources_tester_grpc = {
@@ -53,13 +51,13 @@ def test_build_deploy_testers(juju: Juju, tempo_charm: Path):
         num_units=3,
     )
 
-
     # for both testers, depending on the result of a race with tempo it'll be waiting for a bit, or active
     juju.wait(
         lambda status: all(status.apps[app].is_active for app in [TESTER_APP_NAME, TEMPO_APP, TESTER_GRPC_APP_NAME]),
         timeout=2000,
         error=jubilant.any_blocked
     )
+
 
 @pytest.mark.setup
 def test_relate(juju: Juju):

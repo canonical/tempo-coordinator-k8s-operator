@@ -2,7 +2,6 @@
 # Copyright 2024 Ubuntu
 # See LICENSE file for licensing details.
 
-import logging
 from pathlib import Path
 
 import pytest
@@ -15,8 +14,6 @@ from helpers import (
     get_traces_patiently, TEMPO_APP,
 )
 from tests.integration.helpers import TEMPO_RESOURCES
-
-logger = logging.getLogger(__name__)
 
 APP_REMOTE_NAME = "tempo-remote"
 
