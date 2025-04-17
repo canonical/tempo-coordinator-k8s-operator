@@ -1859,70 +1859,55 @@ dependencies = [
     { name = "pydantic" },
 ]
 
-[package.dev-dependencies]
-integration-test = [
+[package.optional-dependencies]
+dev = [
+    { name = "coverage", extra = ["toml"] },
     { name = "juju" },
     { name = "minio" },
     { name = "opentelemetry-exporter-jaeger" },
     { name = "opentelemetry-exporter-otlp-proto-grpc" },
     { name = "opentelemetry-exporter-zipkin" },
-    { name = "protobuf" },
-    { name = "pytest" },
-    { name = "pytest-operator" },
-    { name = "requests" },
-    { name = "tenacity" },
-    { name = "websockets" },
-]
-interface-test = [
-    { name = "pytest-interface-tester" },
-]
-lint = [
-    { name = "pyright" },
-    { name = "ruff" },
-]
-unit-test = [
-    { name = "coverage", extra = ["toml"] },
     { name = "ops", extra = ["testing"] },
+    { name = "protobuf" },
+    { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "pytest-interface-tester" },
+    { name = "pytest-operator" },
+    { name = "requests" },
+    { name = "ruff" },
+    { name = "tenacity" },
+    { name = "websockets" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "cosl", specifier = ">=0.0.56" },
+    { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "crossplane" },
     { name = "cryptography" },
     { name = "jsonschema" },
+    { name = "juju", marker = "extra == 'dev'", specifier = ">=3.0,<=3.3.0" },
+    { name = "minio", marker = "extra == 'dev'" },
+    { name = "opentelemetry-exporter-jaeger", marker = "extra == 'dev'" },
+    { name = "opentelemetry-exporter-otlp-proto-grpc", marker = "extra == 'dev'" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.21.0" },
+    { name = "opentelemetry-exporter-zipkin", marker = "extra == 'dev'" },
     { name = "ops" },
+    { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
+    { name = "protobuf", marker = "extra == 'dev'", specifier = "==3.20.*" },
     { name = "pydantic", specifier = "<3" },
+    { name = "pyright", marker = "extra == 'dev'" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest-cov", marker = "extra == 'dev'" },
+    { name = "pytest-interface-tester", marker = "extra == 'dev'", specifier = "==3.3.1" },
+    { name = "pytest-operator", marker = "extra == 'dev'" },
+    { name = "requests", marker = "extra == 'dev'" },
+    { name = "ruff", marker = "extra == 'dev'" },
+    { name = "tenacity", marker = "extra == 'dev'", specifier = "==8.2.3" },
+    { name = "websockets", marker = "extra == 'dev'", specifier = "<14.0" },
 ]
-
-[package.metadata.requires-dev]
-integration-test = [
-    { name = "juju", specifier = ">=3.0,<=3.3.0" },
-    { name = "minio" },
-    { name = "opentelemetry-exporter-jaeger" },
-    { name = "opentelemetry-exporter-otlp-proto-grpc" },
-    { name = "opentelemetry-exporter-zipkin" },
-    { name = "protobuf", specifier = "==3.20.*" },
-    { name = "pytest" },
-    { name = "pytest-operator" },
-    { name = "requests" },
-    { name = "tenacity", specifier = "==8.2.3" },
-    { name = "websockets", specifier = "<14.0" },
-]
-interface-test = [{ name = "pytest-interface-tester", specifier = "==3.3.1" }]
-lint = [
-    { name = "pyright" },
-    { name = "ruff" },
-]
-unit-test = [
-    { name = "coverage", extras = ["toml"] },
-    { name = "ops", extras = ["testing"] },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-]
+provides-extras = ["dev"]
 
 [[package]]
 name = "tenacity"
