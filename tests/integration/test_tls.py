@@ -16,7 +16,7 @@ from helpers import (
     get_tempo_internal_endpoint,
     get_traces,
     get_traces_patiently,
-    protocols_endpoints, TRAEFIK_APP,
+    protocols_endpoints, TRAEFIK_APP, SSC_APP,
 )
 from tests.integration.helpers import TEMPO_APP
 

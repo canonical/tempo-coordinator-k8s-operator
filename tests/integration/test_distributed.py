@@ -10,7 +10,7 @@ from helpers import (
     TEMPO_APP,
     deploy_distributed_cluster,
     emit_trace,
-    get_tempo_application_endpoint, get_app_ip_address, ALL_ROLES,
+    get_tempo_application_endpoint, get_app_ip_address, ALL_ROLES, ALL_WORKERS,
 )
 from tempo import Tempo
 from tests.integration.helpers import get_traces_patiently
