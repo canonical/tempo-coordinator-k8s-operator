@@ -1,19 +1,16 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
-import json
 import logging
 import os
 import random
 import shlex
 import shutil
-import tempfile
-from pathlib import Path
 from subprocess import check_output
 
 import jubilant
 from pytest import fixture
 
-from tests.integration.helpers import get_relation_data, TEMPO_APP, _get_tempo_charm
+from tests.integration.helpers import _get_tempo_charm
 
 SSC_APP_NAME = "ssc"
 
@@ -81,21 +78,6 @@ def copy_charm_libs_into_tester_grpc_charm(ops_test):
 
     # cleanup: remove all libs
     check_output(shlex.split("rm -rf ./tests/integration/tester-grpc/lib"))
-
-
-@fixture(scope="function")
-def server_cert(ops_test: OpsTest):
-    data = get_relation_data(
-        requirer_endpoint=f"{TEMPO_APP}/0:certificates",
-        provider_endpoint=f"{SSC_APP_NAME}/0:certificates",
-        model=ops_test.model.name,
-    )
-    cert = json.loads(data.provider.application_data["certificates"])[0]["certificate"]
-
-    with tempfile.NamedTemporaryFile() as f:
-        p = Path(f.name)
-        p.write_text(cert)
-        yield p
 
 
 @fixture(scope="function")

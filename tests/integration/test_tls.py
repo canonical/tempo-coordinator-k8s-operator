@@ -62,7 +62,7 @@ def test_relate_ssc(juju: Juju):
     )
 
 
-def test_verify_trace_http_no_tls_fails(juju: Juju, server_cert, nonce):
+def test_verify_trace_http_no_tls_fails(juju: Juju, nonce):
     # IF tempo is related to SSC
     # WHEN we emit an http trace, **unsecured**
     tempo_endpoint = get_tempo_internal_endpoint(juju, tls=False, protocol="otlp_http")
