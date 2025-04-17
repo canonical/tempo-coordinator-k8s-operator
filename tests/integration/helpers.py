@@ -16,25 +16,33 @@ from jubilant import Juju
 from minio import Minio
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+from tempo_config import TempoRole
 from tests.integration.conftest import _get_tempo_charm
 
 _JUJU_DATA_CACHE = {}
 _JUJU_KEYS = ("egress-subnets", "ingress-address", "private-address")
 ACCESS_KEY = "accesskey"
 SECRET_KEY = "secretkey"
-MINIO = "minio"
 BUCKET_NAME = "tempo"
-S3_INTEGRATOR = "s3-integrator"
-PROMETHEUS = "prometheus"
-PROMETHEUS_CHARM = "prometheus-k8s"
-WORKER_NAME = "tempo-worker"
-TEMPO_APP = "tempo"
 TRACEGEN_SCRIPT_PATH = Path() / "scripts" / "tracegen.py"
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 
 TEMPO_RESOURCES = {
     image_name: image_meta["upstream-source"] for image_name, image_meta in METADATA["resources"].items()
 }
+
+# Application names used uniformly across the tests
+MINIO_APP = "minio"
+S3_APP = "s3-integrator"
+PROMETHEUS_APP = "prometheus"
+WORKER_APP = "tempo-worker"
+TEMPO_APP = "tempo"
+SSC_APP = "ssc"
+TRAEFIK_APP = "trfk"
+
+
+ALL_ROLES = [role for role in TempoRole.all_nonmeta()]
+ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
 
 protocols_endpoints = {
     "jaeger_thrift_http": "{scheme}://{hostname}:14268/api/traces?format=jaeger.thrift",
@@ -255,12 +263,12 @@ def _deploy_and_configure_minio(juju: Juju):
         "access-key": ACCESS_KEY,
         "secret-key": SECRET_KEY,
     }
-    juju.deploy(MINIO, channel="edge", trust=True, config=config)
+    juju.deploy(MINIO_APP, channel="edge", trust=True, config=config)
     juju.wait(
-        lambda status: status.apps[MINIO].is_active,
+        lambda status: status.apps[MINIO_APP].is_active,
         error=jubilant.any_error,
     )
-    minio_addr = get_unit_ip_address(juju, MINIO, 0)
+    minio_addr = get_unit_ip_address(juju, MINIO_APP, 0)
 
     mc_client = Minio(
         f"{minio_addr}:9000",
@@ -279,8 +287,8 @@ def _deploy_and_configure_minio(juju: Juju):
         "endpoint": f"minio-0.minio-endpoints.{juju.model}.svc.cluster.local:9000",
         "bucket": BUCKET_NAME,
     }
-    juju.config(S3_INTEGRATOR, config)
-    task = juju.run(S3_INTEGRATOR + "/0", "sync-s3-credentials", params=config)
+    juju.config(S3_APP, config)
+    task = juju.run(S3_APP + "/0", "sync-s3-credentials", params=config)
     assert task.status == "completed"
 
 
@@ -316,16 +324,16 @@ def _deploy_cluster(juju: Juju, workers: Sequence[str], tempo_deployed_as: str =
         )
         tempo_app = TEMPO_APP
 
-    juju.deploy(S3_INTEGRATOR, channel="edge")
+    juju.deploy(S3_APP, channel="edge")
 
-    juju.integrate(tempo_app + ":s3", S3_INTEGRATOR + ":s3-credentials")
+    juju.integrate(tempo_app + ":s3", S3_APP + ":s3-credentials")
     for worker in workers:
         juju.integrate(tempo_app + ":tempo-cluster", worker + ":tempo-cluster")
 
     _deploy_and_configure_minio(juju)
 
     juju.wait(
-        lambda status: jubilant.all_active(status, [tempo_app, *workers, S3_INTEGRATOR]),
+        lambda status: jubilant.all_active(status, [tempo_app, *workers, S3_APP]),
         timeout=2000,
     )
 
@@ -338,12 +346,12 @@ def deploy_monolithic_cluster(juju: Juju, tempo_deployed_as=None):
     tempo_worker_charm_url, channel, resources = tempo_worker_charm_and_channel_and_resources()
     juju.deploy(
         tempo_worker_charm_url,
-        app=WORKER_NAME,
+        app=WORKER_APP,
         channel=channel,
         trust=True,
         resources=resources,
     )
-    _deploy_cluster(juju, [WORKER_NAME], tempo_deployed_as=tempo_deployed_as)
+    _deploy_cluster(juju, [WORKER_APP], tempo_deployed_as=tempo_deployed_as)
 
 
 def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], tempo_deployed_as=None):
@@ -353,7 +361,7 @@ def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], tempo_deployed_
     all_workers = []
 
     for role in roles:
-        worker_name = f"{WORKER_NAME}-{role}"
+        worker_name = f"{WORKER_APP}-{role}"
         all_workers.append(worker_name)
 
         juju.deploy(

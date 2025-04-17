@@ -8,18 +8,12 @@ from jubilant import Juju
 
 from helpers import (
     TEMPO_APP,
-    WORKER_NAME,
     deploy_distributed_cluster,
     emit_trace,
-    get_tempo_application_endpoint, get_app_ip_address,
+    get_tempo_application_endpoint, get_app_ip_address, ALL_ROLES,
 )
 from tempo import Tempo
-from tempo_config import TempoRole
 from tests.integration.helpers import get_traces_patiently
-
-ALL_ROLES = [role for role in TempoRole.all_nonmeta()]
-ALL_WORKERS = [f"{WORKER_NAME}-" + role for role in ALL_ROLES]
-S3_INTEGRATOR = "s3-integrator"
 
 logger = logging.getLogger(__name__)
 

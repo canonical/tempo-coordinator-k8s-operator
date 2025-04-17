@@ -9,7 +9,7 @@ import pytest
 from jubilant import Juju
 
 from helpers import (
-    WORKER_NAME,
+    WORKER_APP,
     deploy_monolithic_cluster,
     get_app_ip_address,
     get_traces_patiently, TEMPO_APP,
@@ -56,7 +56,7 @@ def test_verify_trace_http_self(juju: Juju):
 def test_relate_remote_instance(juju: Juju):
     juju.integrate(TEMPO_APP + ":tracing", APP_REMOTE_NAME + ":self-charm-tracing")
     juju.wait(
-        lambda status: all(status.apps[app].is_active for app in [TEMPO_APP, WORKER_NAME]),
+        lambda status: all(status.apps[app].is_active for app in [TEMPO_APP, WORKER_APP]),
         timeout=1000
     )
 

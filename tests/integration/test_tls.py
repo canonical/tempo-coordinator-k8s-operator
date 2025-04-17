@@ -7,7 +7,7 @@ import requests
 from jubilant import Juju
 
 from helpers import (
-    WORKER_NAME,
+    WORKER_APP,
     api_endpoints,
     deploy_monolithic_cluster,
     emit_trace,
@@ -16,25 +16,21 @@ from helpers import (
     get_tempo_internal_endpoint,
     get_traces,
     get_traces_patiently,
-    protocols_endpoints,
+    protocols_endpoints, TRAEFIK_APP,
 )
 from tests.integration.helpers import TEMPO_APP
 
-SSC = "self-signed-certificates"
-SSC_APP_NAME = "ssc"
-TRAEFIK = "traefik-k8s"
-TRAEFIK_APP_NAME = "trfk"
 
 logger = logging.getLogger(__name__)
 
 
 def get_ingress_proxied_hostname(juju: Juju):
     status = juju.status()
-    status_msg = status.apps[TRAEFIK_APP_NAME].app_status.message
+    status_msg = status.apps[TRAEFIK_APP].app_status.message
 
     # hacky way to get ingress hostname, but it's the safest one.
     if "Serving at" not in status_msg:
-        raise RuntimeError(f"Ingressed hostname is not present in {TRAEFIK_APP_NAME} status message.")
+        raise RuntimeError(f"Ingressed hostname is not present in {TRAEFIK_APP} status message.")
     return status_msg.replace("Serving at", "").strip()
 
 
@@ -43,24 +39,24 @@ def test_build_and_deploy(juju: Juju, tempo_charm: Path):
     # deploy cluster
     deploy_monolithic_cluster(juju)
 
-    juju.deploy(SSC, app=SSC_APP_NAME)
+    juju.deploy("self-signed-certificates", app=SSC_APP)
     juju.deploy(
-        TRAEFIK, app=TRAEFIK_APP_NAME, channel="edge", trust=True
+        "traefik-k8s", app=TRAEFIK_APP, channel="edge", trust=True
     )
     juju.integrate(
-        SSC_APP_NAME + ":certificates", TRAEFIK_APP_NAME + ":certificates"
+        SSC_APP + ":certificates", TRAEFIK_APP + ":certificates"
     )
     juju.wait(
-        lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME]),
+        lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP, TRAEFIK_APP, WORKER_APP]),
         error=jubilant.any_error,
         timeout=2000,
     )
 
 
 def test_relate_ssc(juju: Juju):
-    juju.integrate(TEMPO_APP + ":certificates", SSC_APP_NAME + ":certificates")
+    juju.integrate(TEMPO_APP + ":certificates", SSC_APP + ":certificates")
     juju.wait(
-        lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME]),
+        lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP, TRAEFIK_APP, WORKER_APP]),
         error=jubilant.any_error,
         timeout=2000,
     )
@@ -95,9 +91,9 @@ def test_verify_traces_otlp_http_tls(juju: Juju, nonce):
 
 
 def test_relate_ingress(juju: Juju):
-    juju.integrate(TEMPO_APP + ":ingress", TRAEFIK_APP_NAME + ":traefik-route")
+    juju.integrate(TEMPO_APP + ":ingress", TRAEFIK_APP + ":traefik-route")
     juju.wait(
-        lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP_NAME, TRAEFIK_APP_NAME, WORKER_NAME]),
+        lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP, TRAEFIK_APP, WORKER_APP]),
         error=jubilant.any_error,
         timeout=2000,
     )
@@ -108,7 +104,7 @@ def test_force_enable_protocols(juju: Juju):
 
     juju.config(TEMPO_APP, config)
     juju.wait(
-        lambda status: jubilant.all_active(status, [TEMPO_APP, WORKER_NAME]),
+        lambda status: jubilant.all_active(status, [TEMPO_APP, WORKER_APP]),
         error=jubilant.any_error,
         timeout=2000,
     )
@@ -170,7 +166,7 @@ def test_plain_request_redirect(juju: Juju, protocol):
 @pytest.mark.teardown
 def test_remove_relation(juju: Juju):
     juju.juju(
-        "remove-relation", TEMPO_APP + ":certificates", SSC_APP_NAME + ":certificates"
+        "remove-relation", TEMPO_APP + ":certificates", SSC_APP + ":certificates"
     )
 
     # coordinator will be set to blocked since ingress is over TLS, but the coordinator is not

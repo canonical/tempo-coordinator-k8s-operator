@@ -9,7 +9,7 @@ import pytest
 import yaml
 from jubilant import Juju
 
-from helpers import WORKER_NAME, deploy_monolithic_cluster, TEMPO_APP
+from helpers import WORKER_APP, deploy_monolithic_cluster, TEMPO_APP
 from tests.integration.helpers import get_traces_patiently, get_app_ip_address
 
 TESTER_METADATA = yaml.safe_load(Path("./tests/integration/tester/metadata.yaml").read_text())
@@ -71,7 +71,7 @@ def test_relate(juju: Juju):
 
     juju.wait(
         lambda status: all(
-            status.apps[app].is_active for app in [TEMPO_APP, WORKER_NAME, TESTER_APP_NAME, TESTER_GRPC_APP_NAME]),
+            status.apps[app].is_active for app in [TEMPO_APP, WORKER_APP, TESTER_APP_NAME, TESTER_GRPC_APP_NAME]),
         timeout=1000
     )
 
