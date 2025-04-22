@@ -74,15 +74,15 @@ def get_app_ip_address(juju: Juju, app_name):
 
 def get_unit_ip_address(juju: Juju, app_name: str, unit_no: int):
     """Return a juju unit's IP address."""
-    return juju.status().apps[app_name].units[f"{app_name}/{unit_no}"].public_address
+    return juju.status().apps[app_name].units[f"{app_name}/{unit_no}"].address
 
 
 def _deploy_and_configure_minio(juju: Juju):
-    config = {
+    keys = {
         "access-key": ACCESS_KEY,
         "secret-key": SECRET_KEY,
     }
-    juju.deploy(MINIO_APP, channel="edge", trust=True, config=config)
+    juju.deploy(MINIO_APP, channel="edge", trust=True, config=keys)
     juju.wait(
         lambda status: status.apps[MINIO_APP].is_active,
         error=jubilant.any_error,
@@ -91,8 +91,8 @@ def _deploy_and_configure_minio(juju: Juju):
 
     mc_client = Minio(
         f"{minio_addr}:9000",
-        access_key="accesskey",
-        secret_key="secretkey",
+        access_key=ACCESS_KEY,
+        secret_key=SECRET_KEY,
         secure=False,
     )
 
@@ -102,12 +102,11 @@ def _deploy_and_configure_minio(juju: Juju):
         mc_client.make_bucket(BUCKET_NAME)
 
     # configure s3-integrator
-    config = {
+    juju.config(S3_APP, {
         "endpoint": f"minio-0.minio-endpoints.{juju.model}.svc.cluster.local:9000",
         "bucket": BUCKET_NAME,
-    }
-    juju.config(S3_APP, config)
-    task = juju.run(S3_APP + "/0", "sync-s3-credentials", params=config)
+    })
+    task = juju.run(S3_APP + "/0", "sync-s3-credentials", params=keys)
     assert task.status == "completed"
 
 

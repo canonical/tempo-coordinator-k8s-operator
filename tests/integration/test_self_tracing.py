@@ -4,7 +4,6 @@
 
 from pathlib import Path
 
-import pytest
 from jubilant import Juju
 
 from helpers import (
@@ -18,7 +17,6 @@ from tests.integration.helpers import TEMPO_RESOURCES
 APP_REMOTE_NAME = "tempo-remote"
 
 
-@pytest.mark.abort_on_fail
 def test_build_and_deploy(juju: Juju, tempo_charm: Path):
     # deploy cluster
     deploy_monolithic_cluster(juju)
@@ -33,7 +31,6 @@ def test_build_and_deploy(juju: Juju, tempo_charm: Path):
     )
 
 
-@pytest.mark.abort_on_fail
 def test_verify_trace_http_self(juju: Juju):
     # adjust update-status interval to generate a charm tracing span faster
     juju.cli("model-config", "update-status-hook-interval=5s")
@@ -49,7 +46,6 @@ def test_verify_trace_http_self(juju: Juju):
     juju.cli("model-config", "update-status-hook-interval=5m")
 
 
-@pytest.mark.abort_on_fail
 def test_relate_remote_instance(juju: Juju):
     juju.integrate(TEMPO_APP + ":tracing", APP_REMOTE_NAME + ":self-charm-tracing")
     juju.wait(
@@ -58,7 +54,6 @@ def test_relate_remote_instance(juju: Juju):
     )
 
 
-@pytest.mark.abort_on_fail
 def test_verify_trace_http_remote(juju: Juju):
     # adjust update-status interval to generate a charm tracing span faster
     juju.cli("model-config", "update-status-hook-interval=5s")
@@ -74,7 +69,6 @@ def test_verify_trace_http_remote(juju: Juju):
     juju.cli("model-config", "update-status-hook-interval=5m")
 
 
-@pytest.mark.abort_on_fail
 def test_workload_traces(juju: Juju):
     # verify traces from tempo-scalable-single-binary are ingested
     assert get_traces_patiently(
