@@ -37,7 +37,7 @@ TEMPO_APP = "tempo"
 SSC_APP = "ssc"
 TRAEFIK_APP = "trfk"
 
-ALL_ROLES = [role for role in TempoRole.all_nonmeta()]
+ALL_ROLES = [role.value for role in TempoRole.all_nonmeta()]
 ALL_WORKERS = [f"{WORKER_APP}-" + role for role in ALL_ROLES]
 
 protocols_endpoints = {
