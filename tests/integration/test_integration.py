@@ -24,28 +24,31 @@ def test_build_deploy_testers(juju: Juju, tempo_charm: Path):
     # Given a fresh build of the charm
     # When deploying it together with testers
     # Then applications should eventually be created
-    tester_charm = \
-        subprocess.run(shlex.split("charmcraft pack -p ./tests/integration/tester/"), check=True, capture_output=True,
-                       text=True).stdout.strip().splitlines()[-1]
-    tester_grpc_charm = \
-        subprocess.run(shlex.split("charmcraft pack -p ./tests/integration/tester-grpc/"), check=True,
-                       capture_output=True,
-                       text=True).stdout.strip().splitlines()[-1]
-
-    resources_tester = {"workload": TESTER_METADATA["resources"]["workload"]["upstream-source"]}
-    resources_tester_grpc = {
-        "workload": TESTER_GRPC_METADATA["resources"]["workload"]["upstream-source"]
-    }
-
     deploy_monolithic_cluster(juju)
+
+    tester_root = "./tests/integration/tester/"
+    proc = subprocess.run(shlex.split("charmcraft pack -p %s" % tester_root),
+                          check=True, capture_output=True, text=True)
+    tester_charm = proc.stderr.strip().splitlines()[-1].split()[-1]
+    resources_tester = {"workload": TESTER_METADATA["resources"]["workload"]["upstream-source"]}
+
     juju.deploy(
-        tester_charm,
+        tester_root + tester_charm,
         resources=resources_tester,
         app=TESTER_APP_NAME,
         num_units=3,
     )
+
+    tester_grpc_root = "./tests/integration/tester-grpc/"
+    proc = subprocess.run(shlex.split("charmcraft pack -p %s" % tester_grpc_root),
+                          check=True, capture_output=True, text=True)
+    tester_grpc_charm = proc.stderr.strip().splitlines()[-1].split()[-1]
+    resources_tester_grpc = {
+        "workload": TESTER_GRPC_METADATA["resources"]["workload"]["upstream-source"]
+    }
+
     juju.deploy(
-        tester_grpc_charm,
+        tester_grpc_root + tester_grpc_charm,
         resources=resources_tester_grpc,
         app=TESTER_GRPC_APP_NAME,
         num_units=3,
