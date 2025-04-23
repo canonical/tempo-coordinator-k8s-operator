@@ -10,6 +10,7 @@ import jubilant
 import pytest
 import yaml
 from jubilant import Juju
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from helpers import run_command, TEMPO_APP
 from tests.integration.helpers import TEMPO_RESOURCES, PROMETHEUS_APP
@@ -17,6 +18,13 @@ from tests.integration.helpers import TEMPO_RESOURCES, PROMETHEUS_APP
 logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
+
+# retry up to 20 times, waiting 5 seconds between attempts
+@retry(stop=stop_after_attempt(20), wait=wait_fixed(5))
+def wait_for_ready_prometheus(juju: Juju):
+    cmd = ["curl", "-sS", "http://localhost:9090/-/ready"]
+    result = run_command(juju.model, PROMETHEUS_APP, 0, command=cmd)
+    assert "Prometheus Server is Ready." in result.decode("utf-8")
 
 
 @pytest.mark.setup
@@ -36,7 +44,7 @@ def test_deploy(juju: Juju, tempo_charm: Path):
         lambda status: jubilant.all_blocked(status, [TEMPO_APP]),
         timeout=600,
     )
-
+    wait_for_ready_prometheus(juju)
 
 def test_scrape_jobs(juju: Juju):
     # Check scrape jobs
