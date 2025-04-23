@@ -219,6 +219,17 @@ def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], tempo_deployed_
             resources=resources,
         )
 
+        if role == "metrics-generator":
+            juju.deploy(
+                "prometheus-k8s",
+                app=PROMETHEUS_APP,
+                revision=244, # what's on edge at april 23, 2025.
+                trust=True
+            )
+            juju.integrate(PROMETHEUS_APP+":receive-remote-write",
+                           TEMPO_APP+":send-remote-write")
+
+
     _deploy_cluster(juju, all_workers, tempo_deployed_as=tempo_deployed_as)
 
 
