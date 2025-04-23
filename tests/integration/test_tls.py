@@ -161,9 +161,7 @@ def test_plain_request_redirect(juju: Juju, protocol):
 
 @pytest.mark.teardown
 def test_remove_relation(juju: Juju):
-    juju.juju(
-        "remove-relation", TEMPO_APP + ":certificates", SSC_APP + ":certificates"
-    )
+    juju.remove_relation(TEMPO_APP + ":certificates", SSC_APP + ":certificates")
 
     # coordinator will be set to blocked since ingress is over TLS, but the coordinator is not
     juju.wait(
