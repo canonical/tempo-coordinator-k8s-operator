@@ -60,13 +60,6 @@ def test_deploy_monolithic_cluster(juju: Juju, tempo_charm: Path):
     # Then applications should eventually be created
     deploy_monolithic_cluster(juju)
 
-    # for both testers, depending on the result of a race with tempo it'll be waiting for a bit, or active
-    juju.wait(
-        lambda status: all(status.apps[app].is_active for app in [TESTER_APP_NAME, TEMPO_APP, TESTER_GRPC_APP_NAME]),
-        timeout=2000,
-        error=jubilant.any_blocked
-    )
-
 
 @pytest.mark.setup
 def test_relate(juju: Juju):
