@@ -224,6 +224,7 @@ def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], tempo_deployed_
                 "prometheus-k8s",
                 app=PROMETHEUS_APP,
                 revision=244, # what's on edge at april 23, 2025.
+                channel="latest/edge", # we need the channel for the updates
                 trust=True
             )
             juju.integrate(PROMETHEUS_APP+":receive-remote-write",

@@ -43,11 +43,12 @@ def test_build_and_deploy(juju: Juju, tempo_charm: Path):
     juju.integrate(
         SSC_APP + ":certificates", TRAEFIK_APP + ":certificates"
     )
-    juju.integrate(TEMPO_APP + ":certificates", SSC_APP + ":certificates")
-    juju.integrate(TEMPO_APP + ":ingress", TRAEFIK_APP + ":traefik-route")
 
     # this will wait for tempo, worker and s3 to be ready
     deploy_monolithic_cluster(juju)
+
+    juju.integrate(TEMPO_APP + ":certificates", SSC_APP + ":certificates")
+    juju.integrate(TEMPO_APP + ":ingress", TRAEFIK_APP + ":traefik-route")
 
     juju.wait(
         lambda status: jubilant.all_active(status, [SSC_APP, TRAEFIK_APP]),
