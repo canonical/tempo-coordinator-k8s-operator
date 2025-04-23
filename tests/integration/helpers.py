@@ -227,11 +227,14 @@ def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], tempo_deployed_
                 channel="latest/edge", # we need the channel for the updates
                 trust=True
             )
-            juju.integrate(PROMETHEUS_APP+":receive-remote-write",
-                           TEMPO_APP+":send-remote-write")
+
 
 
     _deploy_cluster(juju, all_workers, tempo_deployed_as=tempo_deployed_as)
+    
+    if "metrics-generator" in roles:
+        juju.integrate(PROMETHEUS_APP + ":receive-remote-write",
+                       TEMPO_APP + ":send-remote-write")
 
 
 def get_traces(tempo_host: str, service_name="tracegen", tls=True, nonce:Optional[str]=None):
