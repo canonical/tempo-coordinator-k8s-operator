@@ -52,7 +52,7 @@ def test_build_and_deploy(juju: Juju, tempo_charm: Path):
         timeout=2000,
     )
 
-
+@pytest.mark.setup
 def test_relate_ssc(juju: Juju):
     juju.integrate(TEMPO_APP + ":certificates", SSC_APP + ":certificates")
     juju.wait(
@@ -68,8 +68,9 @@ def test_verify_trace_http_no_tls_fails(juju: Juju, nonce):
     tempo_endpoint = get_tempo_internal_endpoint(juju, tls=False, protocol="otlp_http")
     emit_trace(tempo_endpoint, juju, nonce=nonce)  # this should fail
     # THEN we can verify it's not been ingested
-    traces = get_traces(get_app_ip_address(juju, TEMPO_APP))
-    assert len(traces) == 0
+    print(f"verifying nonce {nonce}")
+    traces = get_traces(get_app_ip_address(juju, TEMPO_APP), nonce=nonce)
+    assert len(traces) == 0, len(traces)
 
 
 def test_verify_traces_otlp_http_tls(juju: Juju, nonce):
@@ -87,9 +88,9 @@ def test_verify_traces_otlp_http_tls(juju: Juju, nonce):
         service_name=svc_name,
     )
     # THEN we can verify it's been ingested
-    get_traces_patiently(get_app_ip_address(juju, TEMPO_APP), service_name=svc_name)
+    get_traces_patiently(get_app_ip_address(juju, TEMPO_APP), service_name=svc_name, nonce=nonce)
 
-
+@pytest.mark.setup
 def test_relate_ingress(juju: Juju):
     juju.integrate(TEMPO_APP + ":ingress", TRAEFIK_APP + ":traefik-route")
     juju.wait(
@@ -131,7 +132,7 @@ def test_verify_traces_force_enabled_protocols_tls(juju: Juju, nonce, protocol):
         service_name=f"tracegen-tls-{protocol}",
     )
     # verify it's been ingested
-    get_traces_patiently(tempo_host, service_name=f"tracegen-tls-{protocol}")
+    get_traces_patiently(tempo_host, service_name=f"tracegen-tls-{protocol}", nonce=nonce)
 
 
 def test_workload_traces_tls(juju: Juju):

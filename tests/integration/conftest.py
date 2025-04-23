@@ -19,10 +19,13 @@ logger = logging.getLogger(__name__)
 
 @fixture(scope="module")
 def juju():
-    with jubilant.temp_model(
-            keep=os.getenv("KEEP_MODELS", False)
-    ) as juju:
-        yield juju
+    if model:=os.getenv("JUBILANT_MODEL"):
+        yield jubilant.Juju(model=model)
+    else:
+        with jubilant.temp_model(
+                keep=os.getenv("KEEP_MODELS", False)
+        ) as juju:
+            yield juju
 
 
 @fixture(scope="session")

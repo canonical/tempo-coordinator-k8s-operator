@@ -150,12 +150,9 @@ platforms:
 
 parts:
   charm:
-    # uncomment this if you add git+ dependencies in requirements.txt:
-    # build-packages:
-    #  - "git"
     source: .
     plugin: uv
-    build-packages: [git]
+    build-packages: [git] # handy for git+ dependencies during development
     build-snaps: [astral-uv]
     override-build: |
       craftctl default

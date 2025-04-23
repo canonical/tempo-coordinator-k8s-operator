@@ -222,21 +222,24 @@ def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], tempo_deployed_
     _deploy_cluster(juju, all_workers, tempo_deployed_as=tempo_deployed_as)
 
 
-def get_traces(tempo_host: str, service_name="tracegen", tls=True):
-    url = f"{'https' if tls else 'http'}://{tempo_host}:3200/api/search?tags=service.name={service_name}"
+def get_traces(tempo_host: str, service_name="tracegen", tls=True, nonce:Optional[str]=None):
+    # query params are logfmt-encoded. Space-separated.
+    nonce_param = f"%20tracegen.nonce={nonce}" if nonce else ""
+    url = f"{'https' if tls else 'http'}://{tempo_host}:3200/api/search?tags=service.name={service_name}{nonce_param}"
     req = requests.get(
         url,
         verify=False,
     )
-    assert req.status_code == 200
+    print(url)
+    assert req.status_code == 200, req.reason
     traces = json.loads(req.text)["traces"]
     return traces
 
 
-@retry(stop=stop_after_attempt(15), wait=wait_exponential(multiplier=1, min=4, max=10))
-def get_traces_patiently(tempo_host, service_name="tracegen", tls=True):
+@retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=4, max=10))
+def get_traces_patiently(tempo_host, service_name="tracegen", tls=True, nonce:Optional[str] = None):
     logger.info(f"polling {tempo_host} for service {service_name!r} traces...")
-    traces = get_traces(tempo_host, service_name=service_name, tls=tls)
+    traces = get_traces(tempo_host, service_name=service_name, tls=tls, nonce=nonce)
     assert len(traces) > 0
     return traces
 

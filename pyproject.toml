@@ -26,7 +26,7 @@ dev = [
     "coverage[toml]",
     "ops[testing]",
 
-#   CATAN TESTS
+#   CATAN TESTS: see https://github.com/canonical/tempo-coordinator-k8s-operator/issues/145
 #   "catan@git+https://github.com/pietropasotti/catan.git@main"
 
 #   INTEGRATION TESTS
