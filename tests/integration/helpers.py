@@ -175,6 +175,10 @@ def _deploy_cluster(juju: Juju, workers: Sequence[str], tempo_deployed_as: str =
     juju.integrate(tempo_app + ":s3", S3_APP + ":s3-credentials")
     for worker in workers:
         juju.integrate(tempo_app + ":tempo-cluster", worker + ":tempo-cluster")
+        # if we have an explicit metrics generator worker, we need to integrate with prometheus not to be in blocked
+        if "metrics-generator" in worker:
+            juju.integrate(PROMETHEUS_APP + ":receive-remote-write",
+                           tempo_app + ":send-remote-write")
 
     _deploy_and_configure_minio(juju)
 
@@ -228,13 +232,7 @@ def deploy_distributed_cluster(juju: Juju, roles: Sequence[str], tempo_deployed_
                 trust=True
             )
 
-
-
     _deploy_cluster(juju, all_workers, tempo_deployed_as=tempo_deployed_as)
-    
-    if "metrics-generator" in roles:
-        juju.integrate(PROMETHEUS_APP + ":receive-remote-write",
-                       TEMPO_APP + ":send-remote-write")
 
 
 def get_traces(tempo_host: str, service_name="tracegen", tls=True, nonce:Optional[str]=None):
