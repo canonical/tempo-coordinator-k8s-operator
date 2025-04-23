@@ -12,7 +12,7 @@ import yaml
 from cosl.coordinated_workers.nginx import CA_CERT_PATH
 from jubilant import Juju
 from minio import Minio
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from tempo_config import TempoRole
 
@@ -230,17 +230,17 @@ def get_traces(tempo_host: str, service_name="tracegen", tls=True, nonce:Optiona
         url,
         verify=False,
     )
-    print(url)
     assert req.status_code == 200, req.reason
     traces = json.loads(req.text)["traces"]
     return traces
 
 
-@retry(stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=4, max=10))
+# retry up to 10 times, waiting 4 seconds between attempts
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(4))
 def get_traces_patiently(tempo_host, service_name="tracegen", tls=True, nonce:Optional[str] = None):
     logger.info(f"polling {tempo_host} for service {service_name!r} traces...")
     traces = get_traces(tempo_host, service_name=service_name, tls=tls, nonce=nonce)
-    assert len(traces) > 0
+    assert len(traces) > 0, "no traces found"
     return traces
 
 

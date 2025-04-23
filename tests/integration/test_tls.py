@@ -4,6 +4,7 @@ from pathlib import Path
 import jubilant
 import pytest
 import requests
+import tenacity
 from jubilant import Juju
 
 from helpers import (
@@ -11,12 +12,9 @@ from helpers import (
     api_endpoints,
     deploy_monolithic_cluster,
     emit_trace,
-    get_app_ip_address,
     get_tempo_ingressed_endpoint,
-    get_tempo_internal_endpoint,
-    get_traces,
     get_traces_patiently,
-    protocols_endpoints, TRAEFIK_APP, SSC_APP,
+    protocols_endpoints, TRAEFIK_APP, SSC_APP, get_tempo_internal_endpoint, get_app_ip_address,
 )
 from tests.integration.helpers import TEMPO_APP
 
@@ -37,24 +35,28 @@ def get_ingress_proxied_hostname(juju: Juju):
 @pytest.mark.setup
 def test_build_and_deploy(juju: Juju, tempo_charm: Path):
     # deploy cluster
-    deploy_monolithic_cluster(juju)
-
     juju.deploy("self-signed-certificates", app=SSC_APP)
     juju.deploy(
         "traefik-k8s", app=TRAEFIK_APP, channel="edge", trust=True
     )
+
     juju.integrate(
         SSC_APP + ":certificates", TRAEFIK_APP + ":certificates"
     )
+    juju.integrate(TEMPO_APP + ":certificates", SSC_APP + ":certificates")
+    juju.integrate(TEMPO_APP + ":ingress", TRAEFIK_APP + ":traefik-route")
+
+    # this will wait for tempo, worker and s3 to be ready
+    deploy_monolithic_cluster(juju)
+
     juju.wait(
-        lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP, TRAEFIK_APP, WORKER_APP]),
+        lambda status: jubilant.all_active(status, [SSC_APP, TRAEFIK_APP]),
         error=jubilant.any_error,
         timeout=2000,
     )
 
 @pytest.mark.setup
 def test_relate_ssc(juju: Juju):
-    juju.integrate(TEMPO_APP + ":certificates", SSC_APP + ":certificates")
     juju.wait(
         lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP, TRAEFIK_APP, WORKER_APP]),
         error=jubilant.any_error,
@@ -67,15 +69,15 @@ def test_verify_trace_http_no_tls_fails(juju: Juju, nonce):
     # WHEN we emit an http trace, **unsecured**
     tempo_endpoint = get_tempo_internal_endpoint(juju, tls=False, protocol="otlp_http")
     emit_trace(tempo_endpoint, juju, nonce=nonce)  # this should fail
+
     # THEN we can verify it's not been ingested
-    print(f"verifying nonce {nonce}")
-    traces = get_traces(get_app_ip_address(juju, TEMPO_APP), nonce=nonce)
-    assert len(traces) == 0, len(traces)
+    with pytest.raises(tenacity.RetryError):
+        get_traces_patiently(get_app_ip_address(juju, TEMPO_APP), nonce=nonce)
 
 
 def test_verify_traces_otlp_http_tls(juju: Juju, nonce):
     protocol = "otlp_http"
-    svc_name = f"tracegen-{protocol}"
+    service_name = f"tracegen-{protocol}"
     tempo_endpoint = get_tempo_internal_endpoint(juju, protocol=protocol, tls=True)
     # WHEN we emit a trace secured with TLS
     emit_trace(
@@ -85,19 +87,10 @@ def test_verify_traces_otlp_http_tls(juju: Juju, nonce):
         verbose=1,
         proto=protocol,
         use_cert=True,
-        service_name=svc_name,
+        service_name=service_name,
     )
     # THEN we can verify it's been ingested
-    get_traces_patiently(get_app_ip_address(juju, TEMPO_APP), service_name=svc_name, nonce=nonce)
-
-@pytest.mark.setup
-def test_relate_ingress(juju: Juju):
-    juju.integrate(TEMPO_APP + ":ingress", TRAEFIK_APP + ":traefik-route")
-    juju.wait(
-        lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP, TRAEFIK_APP, WORKER_APP]),
-        error=jubilant.any_error,
-        timeout=2000,
-    )
+    get_traces_patiently(get_app_ip_address(juju, TEMPO_APP), service_name=service_name, nonce=nonce)
 
 
 def test_force_enable_protocols(juju: Juju):
@@ -122,6 +115,7 @@ def test_verify_traces_force_enabled_protocols_tls(juju: Juju, nonce, protocol):
         tls=True,
     )
     # emit a trace secured with TLS
+    service_name = f"tracegen-tls-{protocol}"
     emit_trace(
         tempo_endpoint,
         juju,
@@ -129,10 +123,10 @@ def test_verify_traces_force_enabled_protocols_tls(juju: Juju, nonce, protocol):
         verbose=1,
         proto=protocol,
         use_cert=True,
-        service_name=f"tracegen-tls-{protocol}",
+        service_name=service_name,
     )
     # verify it's been ingested
-    get_traces_patiently(tempo_host, service_name=f"tracegen-tls-{protocol}", nonce=nonce)
+    get_traces_patiently(tempo_host, service_name=service_name, nonce=nonce)
 
 
 def test_workload_traces_tls(juju: Juju):
