@@ -19,13 +19,9 @@ TESTER_GRPC_METADATA = yaml.safe_load(
 TESTER_GRPC_APP_NAME = TESTER_GRPC_METADATA["name"]
 
 
-@pytest.mark.setup
-def test_build_deploy_testers(juju: Juju, tempo_charm: Path):
-    # Given a fresh build of the charm
-    # When deploying it together with testers
-    # Then applications should eventually be created
-    deploy_monolithic_cluster(juju)
 
+@pytest.mark.setup
+def test_build_deploy_tester(juju: Juju):
     tester_root = "./tests/integration/tester/"
     proc = subprocess.run(shlex.split("charmcraft pack -p %s" % tester_root),
                           check=True, capture_output=True, text=True)
@@ -33,12 +29,14 @@ def test_build_deploy_testers(juju: Juju, tempo_charm: Path):
     resources_tester = {"workload": TESTER_METADATA["resources"]["workload"]["upstream-source"]}
 
     juju.deploy(
-        tester_root + tester_charm,
+        "./"+tester_charm,
         resources=resources_tester,
         app=TESTER_APP_NAME,
         num_units=3,
     )
 
+@pytest.mark.setup
+def test_build_deploy_tester_grpc(juju: Juju):
     tester_grpc_root = "./tests/integration/tester-grpc/"
     proc = subprocess.run(shlex.split("charmcraft pack -p %s" % tester_grpc_root),
                           check=True, capture_output=True, text=True)
@@ -48,11 +46,19 @@ def test_build_deploy_testers(juju: Juju, tempo_charm: Path):
     }
 
     juju.deploy(
-        tester_grpc_root + tester_grpc_charm,
+        "./"+tester_grpc_charm,
         resources=resources_tester_grpc,
         app=TESTER_GRPC_APP_NAME,
         num_units=3,
     )
+
+
+@pytest.mark.setup
+def test_deploy_monolithic_cluster(juju: Juju, tempo_charm: Path):
+    # Given a fresh build of the charm
+    # When deploying it together with testers
+    # Then applications should eventually be created
+    deploy_monolithic_cluster(juju)
 
     # for both testers, depending on the result of a race with tempo it'll be waiting for a bit, or active
     juju.wait(
