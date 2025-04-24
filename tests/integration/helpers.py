@@ -137,10 +137,9 @@ def _get_tempo_charm():
     if tempo_charm := os.getenv("CHARM_PATH"):
         return tempo_charm
 
-    count = 0
     # Intermittent issue where charmcraft fails to build the charm for an unknown reason.
     # Retry building the charm
-    while True:
+    for _ in range(3):
         try:
             logger.info("packing...")
             out = subprocess.run(
@@ -155,11 +154,8 @@ def _get_tempo_charm():
             return pth
         except subprocess.CalledProcessError:
             logger.warning("Failed to build Tempo coordinator. Trying again!")
-            count += 1
 
-            if count == 3:
-                raise
-
+    raise err  # noqa
 
 def _deploy_cluster(juju: Juju, workers: Sequence[str], tempo_deployed_as: str = None):
     if tempo_deployed_as:

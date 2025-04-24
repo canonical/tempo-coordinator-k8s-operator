@@ -1039,24 +1039,6 @@ wheels = [
 ]
 
 [[package]]
-name = "pytest-jubilant"
-version = "0.1.0"
-source = { path = "../pytest-jubilant/dist/pytest_jubilant-0.1.0-py3-none-any.whl" }
-dependencies = [
-    { name = "jubilant" },
-    { name = "pytest" },
-]
-wheels = [
-    { filename = "pytest_jubilant-0.1.0-py3-none-any.whl", hash = "sha256:9b2c64ef7317c2158b640d42f7eb21640e60ba917731d7f1ca8514d6ed91234a" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "jubilant", specifier = ">=0.5.0" },
-    { name = "pytest", specifier = ">=8.3.5" },
-]
-
-[[package]]
 name = "pyyaml"
 version = "6.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1297,7 +1279,6 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-interface-tester" },
-    { name = "pytest-jubilant" },
     { name = "requests" },
     { name = "ruff" },
     { name = "tenacity" },
@@ -1326,7 +1307,6 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytest-interface-tester", marker = "extra == 'dev'", specifier = "==3.3.1" },
-    { name = "pytest-jubilant", marker = "extra == 'dev'", path = "../pytest-jubilant/dist/pytest_jubilant-0.1.0-py3-none-any.whl" },
     { name = "requests", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "tenacity", marker = "extra == 'dev'", specifier = "==8.2.3" },

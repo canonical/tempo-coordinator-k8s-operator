@@ -36,6 +36,8 @@ def test_tempo_active_when_deploy_s3_and_workers(juju: Juju):
 
 @pytest.mark.teardown
 def test_tempo_blocks_if_s3_goes_away(juju: Juju):
-    juju.remove_application(S3_APP, destroy_storage=True)
+    juju.remove_relation(S3_APP, TEMPO_APP)
+    # FIXME: s3 stubbornly refuses to die
+    # juju.remove_application(S3_APP, force=True)
     juju.wait(lambda status: jubilant.all_blocked(status, TEMPO_APP),
               timeout=1000)
