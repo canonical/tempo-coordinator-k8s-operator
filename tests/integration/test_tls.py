@@ -51,7 +51,7 @@ def test_build_and_deploy(juju: Juju, tempo_charm: Path):
     juju.integrate(TEMPO_APP + ":ingress", TRAEFIK_APP + ":traefik-route")
 
     juju.wait(
-        lambda status: jubilant.all_active(status, [SSC_APP, TRAEFIK_APP]),
+        lambda status: jubilant.all_active(status, SSC_APP, TRAEFIK_APP),
         error=jubilant.any_error,
         timeout=2000,
     )
@@ -59,7 +59,7 @@ def test_build_and_deploy(juju: Juju, tempo_charm: Path):
 @pytest.mark.setup
 def test_relate_ssc(juju: Juju):
     juju.wait(
-        lambda status: jubilant.all_active(status, [TEMPO_APP, SSC_APP, TRAEFIK_APP, WORKER_APP]),
+        lambda status: jubilant.all_active(status, TEMPO_APP, SSC_APP, TRAEFIK_APP, WORKER_APP),
         error=jubilant.any_error,
         timeout=2000,
     )
@@ -99,7 +99,7 @@ def test_force_enable_protocols(juju: Juju):
 
     juju.config(TEMPO_APP, config)
     juju.wait(
-        lambda status: jubilant.all_active(status, [TEMPO_APP, WORKER_APP]),
+        lambda status: jubilant.all_active(status, TEMPO_APP, WORKER_APP),
         error=jubilant.any_error,
         timeout=2000,
     )
@@ -165,7 +165,7 @@ def test_remove_relation(juju: Juju):
 
     # coordinator will be set to blocked since ingress is over TLS, but the coordinator is not
     juju.wait(
-        lambda status: jubilant.all_blocked(status, [TEMPO_APP]),
+        lambda status: jubilant.all_blocked(status, TEMPO_APP),
         error=jubilant.any_error,
         timeout=1000,
     )

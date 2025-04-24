@@ -16,7 +16,7 @@ def test_deploy_tempo(juju: Juju, tempo_charm: Path):
 
     # coordinator will be blocked because of missing s3 and workers integration
     juju.wait(
-        lambda status: all_blocked(status, (TEMPO_APP,)),
+        lambda status: all_blocked(status, TEMPO_APP),
         timeout=1000
     )
 
@@ -24,7 +24,7 @@ def test_deploy_tempo(juju: Juju, tempo_charm: Path):
 def test_scale_tempo_up_stays_blocked(juju: Juju):
     juju.cli("add-unit", TEMPO_APP, "-n", "1")
     juju.wait(
-        lambda status: all_blocked(status, (TEMPO_APP,)),
+        lambda status: all_blocked(status, TEMPO_APP),
         timeout=1000
     )
 
@@ -37,5 +37,5 @@ def test_tempo_active_when_deploy_s3_and_workers(juju: Juju):
 @pytest.mark.teardown
 def test_tempo_blocks_if_s3_goes_away(juju: Juju):
     juju.remove_application(S3_APP, destroy_storage=True)
-    juju.wait(lambda status: jubilant.all_blocked(status, [TEMPO_APP]),
+    juju.wait(lambda status: jubilant.all_blocked(status, TEMPO_APP),
               timeout=1000)

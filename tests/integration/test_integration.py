@@ -70,8 +70,7 @@ def test_relate(juju: Juju):
     juju.integrate(TEMPO_APP + ":tracing", TESTER_GRPC_APP_NAME + ":tracing")
 
     juju.wait(
-        lambda status: all(
-            status.apps[app].is_active for app in [TEMPO_APP, WORKER_APP, TESTER_APP_NAME, TESTER_GRPC_APP_NAME]),
+        lambda status: jubilant.all_active(status, TEMPO_APP, WORKER_APP, TESTER_APP_NAME, TESTER_GRPC_APP_NAME),
         timeout=1000
     )
 
@@ -90,7 +89,7 @@ def test_verify_traces_http(juju: Juju):
 
 
 @pytest.mark.skip(reason="fails because search query results are not stable")
-# keep an eye onhttps://github.com/grafana/tempo/issues/3777 and see if they fix it
+# keep an eye on https://github.com/grafana/tempo/issues/3777 and see if they fix it
 def test_verify_buffered_charm_traces_http(juju: Juju):
     # given a relation between charms
     # when traces endpoint is queried
@@ -139,13 +138,13 @@ def test_remove_relation(juju: Juju):
     )
 
     juju.wait(
-        lambda status: jubilant.all_active(status, (TEMPO_APP,)),
-        error=lambda status: jubilant.any_blocked(status, (TEMPO_APP,)),
+        lambda status: jubilant.all_active(status, TEMPO_APP),
+        error=lambda status: jubilant.any_blocked(status,TEMPO_APP),
         timeout=1000
     ),
     # for tester, depending on the result of race with tempo it's either waiting or active
     juju.wait(
         lambda status: status.apps[TEMPO_APP].is_active,
         timeout=1000,
-        error=lambda status: jubilant.any_blocked(status, (TESTER_APP_NAME, TESTER_GRPC_APP_NAME))
+        error=lambda status: jubilant.any_blocked(status, TESTER_APP_NAME, TESTER_GRPC_APP_NAME)
     )

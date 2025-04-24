@@ -4,6 +4,7 @@
 
 from pathlib import Path
 
+import jubilant
 from jubilant import Juju
 
 from helpers import (
@@ -26,7 +27,7 @@ def test_build_and_deploy(juju: Juju, tempo_charm: Path):
         tempo_charm, resources=TEMPO_RESOURCES, app=APP_REMOTE_NAME, trust=True
     )
     juju.wait(
-        lambda status: status.apps[APP_REMOTE_NAME].app_status.current == "blocked",
+        lambda status: jubilant.all_blocked(status, APP_REMOTE_NAME),
         timeout=2000
     )
 
