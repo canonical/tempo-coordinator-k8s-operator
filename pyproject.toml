@@ -31,7 +31,7 @@ dev = [
 
 #   INTEGRATION TESTS
     "jubilant",
-    "pytest-jubilant>=0.1.0",
+    "pytest-jubilant>=0.2.0",
     "requests",
     "minio",
     "tenacity==8.2.3",

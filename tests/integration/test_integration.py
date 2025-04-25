@@ -3,7 +3,7 @@ from pathlib import Path
 
 import jubilant
 import pytest
-from pytest_jubilant.main import pack_charm
+from pytest_jubilant import pack_charm
 import yaml
 from jubilant import Juju
 
