@@ -231,8 +231,8 @@ wheels = [
 
 [[package]]
 name = "cosl"
-version = "0.0.57"
-source = { registry = "https://pypi.org/simple" }
+version = "0.1.0"
+source = { git = "https://github.com/canonical/cos-lib?rev=TAP-390#c61b6babdd6a68975b5e4a9041dab71238fad102" }
 dependencies = [
     { name = "lightkube" },
     { name = "ops" },
@@ -240,10 +240,6 @@ dependencies = [
     { name = "pyyaml" },
     { name = "tenacity" },
     { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/08/b2/1ee6d0ad9a160e381fca918923a25bb5ef4adc3cec96c352928552d03842/cosl-0.0.57.tar.gz", hash = "sha256:7ed489973e6e72a9b9533dddf0da1df3499a0aacdc513ad0b579cb04b4671b04", size = 77998, upload_time = "2025-03-12T07:26:30.965Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d9/60/05701107369b0456fcf8a211125926c749c30acc9c02d949b1407d7c94ce/cosl-0.0.57-py3-none-any.whl", hash = "sha256:0f2bac6dd84a636747e63acd6cb277f1cc642d3c5f80caa13cd9b51644b8ff67", size = 61714, upload_time = "2025-03-12T07:26:29.651Z" },
 ]
 
 [[package]]
@@ -786,15 +782,17 @@ wheels = [
 
 [[package]]
 name = "ops"
-version = "2.20.0"
+version = "2.21.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "importlib-metadata" },
+    { name = "opentelemetry-api" },
     { name = "pyyaml" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/17/af/d2eb331b6424b879a448611524f54590fde6e3726f7513941f4fc26c4b08/ops-2.20.0.tar.gz", hash = "sha256:be1dcfd0bb748839fbc200bbd073a6acf9648401c3729db22d8594ebb4301e05", size = 492365, upload_time = "2025-03-31T20:43:20.044Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/97/c5/f0098a9b1b72680b3682043227a628a08a7b5b9592fc98ea6efa0d638017/ops-2.21.1.tar.gz", hash = "sha256:4a8190420813ba37e7a0399d656008f99c79015d7f72e138bad7cb1ac403d0b0", size = 496427, upload_time = "2025-05-01T03:03:23.038Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/62/83/0acfc15b24d1bc302e47f2e5e9170c8707cef9e7eb90177d38afce8cd6e8/ops-2.20.0-py3-none-any.whl", hash = "sha256:94791a4b45f00c6902494a4934480c85947880b27f5ebf3a0ec32e8cc6279c99", size = 180997, upload_time = "2025-03-31T20:43:15.433Z" },
+    { url = "https://files.pythonhosted.org/packages/e6/c7/b70271ee12418144d5c596f37745c21da105470d365d834a9fce071f7bc2/ops-2.21.1-py3-none-any.whl", hash = "sha256:6745084c8e73bc485c254f95664bd85ddcf786c91b90782f2830c8333a1440b2", size = 182682, upload_time = "2025-05-01T03:03:20.946Z" },
 ]
 
 [package.optional-dependencies]
@@ -804,15 +802,15 @@ testing = [
 
 [[package]]
 name = "ops-scenario"
-version = "7.20.0"
+version = "7.21.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ops" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d0/d6/85a7d0a1f0df597a82caa5350a45f0e99ef2c72eed5705d80cae72101925/ops_scenario-7.20.0.tar.gz", hash = "sha256:f1c058dac51bb953389cbddedbf131fe545b9932ae8fe32c1e701833b31ea88b", size = 142159, upload_time = "2025-03-31T20:36:39.027Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2a/95/90312165f3e1d5876872ad64131be9c0f26b5aa09bd73a436a21b0752820/ops_scenario-7.21.1.tar.gz", hash = "sha256:534b407b34212161c3e74cb396b79ca7449932e483053e924146fdf0140876b9", size = 141631, upload_time = "2025-05-01T03:03:30.456Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/a3/8cb3445f8666082a8b20c6547debca47902c15f5a9ff608dd767632b4a70/ops_scenario-7.20.0-py3-none-any.whl", hash = "sha256:ee8defa368751d819e3b8ae08de672fa281af16274567f022c42a5f2c6c584a3", size = 72497, upload_time = "2025-03-31T20:36:36.706Z" },
+    { url = "https://files.pythonhosted.org/packages/93/3b/4cc28ea9d77015ecf8fc5c3d362bb274e35ffaa2e6fbd87909a5384afa40/ops_scenario-7.21.1-py3-none-any.whl", hash = "sha256:eeb9def2c31a1db2429cf21bd9b8cbd2ac092cc1fbe5591e850e4aa192c542fa", size = 72451, upload_time = "2025-05-01T03:03:28.488Z" },
 ]
 
 [[package]]
@@ -1040,15 +1038,15 @@ wheels = [
 
 [[package]]
 name = "pytest-jubilant"
-version = "0.3"
+version = "0.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jubilant" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/84/61/6b06556aba8fb458cb4dacc2cc32f5582f67b511ab5bee141a82576b25ce/pytest_jubilant-0.3.tar.gz", hash = "sha256:59052a04b27551a138d303d089e21145b863bb3fdf5d1d1657a4a661859f39ba", size = 9830, upload_time = "2025-04-30T10:38:06.316Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/89/de5bcd3c72a1f3b41a58fd7207fd4329000f45b19c8db4e4df8ce8698042/pytest_jubilant-0.4.tar.gz", hash = "sha256:c8dac9a2650ef7f30debd648c10f36a1b1d0e2396696374ae0d7754f4f0ab0b5", size = 9996, upload_time = "2025-05-01T11:45:02.844Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/8d/bec710d91bf51df065d96f641d6584686968a12a01901e3e094ff9a5a096/pytest_jubilant-0.3-py3-none-any.whl", hash = "sha256:9941beeb1935bcab122363c84ea9ffaa266e16e5dfcd4530ed63456be7cce279", size = 10401, upload_time = "2025-04-30T10:38:05.214Z" },
+    { url = "https://files.pythonhosted.org/packages/39/ac/ea6cfc2edaae732bfd78cc75ea831991bc080e47ecde1d7223d3abb25ad0/pytest_jubilant-0.4-py3-none-any.whl", hash = "sha256:14c71ed407cd82bf78cf7865cf15c49db2d94f8828ebdf97533c451ba2385bb9", size = 10570, upload_time = "2025-05-01T11:45:01.244Z" },
 ]
 
 [[package]]
@@ -1301,7 +1299,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cosl", specifier = ">=0.0.56" },
+    { name = "cosl", git = "https://github.com/canonical/cos-lib?rev=TAP-390" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
     { name = "crossplane" },
     { name = "cryptography" },
