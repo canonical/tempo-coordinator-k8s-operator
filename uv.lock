@@ -542,14 +542,14 @@ wheels = [
 
 [[package]]
 name = "jubilant"
-version = "1.0.0"
+version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/af/70/4745c0bd7df074cb8b6eb8cbd16a17fabd09ebd3a5a1485da89d2d22886e/jubilant-1.0.0.tar.gz", hash = "sha256:86a9d61f539e76333fe4734e7915377591648f5c5133fc118e7519c6cfd44dba", size = 24079, upload_time = "2025-04-29T21:23:21.257Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/15/1a/5f199ecb6b77ef7d7fd74e6e9c6ddd618d9405a7c8adc69ecf1bc7e03d50/jubilant-1.0.1.tar.gz", hash = "sha256:4d9e3367b80875517897992bc916748c13236ed7fd6cacd1bc3c78d727f3fc4c", size = 24082, upload_time = "2025-04-30T21:49:30.137Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/07/6bf3bc21635b7a161ce93e15acc3ad83817235d0ad617de74bf68514dd05/jubilant-1.0.0-py3-none-any.whl", hash = "sha256:38ee9676c185b41f1bda998640f65b50ef64b0b89e43b90188a67a7b34602cab", size = 23248, upload_time = "2025-04-29T21:23:19.726Z" },
+    { url = "https://files.pythonhosted.org/packages/00/25/e000016c951839e6ea7fc9a5ea9aee8d3b7b499b1ab0fb59c09cabd00bf7/jubilant-1.0.1-py3-none-any.whl", hash = "sha256:ecb834320525843d0602bcb6d1623ca5823349de06b18a5296871064b083d77b", size = 23252, upload_time = "2025-04-30T21:49:28.843Z" },
 ]
 
 [[package]]
@@ -786,17 +786,15 @@ wheels = [
 
 [[package]]
 name = "ops"
-version = "2.21.0"
+version = "2.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "importlib-metadata" },
-    { name = "opentelemetry-api" },
     { name = "pyyaml" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/12/c8/505f684d4284fbbfd470c9bd3c2bf52d4355408e27911f4a533b7a129481/ops-2.21.0.tar.gz", hash = "sha256:42c209051978486d78be3d335efa9a5ccb45d6c2580e95a3ac71460773ce6150", size = 499271, upload_time = "2025-04-30T04:05:43.736Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/17/af/d2eb331b6424b879a448611524f54590fde6e3726f7513941f4fc26c4b08/ops-2.20.0.tar.gz", hash = "sha256:be1dcfd0bb748839fbc200bbd073a6acf9648401c3729db22d8594ebb4301e05", size = 492365, upload_time = "2025-03-31T20:43:20.044Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ac/df/b4b086c44fb59c30920d52fb46923e04de4d6402ddab0492a6a61a44873b/ops-2.21.0-py3-none-any.whl", hash = "sha256:cdaa7e8c741d7510224451b743ea018a247333ad9fb9ac46074c57076180c2a0", size = 183978, upload_time = "2025-04-30T04:05:40.91Z" },
+    { url = "https://files.pythonhosted.org/packages/62/83/0acfc15b24d1bc302e47f2e5e9170c8707cef9e7eb90177d38afce8cd6e8/ops-2.20.0-py3-none-any.whl", hash = "sha256:94791a4b45f00c6902494a4934480c85947880b27f5ebf3a0ec32e8cc6279c99", size = 180997, upload_time = "2025-03-31T20:43:15.433Z" },
 ]
 
 [package.optional-dependencies]
@@ -806,15 +804,15 @@ testing = [
 
 [[package]]
 name = "ops-scenario"
-version = "7.21.0"
+version = "7.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ops" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/56/71990f293f840160ecba61570d82b243ef09f488a45052fd8a3da3ee6ce8/ops_scenario-7.21.0.tar.gz", hash = "sha256:853fa40dfd8ac892d825569b3dc866c256ea7447efc18680118582eb69dfaf5e", size = 141585, upload_time = "2025-04-30T04:05:47.545Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/d6/85a7d0a1f0df597a82caa5350a45f0e99ef2c72eed5705d80cae72101925/ops_scenario-7.20.0.tar.gz", hash = "sha256:f1c058dac51bb953389cbddedbf131fe545b9932ae8fe32c1e701833b31ea88b", size = 142159, upload_time = "2025-03-31T20:36:39.027Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/e2/e65e0b45751635ab6f7b3361b4efa18816fec0ac918a311f268c52634c0c/ops_scenario-7.21.0-py3-none-any.whl", hash = "sha256:f08e29d517fddeec2a77b2ddeddeb0f1b443032b5b27cd10b2e7735d555cc6c9", size = 72221, upload_time = "2025-04-30T04:05:45.243Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/a3/8cb3445f8666082a8b20c6547debca47902c15f5a9ff608dd767632b4a70/ops_scenario-7.20.0-py3-none-any.whl", hash = "sha256:ee8defa368751d819e3b8ae08de672fa281af16274567f022c42a5f2c6c584a3", size = 72497, upload_time = "2025-03-31T20:36:36.706Z" },
 ]
 
 [[package]]
@@ -1316,7 +1314,7 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.21.0" },
     { name = "opentelemetry-exporter-zipkin", marker = "extra == 'dev'" },
     { name = "ops" },
-    { name = "ops", extras = ["testing"], marker = "extra == 'dev'" },
+    { name = "ops", extras = ["testing"], marker = "extra == 'dev'", specifier = "==2.20.0" },
     { name = "protobuf", marker = "extra == 'dev'", specifier = "==3.20.*" },
     { name = "pydantic", specifier = "<3" },
     { name = "pyright", marker = "extra == 'dev'" },

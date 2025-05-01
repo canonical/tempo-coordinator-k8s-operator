@@ -24,7 +24,8 @@ dev = [
     "pytest",
     "pytest-cov",
     "coverage[toml]",
-    "ops[testing]",
+    # FIXME: 2.21.0 adds tracing support and breaks some charm-tracing unittests
+    "ops[testing]==2.20.0",
 
 #   CATAN TESTS: see https://github.com/canonical/tempo-coordinator-k8s-operator/issues/145
 #   "catan@git+https://github.com/pietropasotti/catan.git@main"
