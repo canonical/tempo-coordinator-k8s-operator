@@ -966,7 +966,6 @@ def charm_tracing_config(
     try:
         endpoint = endpoint_requirer.get_endpoint("otlp_http")
     except ModelError as e:
-        logger.error(f"ERRARGS: {e.args}")
         if e.args[0] == "ERROR permission denied\n":
             # this can happen the app databag doesn't have data,
             # or we're breaking the relation.

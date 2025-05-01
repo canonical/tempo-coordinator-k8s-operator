@@ -9,6 +9,7 @@ from charms.tempo_coordinator_k8s.v0.tracing import TracingProviderAppData
 def test_receiver_api(
         context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container, leader
 ):
+    # GIVEN two incoming tracing relations asking for otel grpc and http respectively
     tracing_grpc = Relation(
         "tracing",
         remote_app_data={"receivers": '["otlp_grpc"]'},
@@ -39,8 +40,9 @@ def test_receiver_api(
             assert charm._requested_receivers() == ("otlp_grpc", "otlp_http")
             state_out = mgr.run()
 
+    # THEN both protocols are in the receivers published in the databag (local side)
+
     r_out = [r for r in state_out.relations if r.id == tracing_http.id][0]
-    # "otlp_grpc" is gone from the databag
     assert sorted(
         [r.protocol.name for r in TracingProviderAppData.load(r_out.local_app_data).receivers]
     ) == ["otlp_grpc", "otlp_http"]
@@ -49,6 +51,7 @@ def test_receiver_api(
 def test_leader_removes_receivers_on_relation_broken(
         context, s3, all_worker, nginx_container, nginx_prometheus_exporter_container
 ):
+    # GIVEN two incoming tracing relations asking for otel grpc and http respectively
     tracing_grpc = Relation(
         "tracing",
         remote_app_data={"receivers": '["otlp_grpc"]'},
@@ -72,14 +75,15 @@ def test_leader_removes_receivers_on_relation_broken(
         containers=[nginx_container, nginx_prometheus_exporter_container],
     )
 
+    # WHEN the charm receives a relation-broken event for the one asking for otlp_grpc
     with charm_tracing_disabled():
         with context(context.on.relation_broken(tracing_grpc), state) as mgr:
             charm = mgr.charm
             assert charm._requested_receivers() == ("otlp_http",)
             state_out = mgr.run()
 
+    # THEN otlp_grpc is gone from the databag
     r_out = [r for r in state_out.relations if r.id == tracing_http.id][0]
-    # "otlp_grpc" is gone from the databag
     assert sorted(
         [r.protocol.name for r in TracingProviderAppData.load(r_out.local_app_data).receivers]
     ) == ["otlp_http"]
