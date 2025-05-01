@@ -6,7 +6,7 @@ version = "0.1"  # this is in fact irrelevant
 requires-python = ">=3.10"
 
 dependencies = [
-    "ops",
+    "ops<2.21.0",
     # FIXME: pull cosl from pypi
     "cosl@git+https://github.com/canonical/cos-lib@TAP-390",
     "cryptography",
