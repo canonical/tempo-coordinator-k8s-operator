@@ -13,7 +13,10 @@ from minio import Minio
 def get_status():
     cmd = "juju status --format json"
     raw = subprocess.getoutput(cmd)
-    status = json.loads(raw)
+    try:
+        status = json.loads(raw)
+    except:
+        return {}
     return status
 
 
@@ -59,18 +62,26 @@ def deploy(
     model: str = None,
 ):
     """Deploy minio and s3 integrator."""
+    status = get_status()
 
     if model:
+        print(f"switching to {model}")
         _run(f"juju switch {model}")
+    else:
+        current_model_name = status.get("model", {}).get("name", "<unknown>")
+        print(f"operating on model {current_model_name!r}")
 
-    print("deploying minio and s3 integrator...")
+    for ch_name, app in (("minio", minio_app_name), ("s3-integrator", s3_app_name)):
+        if app not in status.get("applications", {}):
+            print(f"deploying {app}...")
+            _run(f"juju deploy {ch_name} --channel edge --trust {app}")
+        else:
+            print(f"found app {app} already deployed.")
 
-    _run(
-        f"juju deploy minio --channel edge --trust --config access-key={user} --config secret-key={password} {minio_app_name}"
-    )
-    _run(f"juju deploy s3-integrator --channel edge --trust {s3_app_name}")
+    print("configuring minio credentials...")
+    _run(f"juju config {minio_app_name} access-key={user} secret-key={password}")
 
-    print(f"waiting for minio ({minio_app_name}) to become active...", end="")
+    print(f"waiting for minio ({minio_app_name}) to be active...", end="")
     while True:
         status = get_status()
         minio = get_minio_status(status)
@@ -85,8 +96,7 @@ def deploy(
         print(".", end="")
         sleep(1)
 
-    print("minio and s3 integrator ready.")
-
+    print("minio and s3 integrator ready. Ensuring bucket...")
     minio_addr = minio["address"]
 
     mc_client = Minio(
