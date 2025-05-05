@@ -8,7 +8,7 @@ import pytest
 
 from tempo import Tempo
 from cosl.coordinated_workers.nginx import NginxConfig
-from nginx_config import NginxHelper
+from nginx_config import upstreams, server_ports_to_locations
 
 logger = logging.getLogger(__name__)
 sample_dns_ip = "198.18.0.0"
@@ -56,7 +56,7 @@ sample_dns_ip = "198.18.0.0"
 def test_nginx_config_is_parsed_with_workers(context, nginx_container, coordinator, addresses):
     coordinator.cluster.gather_addresses_by_role.return_value = addresses
 
-    nginx = NginxConfig("localhost",NginxHelper.roles_to_upstreams(), NginxHelper.server_ports_to_locations())
+    nginx = NginxConfig("localhost",upstreams(), server_ports_to_locations())
 
     prepared_config = nginx.get_config(coordinator.cluster.gather_addresses_by_role(), False)
     assert isinstance(prepared_config, str)
@@ -93,7 +93,7 @@ def test_nginx_config_contains_upstreams_and_proxy_pass(
 
     with mock_ipv6(ipv6):
         with mock_resolv_conf(f"nameserver {sample_dns_ip}"):
-            nginx = NginxConfig("localhost",NginxHelper.roles_to_upstreams(), NginxHelper.server_ports_to_locations())
+            nginx = NginxConfig("localhost",upstreams(), server_ports_to_locations())
 
     prepared_config = nginx.get_config(coordinator.cluster.gather_addresses_by_role(), tls)
     assert f"resolver {sample_dns_ip};" in prepared_config

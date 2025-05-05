@@ -51,7 +51,7 @@ from ops.charm import CharmBase
 
 from tempo import Tempo
 from tempo_config import TEMPO_ROLES_CONFIG, TempoRole
-from nginx_config import NginxHelper
+from nginx_config import upstreams, server_ports_to_locations
 
 logger = logging.getLogger(__name__)
 PEERS_RELATION_ENDPOINT_NAME = "peers"
@@ -140,9 +140,8 @@ class TempoCoordinatorCharm(CharmBase):
             },
             nginx_config=NginxConfig(
                 server_name=self.hostname,
-                roles_to_upstreams=NginxHelper.roles_to_upstreams(),
-                server_ports_to_locations=NginxHelper.server_ports_to_locations(),
-
+                upstream_configs= upstreams(),
+                server_ports_to_locations=server_ports_to_locations(),
             ),
             workers_config=self.tempo.config,
             resources_requests=self.get_resources_requests,
