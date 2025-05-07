@@ -230,20 +230,29 @@ wheels = [
 ]
 
 [[package]]
-name = "cosl"
-version = "0.1.0"
-source = { registry = "https://pypi.org/simple" }
+name = "coordinated-workers"
+version = "0.0.1"
+source = { git = "https://github.com/canonical/cos-coordinated-workers?rev=migrate-coord-workers#93a19c9064dfc737a3a8c497e1912006c9a11b09" }
 dependencies = [
+    { name = "cosl" },
+    { name = "crossplane" },
+    { name = "cryptography" },
+    { name = "jsonschema" },
     { name = "lightkube" },
+    { name = "ops" },
+    { name = "pydantic" },
+]
+
+[[package]]
+name = "cosl"
+version = "0.2.0"
+source = { git = "https://github.com/canonical/cos-lib?rev=migrate-coord-workers#1aa2043d052d157aa4970499e4594044dfe57012" }
+dependencies = [
     { name = "ops" },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "tenacity" },
     { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/57/b9/855defc4c989f17b0304989213832172b9144649b3417712c74e0c1e8669/cosl-0.1.0.tar.gz", hash = "sha256:b85a47f31cd90dd53e4b9224ec588c6c1f3fc6158925b0e179ccfe97ed3ce3e0", size = 87345, upload_time = "2025-05-06T16:47:47.094Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/ae/c08e6f411ebe033b877453474cebb598f40ea384296cebca19614a3f0719/cosl-0.1.0-py3-none-any.whl", hash = "sha256:f592eafd76576927498105ab0b77fc7d792d536b9323fd83fedc5a0ad2975621", size = 67669, upload_time = "2025-05-06T16:47:45.435Z" },
 ]
 
 [[package]]
@@ -791,17 +800,15 @@ wheels = [
 
 [[package]]
 name = "ops"
-version = "2.21.1"
+version = "2.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "importlib-metadata" },
-    { name = "opentelemetry-api" },
     { name = "pyyaml" },
     { name = "websocket-client" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/97/c5/f0098a9b1b72680b3682043227a628a08a7b5b9592fc98ea6efa0d638017/ops-2.21.1.tar.gz", hash = "sha256:4a8190420813ba37e7a0399d656008f99c79015d7f72e138bad7cb1ac403d0b0", size = 496427, upload_time = "2025-05-01T03:03:23.038Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/17/af/d2eb331b6424b879a448611524f54590fde6e3726f7513941f4fc26c4b08/ops-2.20.0.tar.gz", hash = "sha256:be1dcfd0bb748839fbc200bbd073a6acf9648401c3729db22d8594ebb4301e05", size = 492365, upload_time = "2025-03-31T20:43:20.044Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/c7/b70271ee12418144d5c596f37745c21da105470d365d834a9fce071f7bc2/ops-2.21.1-py3-none-any.whl", hash = "sha256:6745084c8e73bc485c254f95664bd85ddcf786c91b90782f2830c8333a1440b2", size = 182682, upload_time = "2025-05-01T03:03:20.946Z" },
+    { url = "https://files.pythonhosted.org/packages/62/83/0acfc15b24d1bc302e47f2e5e9170c8707cef9e7eb90177d38afce8cd6e8/ops-2.20.0-py3-none-any.whl", hash = "sha256:94791a4b45f00c6902494a4934480c85947880b27f5ebf3a0ec32e8cc6279c99", size = 180997, upload_time = "2025-03-31T20:43:15.433Z" },
 ]
 
 [package.optional-dependencies]
@@ -811,15 +818,15 @@ testing = [
 
 [[package]]
 name = "ops-scenario"
-version = "7.21.1"
+version = "7.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ops" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/95/90312165f3e1d5876872ad64131be9c0f26b5aa09bd73a436a21b0752820/ops_scenario-7.21.1.tar.gz", hash = "sha256:534b407b34212161c3e74cb396b79ca7449932e483053e924146fdf0140876b9", size = 141631, upload_time = "2025-05-01T03:03:30.456Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/d6/85a7d0a1f0df597a82caa5350a45f0e99ef2c72eed5705d80cae72101925/ops_scenario-7.20.0.tar.gz", hash = "sha256:f1c058dac51bb953389cbddedbf131fe545b9932ae8fe32c1e701833b31ea88b", size = 142159, upload_time = "2025-03-31T20:36:39.027Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/93/3b/4cc28ea9d77015ecf8fc5c3d362bb274e35ffaa2e6fbd87909a5384afa40/ops_scenario-7.21.1-py3-none-any.whl", hash = "sha256:eeb9def2c31a1db2429cf21bd9b8cbd2ac092cc1fbe5591e850e4aa192c542fa", size = 72451, upload_time = "2025-05-01T03:03:28.488Z" },
+    { url = "https://files.pythonhosted.org/packages/a0/a3/8cb3445f8666082a8b20c6547debca47902c15f5a9ff608dd767632b4a70/ops_scenario-7.20.0-py3-none-any.whl", hash = "sha256:ee8defa368751d819e3b8ae08de672fa281af16274567f022c42a5f2c6c584a3", size = 72497, upload_time = "2025-03-31T20:36:36.706Z" },
 ]
 
 [[package]]
@@ -1275,10 +1282,8 @@ name = "tempo-coordinator-k8s"
 version = "0.1"
 source = { virtual = "." }
 dependencies = [
+    { name = "coordinated-workers" },
     { name = "cosl" },
-    { name = "crossplane" },
-    { name = "cryptography" },
-    { name = "jsonschema" },
     { name = "jubilant" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "ops" },
@@ -1308,11 +1313,9 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cosl", specifier = ">=0.1.0" },
+    { name = "coordinated-workers", git = "https://github.com/canonical/cos-coordinated-workers?rev=migrate-coord-workers" },
+    { name = "cosl", git = "https://github.com/canonical/cos-lib?rev=migrate-coord-workers" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'dev'" },
-    { name = "crossplane" },
-    { name = "cryptography" },
-    { name = "jsonschema" },
     { name = "jubilant", specifier = ">=0.4.1" },
     { name = "jubilant", marker = "extra == 'dev'" },
     { name = "minio", marker = "extra == 'dev'" },
