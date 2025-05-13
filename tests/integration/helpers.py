@@ -264,7 +264,7 @@ def emit_trace(
     juju.cli(
         "ssh",
         f"{TEMPO_APP}/0",
-        "python3 -m pip install protobuf==3.20.* opentelemetry-exporter-otlp-proto-grpc opentelemetry-exporter-otlp-proto-http"
+        "python3 -m pip install --user  protobuf==3.20.* opentelemetry-exporter-otlp-proto-grpc opentelemetry-exporter-otlp-proto-http"
         + " opentelemetry-exporter-zipkin opentelemetry-exporter-jaeger",
     )
 
