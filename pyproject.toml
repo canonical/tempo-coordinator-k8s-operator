@@ -7,10 +7,11 @@ requires-python = ">=3.10"
 
 dependencies = [
     "ops",
-    "cosl>=0.0.56",
+    "cosl>=0.1.0",
+    # FIXME: remove crossplane once https://github.com/canonical/cos-lib/issues/144 is fixed
+    "crossplane",
     "cryptography",
     "jsonschema",
-    "crossplane",
     "pydantic<3",
     # ---PYDEPS---
     # lib/charms/tempo_coordinator_k8s/v0/charm_tracing.py
@@ -24,23 +25,18 @@ dev = [
     "pytest",
     "pytest-cov",
     "coverage[toml]",
-    "ops[testing]",
+    # FIXME: 2.21.0 adds tracing support and breaks some charm-tracing unittests
+    "ops[testing]==2.20.0",
 
 #   CATAN TESTS: see https://github.com/canonical/tempo-coordinator-k8s-operator/issues/145
 #   "catan@git+https://github.com/pietropasotti/catan.git@main"
 
 #   INTEGRATION TESTS
     "jubilant",
-    "pytest-jubilant>=0.2.1",
+    "pytest-jubilant>=0.3",
     "requests",
     "minio",
     "tenacity==8.2.3",
-    # tracegen
-    "opentelemetry-exporter-otlp-proto-grpc",
-    "opentelemetry-exporter-zipkin",
-    "opentelemetry-exporter-jaeger",
-    # opentelemetry-exporter-jaeger complains about old generated protos
-    "protobuf==3.20.*",
     # https://github.com/juju/python-libjuju/issues/1184
     "websockets<14.0",
 
