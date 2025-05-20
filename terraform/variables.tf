@@ -38,7 +38,7 @@ variable "units" {
 # We use constraints to set AntiAffinity in K8s
 # https://discourse.charmhub.io/t/pod-priority-and-affinity-in-juju-charms/4091/13?u=jose
 variable "constraints" {
-  description = "Constraints for the charm deployment"
+  description = "String listing constraints for this application"
   type        = string
   # FIXME: Passing an empty constraints value to the Juju Terraform provider currently
   # causes the operation to fail due to https://github.com/juju/terraform-provider-juju/issues/344
