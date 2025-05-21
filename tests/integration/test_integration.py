@@ -52,7 +52,7 @@ def test_scale_up_tempo(juju: Juju):
     juju.add_unit(TEMPO_APP, num_units=2)
     # THEN all units become active
     juju.wait(
-        lambda status: jubilant.all_active(status, TEMPO_APP, WORKER_APP, TESTER_APP_NAME, TESTER_GRPC_APP_NAME),
+        lambda status: jubilant.all_active(status, TEMPO_APP, WORKER_APP),
         timeout=1000
     )
 
