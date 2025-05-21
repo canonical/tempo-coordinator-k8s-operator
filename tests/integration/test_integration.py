@@ -45,6 +45,7 @@ def test_deploy_monolithic_cluster(juju: Juju, tempo_charm: Path):
     # Then applications should eventually be created
     deploy_monolithic_cluster(juju)
 
+@pytest.mark.setup
 # scaling the coordinator before ingesting traces to verify that scaling won't stop traces ingestion.
 def test_scale_up_tempo(juju: Juju):
     # GIVEN we scale up tempo

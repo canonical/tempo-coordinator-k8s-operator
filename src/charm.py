@@ -223,10 +223,13 @@ class TempoCoordinatorCharm(CharmBase):
         # example: 'tempo-0.tempo-headless.default.svc.cluster.local'
         hostname = self.hostname
         hostname_parts = hostname.split(".") 
-        if len(hostname_parts) < 6:
+        # 'svc' is always there in a K8s service fqdn 
+        # ref: https://github.com/kubernetes/dns/blob/master/docs/specification.md
+        if "svc" not in hostname_parts:
             logger.warning(f"expected K8s-style fqdn, but got {hostname} instead")
             return hostname
-        _,_,*dns_name_parts = hostname_parts
+        
+        dns_name_parts = hostname_parts[hostname_parts.index("svc"):]
         dns_name = '.'.join(dns_name_parts) # 'svc.cluster.local'
         return f"{self.app.name}.{self.model.name}.{dns_name}" # 'tempo.model.svc.cluster.local'
     
