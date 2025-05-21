@@ -224,7 +224,7 @@ class TempoCoordinatorCharm(CharmBase):
         hostname = self.hostname
         hostname_parts = hostname.split(".") 
         # 'svc' is always there in a K8s service fqdn 
-        # ref: https://github.com/kubernetes/dns/blob/master/docs/specification.md
+        # ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#services
         if "svc" not in hostname_parts:
             logger.warning(f"expected K8s-style fqdn, but got {hostname} instead")
             return hostname
