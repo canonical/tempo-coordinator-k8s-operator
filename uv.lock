@@ -923,15 +923,15 @@ wheels = [
 
 [[package]]
 name = "pytest-jubilant"
-version = "0.4.1"
+version = "0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jubilant" },
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e1/04/7d39c7c11ed2f3f5f400999ff5964bf877ccfb1c43e6e1b6b5426b83f2de/pytest_jubilant-0.4.1.tar.gz", hash = "sha256:5f05e1acb60c41ff5dcc2476f5bb1f765fdaaad9f04eb7d10eb1fb0dd721f3bd", size = 9985, upload_time = "2025-05-01T12:58:15.31Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/59/d98318c8e7faf5bcaebb65a5df14213aa657569abaec3c101d8d6a8f93e8/pytest_jubilant-0.5.tar.gz", hash = "sha256:b581d2989da8173952351b48fd0bd1e8dcc7bbec6d5e28615ce40ed5492680a3", size = 10279, upload_time = "2025-05-14T07:50:09.678Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ae/62/e834f471b43897a9da004f802cc387405a3a9cebc3c0ab41b5e2d6aa0976/pytest_jubilant-0.4.1-py3-none-any.whl", hash = "sha256:88eff4de93e403208ae69943c22b78a691ea72f11f6255cf8b632c3aa3241a72", size = 10600, upload_time = "2025-05-01T12:58:13.371Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/97/341d8eb4f946b511fe8f9621efe3d0e8f9c1b36529485c2c4c5e294764a0/pytest_jubilant-0.5-py3-none-any.whl", hash = "sha256:b016e46a12f20177c83cfd1ec58be87c96dac165202416d2e178be6619c05df2", size = 10689, upload_time = "2025-05-14T07:50:08.223Z" },
 ]
 
 [[package]]
@@ -1190,7 +1190,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "pytest-cov", marker = "extra == 'dev'" },
     { name = "pytest-interface-tester", marker = "extra == 'dev'", specifier = "==3.3.1" },
-    { name = "pytest-jubilant", marker = "extra == 'dev'", specifier = "<0.5" },
+    { name = "pytest-jubilant", marker = "extra == 'dev'", specifier = ">=0.3" },
     { name = "requests", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "tenacity", marker = "extra == 'dev'", specifier = "==8.2.3" },
