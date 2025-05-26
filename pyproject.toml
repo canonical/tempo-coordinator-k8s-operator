@@ -7,8 +7,7 @@ requires-python = ">=3.10"
 
 dependencies = [
     "ops",
-    # FIXME: use cosl from pypi
-    "cosl@git+https://github.com/canonical/cos-lib@migrate-coord-workers",
+    "cosl>=1.0.0",
     "coordinated-workers",
     "pydantic<3",
     # ---PYDEPS---
