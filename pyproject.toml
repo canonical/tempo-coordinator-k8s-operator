@@ -14,6 +14,9 @@ dependencies = [
     # lib/charms/tempo_coordinator_k8s/v0/charm_tracing.py
     "opentelemetry-exporter-otlp-proto-http==1.21.0",
     "jubilant>=0.4.1",
+    # lib/charms/tls_certificates_interface/v3/tls_certificates.py
+    "cryptography",
+    "jsonschema",
 ]
 
 [project.optional-dependencies]
@@ -30,7 +33,7 @@ dev = [
 
 #   INTEGRATION TESTS
     "jubilant",
-    "pytest-jubilant>=0.3",
+    "pytest-jubilant<0.5",
     "requests",
     "minio",
     "tenacity==8.2.3",
