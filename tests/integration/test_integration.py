@@ -22,7 +22,7 @@ TESTER_GRPC_APP_NAME = TESTER_GRPC_METADATA["name"]
 def test_build_deploy_tester(juju: Juju):
     out = pack_charm("./tests/integration/tester/")
     juju.deploy(
-        f"./{out.charm}",
+        f"{out.charm}",
         TESTER_APP_NAME,
         resources=out.resources,
         num_units=3,
@@ -32,7 +32,7 @@ def test_build_deploy_tester(juju: Juju):
 def test_build_deploy_tester_grpc(juju: Juju):
     out = pack_charm("./tests/integration/tester-grpc/")
     juju.deploy(
-        f"./{out.charm}",
+        f"{out.charm}",
         TESTER_GRPC_APP_NAME,
         resources=out.resources,
         num_units=3,
@@ -45,6 +45,16 @@ def test_deploy_monolithic_cluster(juju: Juju, tempo_charm: Path):
     # Then applications should eventually be created
     deploy_monolithic_cluster(juju)
 
+@pytest.mark.setup
+# scaling the coordinator before ingesting traces to verify that scaling won't stop traces ingestion.
+def test_scale_up_tempo(juju: Juju):
+    # GIVEN we scale up tempo
+    juju.add_unit(TEMPO_APP, num_units=2)
+    # THEN all units become active
+    juju.wait(
+        lambda status: jubilant.all_active(status, TEMPO_APP, WORKER_APP),
+        timeout=1000
+    )
 
 @pytest.mark.setup
 def test_relate(juju: Juju):
@@ -105,16 +115,6 @@ def test_verify_traces_grpc(juju: Juju):
     assert (
         traces
     ), f"There's no trace of generated grpc traces in tempo. {json.dumps(traces, indent=2)}"
-
-
-def test_scale_up_tempo(juju: Juju):
-    # GIVEN we scale up tempo
-    juju.add_unit(TEMPO_APP, num_units=2)
-    # THEN all units become active
-    juju.wait(
-        lambda status: jubilant.all_active(status, TEMPO_APP, WORKER_APP, TESTER_APP_NAME, TESTER_GRPC_APP_NAME),
-        timeout=1000
-    )
 
 
 @pytest.mark.teardown

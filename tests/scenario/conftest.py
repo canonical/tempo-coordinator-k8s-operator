@@ -51,16 +51,17 @@ def tempo_charm(tmp_path):
         with patch("charm.TempoCoordinatorCharm.are_certificates_on_disk", False):
             with patch("tempo.Tempo.tls_ca_path", str(tmp_path / "cert.tmp")):
                 with patch(
-                    "cosl.coordinated_workers.nginx.CA_CERT_PATH", str(tmp_path / "ca.tmp")
+                    "coordinated_workers.nginx.CA_CERT_PATH", str(tmp_path / "ca.tmp")
                 ):
                     with patch.multiple(
-                        "cosl.coordinated_workers.coordinator.KubernetesComputeResourcesPatch",
+                        "coordinated_workers.coordinator.KubernetesComputeResourcesPatch",
                         _namespace="test-namespace",
                         _patch=lambda _: None,
                         get_status=lambda _: ActiveStatus(""),
                         is_ready=lambda _: True,
                     ):
-                        yield TempoCoordinatorCharm
+                        with patch("socket.getfqdn", return_value="localhost"):
+                            yield TempoCoordinatorCharm
 
 
 @pytest.fixture(scope="function")
