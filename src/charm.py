@@ -184,14 +184,6 @@ class TempoCoordinatorCharm(CharmBase):
             app=self.app,
         )
 
-        # refuse to handle any other event as we can't possibly know what to do.
-        if not self.coordinator.can_handle_events:
-            # logging is handled by the Coordinator object
-            return
-
-        # do this regardless of what event we are processing
-        self._reconcile()
-
         # actions
         self.framework.observe(self.on.list_receivers_action, self._on_list_receivers_action)
 
@@ -216,23 +208,23 @@ class TempoCoordinatorCharm(CharmBase):
     @property
     def service_hostname(self) -> str:
         """The FQDN of the k8s service associated with this application.
-        
+
         This service load balances traffic across all application units.
-        Falls back to this unit's DNS name if the hostname does not resolve to a Kubernetes-style fqdn. 
+        Falls back to this unit's DNS name if the hostname does not resolve to a Kubernetes-style fqdn.
         """
         # example: 'tempo-0.tempo-headless.default.svc.cluster.local'
         hostname = self.hostname
-        hostname_parts = hostname.split(".") 
-        # 'svc' is always there in a K8s service fqdn 
+        hostname_parts = hostname.split(".")
+        # 'svc' is always there in a K8s service fqdn
         # ref: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/#services
         if "svc" not in hostname_parts:
             logger.debug(f"expected K8s-style fqdn, but got {hostname} instead")
             return hostname
-        
+
         dns_name_parts = hostname_parts[hostname_parts.index("svc"):]
         dns_name = '.'.join(dns_name_parts) # 'svc.cluster.local'
         return f"{self.app.name}.{self.model.name}.{dns_name}" # 'tempo.model.svc.cluster.local'
-    
+
     @property
     def _external_http_server_url(self) -> str:
         """External url of the http(s) server."""
@@ -638,7 +630,10 @@ class TempoCoordinatorCharm(CharmBase):
         """Update grafana-source relations."""
         self.grafana_source_provider.update_source(source_url=self._external_http_server_url)
 
-    def _reconcile(self):
+    def reconcile(self):
+        if not self.coordinator.can_handle_events:
+            return
+
         # This method contains unconditional update logic, i.e. logic that should be executed
         # regardless of the event we are processing.
         # reason is, if we miss these events because our coordinator cannot process events (inconsistent status),
@@ -815,6 +810,7 @@ class TempoCoordinatorCharm(CharmBase):
 
 
 if __name__ == "__main__":  # pragma: nocover
-    from ops import main
+    from charms.holism.v0.holism import holism
 
-    main(TempoCoordinatorCharm)  # noqa
+    with holism(TempoCoordinatorCharm) as h:
+        h.charm.reconcile()
