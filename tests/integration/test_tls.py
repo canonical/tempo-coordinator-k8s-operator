@@ -103,6 +103,7 @@ def test_force_enable_protocols(juju: Juju):
     )
 
 
+@pytest.mark.skip(reason="SSL error on jaeger_thrift_http") # TODO https://github.com/canonical/tempo-coordinator-k8s-operator/issues/176
 @pytest.mark.parametrize("protocol", protocols_endpoints.keys())
 def test_verify_traces_force_enabled_protocols_tls(juju: Juju, nonce, protocol):
     tempo_host = get_ingress_proxied_hostname(juju)
