@@ -357,11 +357,10 @@ try:
     # we can't tell what's going to happen if charm_tracing and ops[tracing] fight for
     # instrumentation and the otel tracer configuration.
     import ops_tracing  # type: ignore
-
-    del ops_tracing
     raise ImportError(
         "Incompatible `ops[tracing]` library installed. "
-        "This charm lib is deprecated and should be removed. "
+        "This charm lib is deprecated. Remove `charm_tracing` from the charm and migrate "
+        "to `ops[tracing]`. "
         "See: https://discourse.charmhub.io/t/migration-guide-from-charm-tracing-to-ops-tracing/18076"
     )
 except ModuleNotFoundError:
