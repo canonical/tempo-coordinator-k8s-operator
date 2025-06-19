@@ -314,7 +314,7 @@ from typing import (
 import opentelemetry
 import ops
 from opentelemetry.exporter.otlp.proto.common._internal.trace_encoder import (
-    encode_spans # type: ignore
+    encode_spans  # type: ignore
 )
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
@@ -348,11 +348,30 @@ LIBAPI = 0
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
 
-LIBPATCH = 8
+LIBPATCH = 9
 
 PYDEPS = ["opentelemetry-exporter-otlp-proto-http==1.21.0"]
 
 logger = logging.getLogger("tracing")
+try:
+    # we can't tell what's going to happen if charm_tracing and ops[tracing] fight for
+    # instrumentation and the otel tracer configuration.
+    from importlib.util import find_spec
+    if find_spec("ops_tracing"):
+        raise ImportError(
+            "Incompatible `ops[tracing]` library installed. "
+            "This charm lib is deprecated. Remove `charm_tracing` from the charm and migrate "
+            "to `ops[tracing]`. "
+            "See: https://discourse.charmhub.io/t/migration-guide-from-charm-tracing-to-ops-tracing/18076"
+        )
+except ModuleNotFoundError:
+    # ops[tracing] not installed: we're good, but still deprecated.
+    logger.warning(
+        "This library is now deprecated. Please migrate to ops[tracing]. Useful docs: \n"
+        "https://ops.readthedocs.io/en/latest/howto/trace-the-charm-code.html \n"
+        "https://discourse.charmhub.io/t/migration-guide-from-charm-tracing-to-ops-tracing/18076"
+    )
+
 dev_logger = logging.getLogger("tracing-dev")
 
 # set this to 0 if you are debugging/developing this library source
@@ -374,7 +393,7 @@ BUFFER_DEFAULT_CACHE_FILE_NAME = ".charm_tracing_buffer.raw"
 BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB = 10
 _BUFFER_CACHE_FILE_SIZE_LIMIT_MiB_MIN = 10
 BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH = 100
-_MiB_TO_B = 2**20  # megabyte to byte conversion rate
+_MiB_TO_B = 2 ** 20  # megabyte to byte conversion rate
 _OTLP_SPAN_EXPORTER_TIMEOUT = 1
 
 
@@ -427,7 +446,7 @@ class _Buffer:
                 f"charm tracing buffer exceeds max history length ({self._max_event_history_length} events)"
             )
 
-        new_spans = deque(queue[-self._max_event_history_length :])
+        new_spans = deque(queue[-self._max_event_history_length:])
 
         # drop older events if the buffer is too big; all units are bytes
         logged_drop = False
@@ -665,9 +684,9 @@ class UntraceableObjectError(TracingError):
 
 
 def _get_tracing_endpoint(
-    tracing_endpoint_attr: str,
-    charm_instance: object,
-    charm_type: type,
+        tracing_endpoint_attr: str,
+        charm_instance: object,
+        charm_type: type,
 ):
     _tracing_endpoint = getattr(charm_instance, tracing_endpoint_attr)
     if callable(_tracing_endpoint):
@@ -689,9 +708,9 @@ def _get_tracing_endpoint(
 
 
 def _get_server_cert(
-    server_cert_attr: str,
-    charm_instance: ops.CharmBase,
-    charm_type: Type[ops.CharmBase],
+        server_cert_attr: str,
+        charm_instance: ops.CharmBase,
+        charm_type: Type[ops.CharmBase],
 ):
     _server_cert = getattr(charm_instance, server_cert_attr)
     if callable(_server_cert):
@@ -720,13 +739,13 @@ def _get_server_cert(
 
 
 def _setup_root_span_initializer(
-    charm_type: _CharmType,
-    tracing_endpoint_attr: str,
-    server_cert_attr: Optional[str],
-    service_name: Optional[str],
-    buffer_path: Optional[Path],
-    buffer_max_events: int,
-    buffer_max_size_mib: int,
+        charm_type: _CharmType,
+        tracing_endpoint_attr: str,
+        server_cert_attr: Optional[str],
+        service_name: Optional[str],
+        buffer_path: Optional[Path],
+        buffer_max_events: int,
+        buffer_max_size_mib: int,
 ):
     """Patch the charm's initializer."""
     original_init = charm_type.__init__
@@ -912,13 +931,13 @@ def _setup_root_span_initializer(
 
 
 def trace_charm(
-    tracing_endpoint: str,
-    server_cert: Optional[str] = None,
-    service_name: Optional[str] = None,
-    extra_types: Sequence[type] = (),
-    buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
-    buffer_max_size_mib: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB,
-    buffer_path: Optional[Union[str, Path]] = None,
+        tracing_endpoint: str,
+        server_cert: Optional[str] = None,
+        service_name: Optional[str] = None,
+        extra_types: Sequence[type] = (),
+        buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
+        buffer_max_size_mib: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB,
+        buffer_path: Optional[Union[str, Path]] = None,
 ) -> Callable[[_T], _T]:
     """Autoinstrument the decorated charm with tracing telemetry.
 
@@ -984,14 +1003,14 @@ def trace_charm(
 
 
 def _autoinstrument(
-    charm_type: _T,
-    tracing_endpoint_attr: str,
-    server_cert_attr: Optional[str] = None,
-    service_name: Optional[str] = None,
-    extra_types: Sequence[type] = (),
-    buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
-    buffer_max_size_mib: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB,
-    buffer_path: Optional[Path] = None,
+        charm_type: _T,
+        tracing_endpoint_attr: str,
+        server_cert_attr: Optional[str] = None,
+        service_name: Optional[str] = None,
+        extra_types: Sequence[type] = (),
+        buffer_max_events: int = BUFFER_DEFAULT_MAX_EVENT_HISTORY_LENGTH,
+        buffer_max_size_mib: int = BUFFER_DEFAULT_CACHE_FILE_SIZE_LIMIT_MiB,
+        buffer_path: Optional[Path] = None,
 ) -> _T:
     """Set up tracing on this charm class.
 
@@ -1075,7 +1094,8 @@ def trace_type(cls: _T) -> _T:
                 # add a reference to the decorator name. Result:
                 #   method call: @my_decorator(MyCharmWrappedMethods.b)
                 trace_method_name = f"@{qualname_c0}({cls.__name__}.{name})"
-        except Exception:  # noqa: failsafe
+        except Exception:  # noqa
+            # this is a failsafe
             pass
 
         new_method = trace_method(method, name=trace_method_name)
