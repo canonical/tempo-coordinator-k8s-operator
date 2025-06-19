@@ -356,13 +356,14 @@ logger = logging.getLogger("tracing")
 try:
     # we can't tell what's going to happen if charm_tracing and ops[tracing] fight for
     # instrumentation and the otel tracer configuration.
-    import ops_tracing  # type: ignore
-    raise ImportError(
-        "Incompatible `ops[tracing]` library installed. "
-        "This charm lib is deprecated. Remove `charm_tracing` from the charm and migrate "
-        "to `ops[tracing]`. "
-        "See: https://discourse.charmhub.io/t/migration-guide-from-charm-tracing-to-ops-tracing/18076"
-    )
+    from importlib.util import find_spec
+    if find_spec("ops_tracing"):
+        raise ImportError(
+            "Incompatible `ops[tracing]` library installed. "
+            "This charm lib is deprecated. Remove `charm_tracing` from the charm and migrate "
+            "to `ops[tracing]`. "
+            "See: https://discourse.charmhub.io/t/migration-guide-from-charm-tracing-to-ops-tracing/18076"
+        )
 except ModuleNotFoundError:
     # ops[tracing] not installed: we're good, but still deprecated.
     logger.warning(
@@ -1093,7 +1094,8 @@ def trace_type(cls: _T) -> _T:
                 # add a reference to the decorator name. Result:
                 #   method call: @my_decorator(MyCharmWrappedMethods.b)
                 trace_method_name = f"@{qualname_c0}({cls.__name__}.{name})"
-        except Exception:  # noqa: failsafe
+        except Exception:  # noqa
+            # this is a failsafe
             pass
 
         new_method = trace_method(method, name=trace_method_name)
