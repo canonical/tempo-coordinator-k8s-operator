@@ -1,3 +1,5 @@
+# ❗This repo is archived and its contents have been migrated to https://github.com/canonical/tempo-operators❗
+
 # Tempo Operator
 
 [![CharmHub Badge](https://charmhub.io/tempo-coordinator-k8s/badge.svg)](https://charmhub.io/tempo-coordinator-k8s)
