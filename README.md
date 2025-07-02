@@ -1,26 +1,32 @@
-<!--
-Avoid using this README file for information that is maintained or published elsewhere, e.g.:
+# ❗This repo is archived and its contents have been migrated to https://github.com/canonical/tempo-operators❗
 
-* metadata.yaml > published on Charmhub
-* documentation > published on (or linked to from) Charmhub
-* detailed contribution guide > documentation or CONTRIBUTING.md
+# Tempo Operator
 
-Use links instead.
--->
+[![CharmHub Badge](https://charmhub.io/tempo-coordinator-k8s/badge.svg)](https://charmhub.io/tempo-coordinator-k8s)
+[![Release](https://github.com/canonical/tempo-coordinator-k8s-operator/actions/workflows/release.yaml/badge.svg)](https://github.com/canonical/tempo-k8s-operator/actions/workflows/release.yaml)
+[![Discourse Status](https://img.shields.io/discourse/status?server=https%3A%2F%2Fdiscourse.charmhub.io&style=flat&label=CharmHub%20Discourse)](https://discourse.charmhub.io)
 
-# mimir-coordinator-k8s-operator
+This repository contains the source code for a Charmed Operator that drives [Tempo] on Kubernetes. It is destined to work together with [tempo-worker-k8s](https://charmhub.io/tempo-worker-k8s) to deploy and operate Tempo, a distributed tracing backend backed by Grafana. See [Tempo HA documentation](https://discourse.charmhub.io/t/charmed-tempo-ha/15531) for more details.
 
-Charmhub package name: operator-template
-More information: https://charmhub.io/mimir-coordinator-k8s-operator
+## Usage
 
-Describe your charm in one or two sentences.
+Assuming you have access to a bootstrapped Juju controller on Kubernetes, you can:
 
-## Other resources
+```bash
+$ juju deploy tempo-coordinator-k8s # --trust (use when cluster has RBAC enabled)
+```
 
-<!-- If your charm is documented somewhere else other than Charmhub, provide a link separately. -->
+See [Deploy Tempo on top of COS-Lite](https://discourse.charmhub.io/t/tutorial-deploy-tempo-ha-on-top-of-cos-lite/15489) for the full tutorial.
 
-- [Read more](https://example.com)
+## OCI Images
 
-- [Contributing](CONTRIBUTING.md) <!-- or link to other contribution documentation -->
+This charm, by default, deploys `ubuntu/nginx:1.24-24.04_beta` and `nginx/nginx-prometheus-exporter:1.1.0`.
 
-- See the [Juju SDK documentation](https://juju.is/docs/sdk) for more information about developing and improving charms.
+## Contributing
+
+Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines
+on enhancements to this charm following best practice guidelines, and the
+[contributing] doc for developer guidance.
+
+[Tempo]: https://grafana.com/traces/
+[contributing]: https://github.com/canonical/tempo-coordinator-k8s-operator/blob/main/CONTRIBUTING.md
